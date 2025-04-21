@@ -405,6 +405,19 @@ function sendMessage(message) {
     timestamp: new Date().toISOString()
   });
   
+  // Log completo con toda la información para diagnóstico
+  console.log("Enviando fetch a /api/chat con datos:", {
+    message,
+    agent_id: agentId,
+    context: conversationContext,
+    model: selectedModel,
+    collaborative_mode: collaborativeMode,
+    conversation_state: window.app.conversationState
+  });
+  
+  // Diagnóstico de conexión
+  addSystemMessage("⌛ Conectando con el servidor...");
+  
   fetch('/api/chat', {
     method: 'POST',
     headers: {
@@ -419,10 +432,17 @@ function sendMessage(message) {
       conversation_state: window.app.conversationState
     }),
   })
-  .then(response => response.json())
+  .then(response => {
+    console.log("Respuesta recibida:", response.status, response.statusText);
+    addSystemMessage("✅ Conexión establecida, procesando respuesta...");
+    return response.json();
+  })
   .then(data => {
     // Remover indicador de carga
     removeLoadingMessage();
+    
+    // Log de la respuesta para diagnóstico
+    console.log("Datos recibidos de /api/chat:", data);
     
     if (data.error) {
       addSystemMessage(`Error: ${data.error}`);
@@ -510,16 +530,48 @@ function sendMessage(message) {
     
     // Mensaje de error más detallado para facilitar la depuración
     const errorMessage = `Error de conexión: ${error.message || 'Desconocido'}. 
-    Por favor, verifica tu conexión e intenta de nuevo. Si el problema persiste, 
-    es posible que haya un problema con las claves de API o la configuración del servidor.`;
+    Por favor, verifica tu conexión e intenta de nuevo.`;
     
     addSystemMessage(errorMessage);
     
-    // Verificar si hay problemas de CORS o conexión
-    if (error.message && (error.message.includes('NetworkError') || error.message.includes('CORS'))) {
-      console.warn('Posible problema de CORS o red detectado');
-      // Sugerir verificar las configuraciones de API
-      addSystemMessage('Nota: Es posible que las claves de API no estén configuradas correctamente. Contacta al administrador del sistema.');
+    // Intentar realizar una prueba de conexión simple
+    console.log("Realizando prueba de conexión para diagnóstico...");
+    addSystemMessage("🔄 Realizando prueba de conexión al servidor...");
+    
+    fetch('/health')
+      .then(response => {
+        if (response.ok) {
+          console.log("Conexión básica exitosa, el problema puede estar en la API o en el procesamiento");
+          addSystemMessage("✅ La conexión básica funciona. El problema puede estar en la configuración de las APIs.");
+          
+          // Prueba de claves API
+          return fetch('/api/test_apis', { method: 'GET' });
+        } else {
+          throw new Error(`Error en la prueba de conexión: ${response.status} - ${response.statusText}`);
+        }
+      })
+      .then(response => response.json())
+      .catch(testError => {
+        console.error("Error en la prueba de diagnóstico:", testError);
+        addSystemMessage("❌ Error en la prueba de conexión. Es posible que el servidor esté experimentando problemas.");
+      });
+    
+    // Verificar si hay problemas específicos
+    if (error.message) {
+      if (error.message.includes('NetworkError') || error.message.includes('CORS')) {
+        console.warn('Posible problema de CORS o red detectado');
+        addSystemMessage('Nota: Posible problema de CORS o red. Verifica la configuración del servidor.');
+      }
+      
+      if (error.message.includes('SyntaxError') || error.message.includes('Unexpected token')) {
+        console.warn('Posible problema con formato JSON en la respuesta');
+        addSystemMessage('Nota: La respuesta del servidor no tiene el formato esperado. Puede haber un error en el procesamiento.');
+      }
+      
+      if (error.message.includes('Failed to fetch') || error.message.includes('TypeError')) {
+        console.warn('Posible problema de conexión o servidor no disponible');
+        addSystemMessage('Nota: No se pudo conectar con el servidor. Verifica que la aplicación esté funcionando correctamente.');
+      }
     }
   });
 }
