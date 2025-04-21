@@ -1,186 +1,152 @@
-/**
- * Estilos para el Constructor de Tareas
- */
+/* Estilos específicos para el Constructor de Tareas Autónomo */
 
-/* Contenedor principal del constructor */
 .constructor-container {
+    min-height: calc(100vh - 56px);
     display: flex;
     flex-direction: column;
-    height: 100%;
-    background-color: var(--bs-dark);
 }
 
-/* Notificaciones de archivos creados */
-.file-notification {
-    margin: 1rem;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    background-color: rgba(13, 110, 253, 0.1);
-    border-left: 4px solid #0d6efd;
-}
-
-.file-notification-header {
+.feature {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #0d6efd;
-}
-
-.file-notification pre {
-    margin: 0;
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 0.25rem;
-    padding: 0.5rem;
-    max-height: 300px;
-    overflow: auto;
-}
-
-/* Notificaciones de comandos ejecutados */
-.command-notification {
-    margin: 1rem;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    background-color: rgba(25, 135, 84, 0.1);
-    border-left: 4px solid #198754;
-}
-
-.command-notification-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #198754;
-}
-
-.command-notification pre {
-    margin: 0;
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 0.25rem;
-    padding: 0.5rem;
-    max-height: 300px;
-    overflow: auto;
-}
-
-/* Contenedor de progreso */
-.progress-container {
-    margin: 1.5rem;
-    padding: 1rem;
-    background-color: rgba(33, 37, 41, 0.2);
-    border-radius: 0.5rem;
-}
-
-.progress-container h5 {
     margin-bottom: 0.75rem;
-    font-weight: 600;
-    color: var(--bs-light);
-}
-
-/* Notificación de siguiente paso */
-.next-step-notification {
-    margin: 1rem;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    background-color: rgba(255, 193, 7, 0.1);
-    border-left: 4px solid #ffc107;
-}
-
-.next-step-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #ffc107;
-}
-
-.next-step-content {
     padding: 0.5rem;
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 0.25rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
 }
 
-/* Estilos adicionales para la página de bienvenida */
-.chat-welcome {
-    max-width: 750px;
-    margin: 2rem auto;
-    background-color: rgba(33, 37, 41, 0.2);
-    border-radius: 1rem;
-    transition: all 0.3s ease;
+.feature:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
-.chat-welcome:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+.feature i {
+    margin-right: 0.75rem;
+    color: var(--bs-primary);
 }
 
 .welcome-icon {
-    font-size: 2.5rem;
-    width: 5rem;
-    height: 5rem;
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
+    width: 80px;
+    height: 80px;
     margin: 0 auto;
-    background: linear-gradient(135deg, #0d6efd, #6610f2);
     border-radius: 50%;
-    color: white;
+    background-color: rgba(13, 110, 253, 0.1);
 }
 
 .welcome-feather {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 40px;
+    height: 40px;
+    color: var(--bs-primary);
 }
 
 .welcome-features {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
-    margin-top: 1.5rem;
+    margin: 1.5rem 0;
 }
 
-.feature {
+/* Panel de notificaciones */
+.notifications-panel {
+    margin-top: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    max-height: 250px;
+    display: flex;
+    flex-direction: column;
+}
+
+.notifications-header {
+    padding: 0.75rem 1rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notifications-body {
+    overflow-y: auto;
+    flex-grow: 1;
+    max-height: 210px;
+}
+
+.notification {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    animation: fadeIn 0.3s ease-out;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.notification-closing {
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+.notification-header {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background-color: rgba(33, 37, 41, 0.2);
-    border-radius: 0.5rem;
-    transition: all 0.2s ease;
+    margin-bottom: 0.5rem;
 }
 
-.feature:hover {
-    background-color: rgba(33, 37, 41, 0.4);
-    transform: translateY(-2px);
+.notification-icon {
+    margin-right: 0.5rem;
 }
 
-.feature i {
-    color: #0d6efd;
+.notification-title {
+    font-weight: 600;
+    flex-grow: 1;
 }
 
-/* Animaciones para elementos específicos del constructor */
-@keyframes progress-pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
-    }
+.notification-time {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-right: 0.5rem;
 }
 
-.progress-bar {
-    animation: progress-pulse 2s infinite;
+.notification-close {
+    background: none;
+    border: none;
+    padding: 0;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: color 0.2s;
 }
 
-@keyframes notify-fade-in {
+.notification-close:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.notification-body p {
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}
+
+/* Tipos de notificaciones */
+.notification-info .notification-icon {
+    color: var(--bs-info);
+}
+
+.notification-success .notification-icon {
+    color: var(--bs-success);
+}
+
+.notification-warning .notification-icon {
+    color: var(--bs-warning);
+}
+
+.notification-error .notification-icon {
+    color: var(--bs-danger);
+}
+
+/* Animación */
+@keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(-10px);
     }
     to {
         opacity: 1;
@@ -188,8 +154,92 @@
     }
 }
 
-.file-notification,
-.command-notification,
-.next-step-notification {
-    animation: notify-fade-in 0.5s ease-out forwards;
+/* Estilos para mensajes */
+.chat-messages {
+    padding: 1rem;
+    height: 500px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.system-message {
+    padding: 0.5rem 1rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-left: 3px solid var(--bs-primary);
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.chat-message {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    max-width: 100%;
+    margin-bottom: 1rem;
+}
+
+.user-message {
+    background-color: rgba(13, 110, 253, 0.1);
+    align-self: flex-end;
+    border-bottom-right-radius: 0;
+}
+
+.assistant-message {
+    background-color: rgba(0, 0, 0, 0.2);
+    align-self: flex-start;
+    border-bottom-left-radius: 0;
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.sender-name {
+    font-weight: 600;
+}
+
+.message-time {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.message-content {
+    white-space: pre-wrap;
+}
+
+.message-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+.copy-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: color 0.2s;
+    padding: 0.25rem;
+}
+
+.copy-btn:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .welcome-features {
+        grid-template-columns: 1fr;
+    }
+    
+    .chat-messages {
+        height: 400px;
+    }
 }

@@ -14,6 +14,7 @@ class AutonomousProjectBuilder {
         this.projectStatus = document.getElementById('projectStatus');
         this.progressBar = document.getElementById('buildProgress');
         this.chatMessages = document.getElementById('chatMessages');
+        this.notificationsContainer = document.getElementById('notificationsPanel');
         this.modelSelector = document.getElementById('modelSelector');
         this.currentModel = 'openai'; // Valor por defecto
         
@@ -23,12 +24,45 @@ class AutonomousProjectBuilder {
         this.isBuilding = false;
         this.isPaused = false;
         this.updateInterval = null;
+        this.notificationsCount = 0;
+        this.lastNotificationId = 0;
+        this.errorCount = 0;
+        this.projectNotifications = [];
+        this.consoleOutput = [];
         
         // Inicializar eventos
         this.initEvents();
         
+        // Crear contenedor de notificaciones si no existe
+        this.initNotificationsPanel();
+        
         // Comprobar si hay un proyecto en progreso al cargar la página
         this.checkActiveProjects();
+    }
+    
+    initNotificationsPanel() {
+        // Si no existe el panel de notificaciones, crearlo
+        if (!this.notificationsContainer) {
+            const notificationsPanel = document.createElement('div');
+            notificationsPanel.id = 'notificationsPanel';
+            notificationsPanel.className = 'notifications-panel';
+            notificationsPanel.innerHTML = `
+                <div class="notifications-header">
+                    <h5 class="mb-0">Notificaciones <span class="badge bg-primary" id="notificationsCount">0</span></h5>
+                </div>
+                <div class="notifications-body" id="notificationsList"></div>
+            `;
+            
+            // Añadir al DOM después del chat
+            const chatContainer = document.querySelector('.chat-messages');
+            if (chatContainer) {
+                chatContainer.parentNode.insertBefore(notificationsPanel, chatContainer.nextSibling);
+            } else {
+                document.body.appendChild(notificationsPanel);
+            }
+            
+            this.notificationsContainer = notificationsPanel;
+        }
     }
     
     initEvents() {
@@ -40,6 +74,12 @@ class AutonomousProjectBuilder {
         
         // Botón para reanudar la construcción
         this.resumeButton.addEventListener('click', () => this.resumeProject());
+        
+        // Botón para limpiar notificaciones
+        const clearNotificationsBtn = document.getElementById('clearNotificationsBtn');
+        if (clearNotificationsBtn) {
+            clearNotificationsBtn.addEventListener('click', () => this.clearNotifications());
+        }
         
         // Selector de modelo
         const modelOptions = document.querySelectorAll('.model-option');
@@ -61,6 +101,36 @@ class AutonomousProjectBuilder {
                 }, 2000);
             });
         });
+    }
+    
+    /**
+     * Limpia todas las notificaciones.
+     */
+    clearNotifications() {
+        const notificationsList = document.getElementById('notificationsList');
+        if (notificationsList) {
+            // Eliminar todas las notificaciones con animación
+            const notifications = notificationsList.querySelectorAll('.notification');
+            notifications.forEach(notification => {
+                notification.classList.add('notification-closing');
+            });
+            
+            // Después de la animación, eliminar los elementos
+            setTimeout(() => {
+                notificationsList.innerHTML = `
+                    <div class="p-3 text-center text-muted">
+                        No hay notificaciones aún
+                    </div>
+                `;
+                
+                // Reiniciar contadores
+                this.notificationsCount = 0;
+                const countBadge = document.getElementById('notificationsCount');
+                if (countBadge) {
+                    countBadge.textContent = '0';
+                }
+            }, 300);
+        }
     }
     
     /**
@@ -274,6 +344,49 @@ class AutonomousProjectBuilder {
         const statusText = phases[project.phase] || project.phase;
         this.projectStatus.textContent = `Estado: ${statusText} (${project.progress}%)`;
         
+        // Comprobar si hay errores para actualizar el contador
+        if (project.error_count && project.error_count !== this.errorCount) {
+            this.errorCount = project.error_count;
+            // Resaltar el contador de errores
+            const errorBadge = document.createElement('span');
+            errorBadge.className = 'badge bg-danger ms-2';
+            errorBadge.textContent = `${this.errorCount} errores`;
+            
+            // Añadir al estado si no existe ya
+            const existingBadge = this.projectStatus.querySelector('.badge');
+            if (existingBadge) {
+                existingBadge.textContent = `${this.errorCount} errores`;
+            } else if (this.errorCount > 0) {
+                this.projectStatus.appendChild(errorBadge);
+            }
+        }
+        
+        // Actualizar notificaciones si hay nuevas
+        if (project.notifications && project.notifications.length > this.projectNotifications.length) {
+            const newNotifications = project.notifications.slice(this.projectNotifications.length);
+            newNotifications.forEach(notification => {
+                this.addNotification(notification);
+            });
+            this.projectNotifications = [...project.notifications];
+        }
+        
+        // Actualizar consola si hay nueva salida
+        if (project.console_output && project.console_output.length > this.consoleOutput.length) {
+            const newOutput = project.console_output.slice(this.consoleOutput.length);
+            newOutput.forEach(line => {
+                // Analizar la línea para detectar errores
+                if (line.includes('Error:') || line.includes('Exception:')) {
+                    this.addNotification({
+                        title: 'Error detectado en consola',
+                        message: line,
+                        type: 'error',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            });
+            this.consoleOutput = [...project.console_output];
+        }
+        
         // Actualizar mensajes si hay nuevos
         if (project.messages) {
             // Obtener mensajes actuales en la UI
@@ -285,8 +398,104 @@ class AutonomousProjectBuilder {
                 const newMessages = project.messages.slice(currentCount);
                 newMessages.forEach(msg => {
                     this.addMessage(msg.content, msg.role);
+                    
+                    // Si es un mensaje del sistema, también añadir como notificación
+                    if (msg.role === 'system') {
+                        // Extraer título del mensaje (primera línea)
+                        const lines = msg.content.split('\n');
+                        const title = lines[0].replace(/[*#]/g, '').trim();
+                        const message = lines.slice(1).join('\n').trim();
+                        
+                        this.addNotification({
+                            title: title || 'Notificación del sistema',
+                            message: message || msg.content,
+                            type: msg.content.includes('❌') ? 'error' : 
+                                  msg.content.includes('⚠️') ? 'warning' : 
+                                  msg.content.includes('✅') ? 'success' : 'info',
+                            timestamp: new Date().toISOString()
+                        });
+                    }
                 });
             }
+        }
+    }
+    
+    /**
+     * Añade una notificación al panel de notificaciones.
+     */
+    addNotification(notification) {
+        // Incrementar contador
+        this.lastNotificationId++;
+        this.notificationsCount++;
+        
+        // Actualizar el contador en la UI
+        const countBadge = document.getElementById('notificationsCount');
+        if (countBadge) {
+            countBadge.textContent = this.notificationsCount;
+        }
+        
+        // Crear elemento de notificación
+        const notificationElement = document.createElement('div');
+        notificationElement.className = `notification notification-${notification.type}`;
+        notificationElement.dataset.id = this.lastNotificationId;
+        
+        // Formatear la fecha
+        const timestamp = new Date(notification.timestamp);
+        const formattedTime = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        // Iconos según el tipo
+        const icons = {
+            'info': 'info',
+            'success': 'check-circle',
+            'warning': 'alert-triangle',
+            'error': 'alert-octagon'
+        };
+        
+        const icon = icons[notification.type] || 'bell';
+        
+        // Crear contenido HTML
+        notificationElement.innerHTML = `
+            <div class="notification-header">
+                <span class="notification-icon"><i data-feather="${icon}"></i></span>
+                <span class="notification-title">${notification.title}</span>
+                <span class="notification-time">${formattedTime}</span>
+                <button class="notification-close" title="Descartar"><i data-feather="x"></i></button>
+            </div>
+            <div class="notification-body">
+                <p>${notification.message}</p>
+            </div>
+        `;
+        
+        // Añadir al contenedor
+        const notificationsList = document.getElementById('notificationsList');
+        if (notificationsList) {
+            notificationsList.appendChild(notificationElement);
+            
+            // Inicializar iconos
+            feather.replace();
+            
+            // Configurar botón de cierre
+            const closeBtn = notificationElement.querySelector('.notification-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    notificationElement.classList.add('notification-closing');
+                    setTimeout(() => {
+                        notificationElement.remove();
+                        this.notificationsCount--;
+                        if (countBadge) {
+                            countBadge.textContent = this.notificationsCount;
+                        }
+                    }, 300);
+                });
+            }
+            
+            // Hacer scroll al final
+            notificationsList.scrollTop = notificationsList.scrollHeight;
+        }
+        
+        // Para notificaciones de error, mostrar también en el chat
+        if (notification.type === 'error' && !this.chatMessages.querySelector(`[data-notification-id="${this.lastNotificationId}"]`)) {
+            this.showSystemMessage(`❌ ${notification.title}: ${notification.message}`, this.lastNotificationId);
         }
     }
     
@@ -362,10 +571,21 @@ class AutonomousProjectBuilder {
     /**
      * Muestra un mensaje de sistema.
      */
-    showSystemMessage(message) {
+    showSystemMessage(message, notificationId = null) {
         const systemMessageElement = document.createElement('div');
         systemMessageElement.className = 'system-message';
-        systemMessageElement.textContent = message;
+        
+        // Si viene de una notificación, añadir atributo para evitar duplicados
+        if (notificationId) {
+            systemMessageElement.dataset.notificationId = notificationId;
+        }
+        
+        // Procesar el mensaje por si contiene Markdown
+        if (message.includes('**') || message.includes('#') || message.includes('```')) {
+            systemMessageElement.innerHTML = this.processMarkdown(message);
+        } else {
+            systemMessageElement.textContent = message;
+        }
         
         this.chatMessages.appendChild(systemMessageElement);
         this.scrollToBottom();

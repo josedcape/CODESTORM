@@ -95,9 +95,23 @@ class AutonomousBuilder:
                 db.add(session)
                 db.commit()
             
+            # Inicializar el seguimiento de errores para este proyecto
+            self.error_count = 0
+            self.error_log = []
+            self.last_notification_time = time.time()
+            self.notification_interval = 10  # Segundos entre notificaciones de avance
+            
             # Agregar el mensaje inicial del usuario
             session.add_message('user', project_description)
             db.commit()
+            
+            # Crear una notificación inicial para el usuario
+            self._send_notification(
+                project, 
+                session, 
+                "🚀 Construcción iniciada", 
+                "El constructor autónomo está analizando tu solicitud y preparando el entorno de desarrollo."
+            )
             
             # Comenzar el flujo de construcción
             self._update_project_status(project, 'active', 'analysis', 5, 
@@ -268,6 +282,189 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
                 db_project.updated_at = datetime.datetime.utcnow()
                 db.commit()
     
+    def _send_notification(self, project, session, title, message, notification_type="info"):
+        """
+        Envía una notificación para informar sobre el progreso.
+        Los tipos pueden ser: "info", "success", "warning", "error"
+        """
+        # Solo enviar notificaciones si ha pasado suficiente tiempo desde la última
+        current_time = time.time()
+        if current_time - self.last_notification_time < self.notification_interval:
+            return
+        
+        self.last_notification_time = current_time
+        
+        # Registrar notificación en el historial del proyecto
+        notification = {
+            "title": title,
+            "message": message,
+            "type": notification_type,
+            "timestamp": datetime.datetime.utcnow().isoformat()
+        }
+        
+        if not hasattr(project, 'notifications') or project.notifications is None:
+            project.notifications = []
+        
+        project.notifications.append(notification)
+        
+        # Añadir un mensaje más detallado al chat
+        icon_map = {
+            "info": "ℹ️",
+            "success": "✅",
+            "warning": "⚠️",
+            "error": "❌"
+        }
+        
+        icon = icon_map.get(notification_type, "ℹ️")
+        notification_message = f"{icon} **{title}**\n\n{message}"
+        
+        # No añadir al historial de chat para no saturarlo
+        # En su lugar, este mensaje se mostrará en una sección especial de notificaciones
+        logger.info(f"Notificación enviada: {title} - {message}")
+        
+        # Para notificaciones críticas, añadirlas al chat
+        if notification_type in ["error", "success"]:
+            session.add_message('system', notification_message)
+    
+    def _analyze_and_fix_error(self, error_text, file_path, project, session):
+        """
+        Analiza un error y trata de solucionarlo automáticamente.
+        Retorna True si el error fue solucionado.
+        """
+        # Incrementar contador de errores
+        self.error_count += 1
+        self.error_log.append({
+            "file": file_path,
+            "error": error_text,
+            "timestamp": datetime.datetime.utcnow().isoformat()
+        })
+        
+        # Si hay demasiados errores, notificar y detener
+        if self.error_count > 10:
+            self._send_notification(
+                project,
+                session,
+                "Demasiados errores detectados",
+                "Se han detectado múltiples errores que no puedo resolver automáticamente. " +
+                "Por favor, revisa el código y los mensajes de error para solucionar los problemas.",
+                "error"
+            )
+            return False
+        
+        # Notificar sobre el error
+        self._send_notification(
+            project,
+            session,
+            "Error detectado",
+            f"Se ha detectado un error en '{file_path}'. Intentando solucionar automáticamente...",
+            "warning"
+        )
+        
+        # Patrones de error comunes y sus soluciones
+        error_patterns = [
+            {
+                "pattern": r"ModuleNotFoundError: No module named '([^']+)'",
+                "solution": lambda match: self._install_missing_module(match.group(1), project, session)
+            },
+            {
+                "pattern": r"SyntaxError: invalid syntax",
+                "solution": lambda match: self._fix_syntax_error(file_path, project, session)
+            },
+            {
+                "pattern": r"TypeError: '([^']+)' object is not callable",
+                "solution": lambda match: self._fix_type_error(file_path, match.group(1), project, session)
+            },
+            {
+                "pattern": r"NameError: name '([^']+)' is not defined",
+                "solution": lambda match: self._fix_name_error(file_path, match.group(1), project, session)
+            },
+            {
+                "pattern": r"ImportError: cannot import name '([^']+)' from '([^']+)'",
+                "solution": lambda match: self._fix_import_error(file_path, match.group(1), match.group(2), project, session)
+            },
+            {
+                "pattern": r"FileNotFoundError: \[Errno 2\] No such file or directory: '([^']+)'",
+                "solution": lambda match: self._fix_file_not_found(match.group(1), project, session)
+            }
+        ]
+        
+        # Comprobar si algún patrón coincide
+        for pattern_info in error_patterns:
+            match = re.search(pattern_info["pattern"], error_text)
+            if match:
+                # Intentar aplicar la solución
+                if pattern_info["solution"](match):
+                    self._send_notification(
+                        project,
+                        session,
+                        "Error corregido automáticamente",
+                        f"Se ha corregido un error en '{file_path}'.",
+                        "success"
+                    )
+                    return True
+        
+        # Si llegamos aquí, no pudimos solucionar el error
+        self._send_notification(
+            project,
+            session,
+            "Error no resuelto",
+            f"No se ha podido resolver automáticamente el error en '{file_path}'. " +
+            "Este error podría requerir intervención manual.",
+            "error"
+        )
+        return False
+    
+    def _install_missing_module(self, module_name, project, session):
+        """Instala un módulo Python que falta."""
+        command = f"pip install {module_name}"
+        session.add_message('assistant', f"🔧 Instalando módulo que falta: `{module_name}`")
+        return self._execute_command(command, project, session)
+    
+    def _fix_syntax_error(self, file_path, project, session):
+        """
+        Intenta corregir un error de sintaxis en un archivo.
+        Esta función es compleja y requeriría una implementación real más avanzada.
+        """
+        session.add_message('assistant', f"🔧 Intentando corregir error de sintaxis en `{file_path}`...")
+        # En una implementación real, se analizaría el archivo y se intentaría corregir la sintaxis
+        return False
+    
+    def _fix_type_error(self, file_path, obj_type, project, session):
+        """Intenta corregir un error de tipo en un archivo."""
+        session.add_message('assistant', f"🔧 Intentando corregir error de tipo para objeto '{obj_type}' en `{file_path}`...")
+        # En una implementación real, se analizaría el archivo y se intentaría corregir el error de tipo
+        return False
+    
+    def _fix_name_error(self, file_path, name, project, session):
+        """Intenta corregir un error de nombre no definido."""
+        session.add_message('assistant', f"🔧 Intentando corregir referencia a nombre no definido '{name}' en `{file_path}`...")
+        # En una implementación real, se analizaría el archivo y se intentaría definir el nombre faltante
+        return False
+    
+    def _fix_import_error(self, file_path, name, module, project, session):
+        """Intenta corregir un error de importación."""
+        session.add_message('assistant', f"🔧 Intentando corregir error de importación de '{name}' desde '{module}' en `{file_path}`...")
+        # En una implementación real, se intentaría corregir la importación
+        return False
+    
+    def _fix_file_not_found(self, missing_file, project, session):
+        """Intenta crear un archivo que no existe pero que se está intentando acceder."""
+        session.add_message('assistant', f"🔧 Creando archivo que falta: `{missing_file}`")
+        
+        try:
+            workspace_path = self._get_workspace_path()
+            full_path = os.path.join(workspace_path, missing_file)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            
+            # Crear un archivo vacío
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write("# Archivo creado automáticamente por el Constructor de Tareas\n")
+            
+            return True
+        except Exception as e:
+            session.add_message('assistant', f"❌ Error al crear archivo faltante: {str(e)}")
+            return False
+    
     def _execute_command(self, command, project, session):
         """Ejecuta un comando y registra el resultado."""
         workspace_path = self._get_workspace_path()
@@ -295,8 +492,23 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             # Registrar resultado
             if status == 0:
                 result = f"✅ Comando ejecutado exitosamente:\n```\n{stdout_text[:500]}{'...' if len(stdout_text) > 500 else ''}\n```"
+                
+                # Enviar notificación de éxito si es un comando importante
+                if any(keyword in command for keyword in ['install', 'build', 'start', 'init', 'create']):
+                    self._send_notification(
+                        project,
+                        session,
+                        f"Comando completado: {command.split()[0]}",
+                        f"El comando se ha ejecutado correctamente.",
+                        "success"
+                    )
             else:
                 result = f"⚠️ El comando terminó con código {status}:\n```\n{stderr_text[:500]}{'...' if len(stderr_text) > 500 else ''}\n```"
+                
+                # Intentar solucionar automáticamente el error
+                if self._analyze_and_fix_error(stderr_text, "command", project, session):
+                    # Si se solucionó, re-ejecutar el comando
+                    return self._execute_command(command, project, session)
             
             session.add_message('assistant', result)
             
