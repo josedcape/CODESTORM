@@ -156,11 +156,21 @@ function updateAgentDescription(agent) {
 
 // Inicializar detección de comandos de creación
 function initCreationCommandDetection() {
-  // Patrones para detectar comandos de creación
+  // Patrones para detectar comandos de creación (mejorados)
   window.app.creationPatterns = {
-    page: /crea(r)?\s+(una)?\s+p[áa]gina|genera(r)?\s+(una)?\s+p[áa]gina/i,
+    page: /crea(r)?\s+(una)?\s+p[áa]gina|genera(r)?\s+(una)?\s+p[áa]gina|p[áa]gina\s+de\s+ventas/i,
     component: /crea(r)?\s+(un)?\s+componente|genera(r)?\s+(un)?\s+componente/i,
     form: /crea(r)?\s+(un)?\s+formulario|genera(r)?\s+(un)?\s+formulario/i
+  };
+  
+  // Almacenar información de conversación contextual
+  window.app.conversationContext = {
+    hasColorPreference: false,
+    colorPreference: '',
+    hasStyleInfo: false,
+    styleInfo: '',
+    hasContentInfo: false,
+    contentInfo: ''
   };
 }
 
@@ -392,9 +402,34 @@ function handleCreationCommand(message) {
   
   // Verificar si es un comando para crear una página
   if (window.app.creationPatterns.page.test(lowerMsg)) {
+    console.log("Detectado comando para crear página: " + message);
     
-    // Si el mensaje es muy genérico, solicitar más información
-    if (message.length < 30 || !lowerMsg.includes('para')) {
+    // Verificar si ya existían mensajes previos que contengan detalles adicionales
+    const previousMessages = document.querySelectorAll('.chat-message');
+    let hasColorPreferences = false;
+    let hasDetailedInstructions = false;
+    
+    // Analizar mensajes anteriores para ver si ya tenemos suficiente información
+    if (previousMessages.length > 0) {
+      for (let i = 0; i < previousMessages.length; i++) {
+        const msgContent = previousMessages[i].querySelector('.message-content').textContent.toLowerCase();
+        
+        if (msgContent.includes('color') || msgContent.includes('estilo') || msgContent.includes('diseño') || 
+            msgContent.includes('pastel') || msgContent.includes('moderna')) {
+          hasColorPreferences = true;
+          console.log("Encontradas preferencias de color/estilo en mensajes anteriores");
+        }
+        
+        if (msgContent.length > 50 && (msgContent.includes('incluir') || msgContent.includes('secciones') || 
+            msgContent.includes('contenido') || msgContent.includes('funcionalidad'))) {
+          hasDetailedInstructions = true;
+          console.log("Encontradas instrucciones detalladas en mensajes anteriores");
+        }
+      }
+    }
+    
+    // Si el mensaje es muy genérico Y no tenemos información previa, solicitar más detalles
+    if ((message.length < 30 || !lowerMsg.includes('para')) && !hasColorPreferences && !hasDetailedInstructions) {
       addUserMessage(message);
       
       // Agregar sugerencias específicas basadas en el tipo de comando
@@ -413,6 +448,11 @@ function handleCreationCommand(message) {
       addAgentMessage(`Para crear la página que necesitas, necesito más detalles. ${randomQuestion}`, window.app.activeAgent);
       
       return true; // Comando manejado
+    } else if (hasColorPreferences || hasDetailedInstructions || message.length >= 30 || 
+              lowerMsg.includes('pastel') || lowerMsg.includes('moderna')) {
+      // Si tenemos suficiente información o el mensaje actual es detallado, proceder con la creación
+      console.log("Suficiente información para crear la página. Enviando al backend...");
+      return false; // Continuar con el procesamiento normal (enviar al backend)
     }
   } 
   // Verificar si es un comando para crear un componente

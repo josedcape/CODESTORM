@@ -724,7 +724,7 @@ def handle_chat():
         
         # Detectar solicitudes para generar archivos complejos (sin especificar ruta)
         # Por ejemplo: "crea una página de ventas atractiva y moderna"
-        is_complex_file_request = re.search(r'(?:crea|genera|hacer|crear|implementa|programa|desarrolla|diseña|haz)\s+(?:una?|el)?\s*(?:página|pagina|sitio|web|componente|interfaz|archivo|aplicación|app)', user_message, re.IGNORECASE)
+        is_complex_file_request = re.search(r'(?:crea|genera|hacer|crear|implementa|programa|desarrolla|diseña|haz)\s+(?:una?|el)?\s*(?:página|pagina|sitio|web|componente|interfaz|archivo|aplicación|app)|(?:p[áa]gina\s+de\s+ventas)', user_message, re.IGNORECASE)
         
         logging.debug(f"Mensaje recibido: '{user_message}'")
         logging.debug(f"¿Es una solicitud de generación de archivo complejo? {bool(is_complex_file_request)}")
@@ -771,8 +771,24 @@ def handle_chat():
         # Si es una solicitud de generación de archivo complejo
         if is_complex_file_request and not is_file_operation:
             try:
-                # Extraer la descripción del archivo a crear
+                # Extraer la descripción del archivo a crear, incluyendo contexto previo
+                # para recopilar toda la información relevante
                 description = user_message
+                
+                # Buscar información contextual en mensajes previos
+                for msg in formatted_context:
+                    if msg['role'] == 'user':
+                        # Buscar preferencias de color/estilo
+                        if any(word in msg['content'].lower() for word in ['color', 'estilo', 'diseño', 'pastel', 'moderna']):
+                            logging.info(f"Encontrada preferencia de estilo: {msg['content']}")
+                            description += f"\nPreferencia de estilo/color: {msg['content']}"
+                        
+                        # Buscar detalles de contenido
+                        if len(msg['content']) > 30 and any(word in msg['content'].lower() for word in ['sección', 'incluir', 'contenido', 'funcionalidad']):
+                            logging.info(f"Encontrada descripción de contenido: {msg['content']}")
+                            description += f"\nDetalles de contenido: {msg['content']}"
+                
+                logging.info(f"Descripción completa con contexto: {description}")
                 
                 # Determinar el tipo de archivo basado en el contenido
                 file_type = "html"  # Por defecto HTML
