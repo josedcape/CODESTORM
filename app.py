@@ -873,78 +873,57 @@ def handle_chat():
                 logging.error(f"Error processing file instruction: {str(e)}")
                 # Continuar con el procesamiento normal si falla
         
-        # Generar respuesta según el modelo seleccionado
-        response = ""
+        # Generar respuesta según el modelo seleccionado usando agents_utils.py
+        logging.info(f"Generando respuesta con modelo: {model_choice} usando agents_utils.generate_content")
         
-        if model_choice == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
-            # Usar Anthropic Claude
+        # Preparar el contexto completo para la solicitud
+        conversation_history = ""
+        for msg in formatted_context:
+            role_prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
+            conversation_history += f"{role_prefix}{msg['content']}\n\n"
+            
+        # Crear prompt completo con contexto previo
+        complete_prompt = f"{conversation_history}Usuario: {user_message}"
+        
+        try:
+            # Usar la función centralizada de generate_content de agents_utils
+            # que gestiona todos los modelos con manejo de errores y fallbacks
+            response = generate_content(
+                prompt=complete_prompt,
+                system_prompt=agent_prompt,
+                model=model_choice,
+                temperature=0.7
+            )
+            
+            logging.info(f"Respuesta generada correctamente con {model_choice}")
+            
+        except Exception as e:
+            logging.error(f"Error al generar respuesta con {model_choice}: {str(e)}")
+            
+            # Intentar con modelo alternativo si falla
             try:
-                client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-                messages = [{"role": "system", "content": agent_prompt}]
-                
-                # Añadir mensajes de contexto
-                for msg in formatted_context:
-                    messages.append({"role": msg['role'], "content": msg['content']})
+                fallback_model = "openai"
+                if model_choice == "openai":
+                    if os.environ.get('ANTHROPIC_API_KEY'):
+                        fallback_model = "anthropic"
+                    elif os.environ.get('GEMINI_API_KEY'):
+                        fallback_model = "gemini"
                     
-                # Añadir el mensaje actual del usuario
-                messages.append({"role": "user", "content": user_message})
+                logging.info(f"Intentando con modelo alternativo: {fallback_model}")
                 
-                completion = client.messages.create(
-                    model="claude-3-5-sonnet-20241022", # the newest Anthropic model is "claude-3-5-sonnet-20241022" which was released October 22, 2024
-                    messages=messages,
-                    max_tokens=2000,
+                response = generate_content(
+                    prompt=complete_prompt, 
+                    system_prompt=agent_prompt,
+                    model=fallback_model,
                     temperature=0.7
                 )
-                response = completion.content[0].text
-            except Exception as e:
-                logging.error(f"Error with Anthropic API: {str(e)}")
-                response = f"Lo siento, hubo un error al procesar tu solicitud con Anthropic: {str(e)}"
                 
-        elif model_choice == 'gemini' and os.environ.get('GEMINI_API_KEY'):
-            # Usar Google Gemini
-            try:
-                genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-                model = genai.GenerativeModel('gemini-1.5-pro')
+                logging.info(f"Respuesta generada correctamente con modelo de respaldo {fallback_model}")
                 
-                # Construir el prompt con contexto
-                full_prompt = agent_prompt + "\n\n"
-                
-                for msg in formatted_context:
-                    prefix = "Usuario: " if msg['role'] == 'user' else "Asistente: "
-                    full_prompt += prefix + msg['content'] + "\n\n"
-                    
-                full_prompt += "Usuario: " + user_message + "\n\nAsistente:"
-                
-                gemini_response = model.generate_content(full_prompt)
-                response = gemini_response.text
-            except Exception as e:
-                logging.error(f"Error with Gemini API: {str(e)}")
-                response = f"Lo siento, hubo un error al procesar tu solicitud con Gemini: {str(e)}"
-                
-        else:
-            # Usar OpenAI como valor predeterminado
-            try:
-                openai_client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-                messages = [{"role": "system", "content": agent_prompt}]
-                
-                # Añadir mensajes de contexto
-                for msg in formatted_context:
-                    messages.append({"role": msg['role'], "content": msg['content']})
-                    
-                # Añadir el mensaje actual del usuario
-                messages.append({"role": "user", "content": user_message})
-                
-                completion = openai_client.chat.completions.create(
-                    model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-                
-                response = completion.choices[0].message.content
-            except Exception as e:
-                logging.error(f"Error with OpenAI API: {str(e)}")
-                response = f"Lo siento, hubo un error al procesar tu solicitud con OpenAI: {str(e)}"
+            except Exception as fallback_error:
+                logging.error(f"Error en el modelo de respaldo: {str(fallback_error)}")
+                response = (f"Lo siento, ocurrió un error al procesar tu solicitud con {model_choice}. "
+                           f"Error: {str(e)}\n\nTambién intenté con un modelo alternativo, pero tampoco funcionó.")
         
         # En modo colaborativo, añadir perspectivas de otros agentes
         if collaborative_mode and agent_id:
