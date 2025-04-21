@@ -16,7 +16,11 @@ def register_diagnostic_routes(app):
     @app.route('/health')
     def health():
         """Health check route for deployment."""
-        return jsonify({'status': 'ok'})
+        return jsonify({
+            'status': 'ok', 
+            'message': 'Aplicación funcionando correctamente',
+            'diagnostic_routes': ['health', 'api/test_apis']
+        })
 
     @app.route('/api/test_apis', methods=['GET'])
     def test_apis():

@@ -250,6 +250,17 @@ def get_user_workspace(user_id="default"):
     
     return workspace_path
 
+@app.route('/api/test_direct')
+def api_test_direct():
+    """Ruta de prueba directa para diagnóstico."""
+    return jsonify({
+        'status': 'ok',
+        'message': 'Ruta de prueba directa funciona correctamente',
+        'openai_key': 'Configurado' if os.environ.get('OPENAI_API_KEY') else 'No configurado',
+        'anthropic_key': 'Configurado' if os.environ.get('ANTHROPIC_API_KEY') else 'No configurado',
+        'gemini_key': 'Configurado' if os.environ.get('GEMINI_API_KEY') else 'No configurado'
+    })
+
 @app.route('/')
 def index():
     """Render the main page."""
