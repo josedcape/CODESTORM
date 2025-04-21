@@ -1,99 +1,209 @@
-from app import db
-from datetime import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean
-from sqlalchemy.orm import relationship, Mapped
+"""
+Modelos de datos para la aplicación CODESTORM.
+"""
+
+import os
+import json
+import datetime
+import uuid
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+
+class Project(Base):
+    """Modelo para proyectos en el Constructor de Tareas."""
+    __tablename__ = 'projects'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(64), default='default')
+    project_id = Column(String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(128), nullable=False)
+    description = Column(Text)
+    project_type = Column(String(64))  # web, api, mobile, etc.
+    tech_stack = Column(JSON)  # framework, language, database, etc.
+    status = Column(String(32), default='active')  # active, paused, completed
+    progress = Column(Integer, default=0)  # 0-100%
+    phase = Column(String(32), default='initial')  # initial, analysis, planning, implementation, testing, refinement
+    current_step = Column(Text)
+    requirements = Column(JSON)
+    generated_files = Column(JSON)
+    pending_actions = Column(JSON)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    
+    def to_dict(self):
+        """Convierte el modelo a un diccionario."""
+        return {
+            'id': self.id,
+            'project_id': self.project_id,
+            'name': self.name,
+            'description': self.description,
+            'project_type': self.project_type,
+            'tech_stack': self.tech_stack,
+            'status': self.status,
+            'progress': self.progress,
+            'phase': self.phase,
+            'current_step': self.current_step,
+            'requirements': self.requirements,
+            'generated_files': self.generated_files,
+            'pending_actions': self.pending_actions,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+    
+    @classmethod
+    def create_project(cls, name, description, project_type=None, user_id='default'):
+        """Crea un nuevo proyecto."""
+        project = cls(
+            name=name,
+            description=description,
+            project_type=project_type,
+            user_id=user_id,
+            tech_stack={},
+            requirements=[],
+            generated_files=[],
+            pending_actions=[]
+        )
+        return project
+    
+    def update_progress(self, progress):
+        """Actualiza el progreso del proyecto."""
+        self.progress = min(100, max(0, progress))
+        self.updated_at = datetime.datetime.utcnow()
+        return self.progress
+    
+    def update_phase(self, phase):
+        """Actualiza la fase del proyecto."""
+        valid_phases = ['initial', 'analysis', 'planning', 'implementation', 'testing', 'refinement', 'completed']
+        if phase in valid_phases:
+            self.phase = phase
+            self.updated_at = datetime.datetime.utcnow()
+        return self.phase
+    
+    def add_file(self, path, content_preview=None, file_type=None):
+        """Agrega un archivo generado al proyecto."""
+        if self.generated_files is None:
+            self.generated_files = []
+        
+        # Comprobar si el archivo ya existe
+        for file in self.generated_files:
+            if file.get('path') == path:
+                return False
+        
+        file_info = {
+            'path': path,
+            'file_type': file_type or path.split('.')[-1] if '.' in path else 'txt',
+            'content_preview': content_preview[:200] + '...' if content_preview and len(content_preview) > 200 else content_preview,
+            'created_at': datetime.datetime.utcnow().isoformat()
+        }
+        
+        self.generated_files.append(file_info)
+        self.updated_at = datetime.datetime.utcnow()
+        return True
+    
+    def add_pending_action(self, action_type, description, details=None):
+        """Agrega una acción pendiente al proyecto."""
+        if self.pending_actions is None:
+            self.pending_actions = []
+        
+        action = {
+            'action_id': str(uuid.uuid4()),
+            'type': action_type,
+            'description': description,
+            'details': details or {},
+            'status': 'pending',
+            'created_at': datetime.datetime.utcnow().isoformat()
+        }
+        
+        self.pending_actions.append(action)
+        self.updated_at = datetime.datetime.utcnow()
+        return action['action_id']
+    
+    def complete_action(self, action_id, result=None):
+        """Marca una acción como completada."""
+        if not self.pending_actions:
+            return False
+        
+        for action in self.pending_actions:
+            if action.get('action_id') == action_id:
+                action['status'] = 'completed'
+                action['completed_at'] = datetime.datetime.utcnow().isoformat()
+                if result:
+                    action['result'] = result
+                self.updated_at = datetime.datetime.utcnow()
+                return True
+        
+        return False
+    
+    def pause(self):
+        """Pausa el proyecto."""
+        self.status = 'paused'
+        self.updated_at = datetime.datetime.utcnow()
+    
+    def resume(self):
+        """Reanuda el proyecto."""
+        self.status = 'active'
+        self.updated_at = datetime.datetime.utcnow()
+    
+    def complete(self):
+        """Marca el proyecto como completado."""
+        self.status = 'completed'
+        self.progress = 100
+        self.phase = 'completed'
+        self.updated_at = datetime.datetime.utcnow()
 
 
-class User(db.Model):
-    """User model for authentication and tracking workspaces."""
-    __tablename__ = 'users'
+class ProjectSession(Base):
+    """Modelo para sesiones de conversación relacionadas con proyectos."""
+    __tablename__ = 'project_sessions'
     
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_login = db.Column(db.DateTime)
-    is_active = db.Column(db.Boolean, default=True)
+    id = Column(Integer, primary_key=True)
+    project_id = Column(String(36), ForeignKey('projects.project_id'), nullable=False)
+    user_id = Column(String(64), default='default')
+    ai_model = Column(String(32), default='openai')
+    message_history = Column(JSON)
+    last_active = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
-    # Relationships
-    workspaces = relationship('Workspace', back_populates='user', cascade='all, delete-orphan')
-    commands = relationship('Command', back_populates='user', cascade='all, delete-orphan')
+    def to_dict(self):
+        """Convierte el modelo a un diccionario."""
+        return {
+            'id': self.id,
+            'project_id': self.project_id,
+            'user_id': self.user_id,
+            'ai_model': self.ai_model,
+            'message_history': self.message_history,
+            'last_active': self.last_active.isoformat() if self.last_active else None,
+        }
     
-    def set_password(self, password):
-        """Set the password hash for the user."""
-        self.password_hash = generate_password_hash(password)
+    def add_message(self, role, content):
+        """Agrega un mensaje al historial."""
+        if self.message_history is None:
+            self.message_history = []
+        
+        message = {
+            'role': role,
+            'content': content,
+            'timestamp': datetime.datetime.utcnow().isoformat()
+        }
+        
+        self.message_history.append(message)
+        self.last_active = datetime.datetime.utcnow()
+        return message
     
-    def check_password(self, password):
-        """Check if the given password matches the stored hash."""
-        return check_password_hash(self.password_hash, password)
+    def clear_history(self):
+        """Limpia el historial de mensajes."""
+        self.message_history = []
+        self.last_active = datetime.datetime.utcnow()
     
-    def __repr__(self):
-        return f'<User {self.username}>'
-
-
-class Workspace(db.Model):
-    """Workspace model for managing user's file workspaces."""
-    __tablename__ = 'workspaces'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), nullable=False)
-    path = db.Column(db.String(256), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_accessed = db.Column(db.DateTime)
-    is_default = db.Column(db.Boolean, default=False)
-    
-    # Foreign keys
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
-    # Relationships
-    user = relationship('User', back_populates='workspaces')
-    files = relationship('File', back_populates='workspace', cascade='all, delete-orphan')
-    
-    def __repr__(self):
-        return f'<Workspace {self.name} for user {self.user_id}>'
-
-
-class File(db.Model):
-    """File model for tracking files created in workspaces."""
-    __tablename__ = 'files'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-    path = db.Column(db.String(512), nullable=False)
-    file_type = db.Column(db.String(64))
-    size = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    modified_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Foreign keys
-    workspace_id = db.Column(db.Integer, db.ForeignKey('workspaces.id'), nullable=False)
-    
-    # Relationships
-    workspace = relationship('Workspace', back_populates='files')
-    
-    def __repr__(self):
-        return f'<File {self.name} in workspace {self.workspace_id}>'
-
-
-class Command(db.Model):
-    """Command model for tracking and saving command history."""
-    __tablename__ = 'commands'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    instruction = db.Column(db.Text, nullable=False)
-    generated_command = db.Column(db.Text, nullable=False)
-    output = db.Column(db.Text)
-    status = db.Column(db.Integer)  # Exit code
-    executed_at = db.Column(db.DateTime, default=datetime.utcnow)
-    model_used = db.Column(db.String(64))  # Which AI model was used
-    
-    # Foreign keys
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
-    # Relationships
-    user = relationship('User', back_populates='commands')
-    
-    def __repr__(self):
-        return f'<Command {self.id}: {self.generated_command[:30]}... for user {self.user_id}>'
+    @classmethod
+    def get_or_create(cls, project_id, user_id='default', ai_model='openai'):
+        """Obtiene o crea una sesión para un proyecto."""
+        # Nota: Esta implementación es un stub y deberá ser completada
+        # cuando se integre con una base de datos real
+        return cls(
+            project_id=project_id,
+            user_id=user_id,
+            ai_model=ai_model,
+            message_history=[]
+        )

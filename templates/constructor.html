@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Constructor de Tareas - CODESTORM Assistant</title>
+    <title>Constructor de Tareas Autónomo - CODESTORM Assistant</title>
     
     <!-- CSS Bootstrap -->
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
@@ -64,77 +64,123 @@
 
     <!-- Contenedor principal -->
     <div class="constructor-container">
-        <!-- Área de mensajes -->
-        <div class="chat-messages-container">
-            <div id="chatMessages" class="chat-messages">
-                <!-- Mensaje de bienvenida -->
-                <div class="chat-welcome p-4 text-center">
-                    <div class="welcome-icon mb-3">
-                        <i data-feather="package" class="welcome-feather"></i>
+        <div class="container-fluid py-4">
+            <div class="row">
+                <!-- Panel izquierdo: Instrucciones y controles -->
+                <div class="col-md-4">
+                    <div class="card mb-4 border-primary">
+                        <div class="card-header bg-primary bg-opacity-50">
+                            <h5 class="mb-0">
+                                <i data-feather="package" class="me-2"></i>
+                                Constructor Autónomo
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="lead">Desarrollador autónomo que construye tu aplicación completa a partir de una instrucción.</p>
+                            
+                            <div class="mb-3">
+                                <label for="projectDescription" class="form-label">Describe la aplicación que deseas construir:</label>
+                                <textarea id="projectDescription" class="form-control" rows="5" placeholder="Ejemplo: Crea una aplicación web de lista de tareas usando React con un backend en Express. Debe permitir agregar, marcar y eliminar tareas."></textarea>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button id="startBuildButton" class="btn btn-primary">
+                                    <i data-feather="play"></i> Iniciar Construcción
+                                </button>
+                                <div class="btn-group">
+                                    <button id="pauseBuildButton" class="btn btn-warning" disabled>
+                                        <i data-feather="pause"></i> Pausar
+                                    </button>
+                                    <button id="resumeBuildButton" class="btn btn-success" disabled>
+                                        <i data-feather="play"></i> Reanudar
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <p id="projectStatus" class="mb-2">Estado: Esperando instrucciones</p>
+                                <div class="progress">
+                                    <div id="buildProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                        role="progressbar" style="width: 0%;" 
+                                        aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                        0%
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <h2 class="fw-bold mb-3">Constructor de Tareas</h2>
-                    <p class="lead text-light-emphasis mb-4">
-                        Desarrolla aplicaciones paso a paso con guía interactiva y retroalimentación inmediata.
-                    </p>
                     
-                    <!-- Características principales -->
-                    <div class="welcome-features">
-                        <div class="feature">
-                            <i data-feather="layers"></i>
-                            <span>Planificación del proyecto</span>
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i data-feather="info" class="me-2"></i>
+                                Sobre el Constructor
+                            </h5>
                         </div>
-                        <div class="feature">
-                            <i data-feather="code"></i>
-                            <span>Generación de código</span>
-                        </div>
-                        <div class="feature">
-                            <i data-feather="terminal"></i>
-                            <span>Ejecución automática</span>
-                        </div>
-                        <div class="feature">
-                            <i data-feather="check-circle"></i>
-                            <span>Pruebas y verificación</span>
+                        <div class="card-body">
+                            <div class="welcome-features">
+                                <div class="feature">
+                                    <i data-feather="zap"></i>
+                                    <span>Construcción totalmente autónoma</span>
+                                </div>
+                                <div class="feature">
+                                    <i data-feather="refresh-cw"></i>
+                                    <span>Persistencia entre sesiones</span>
+                                </div>
+                                <div class="feature">
+                                    <i data-feather="pause-circle"></i>
+                                    <span>Capacidad de pausar/reanudar</span>
+                                </div>
+                                <div class="feature">
+                                    <i data-feather="check-circle"></i>
+                                    <span>Aplicaciones completas y funcionales</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="mt-4">
-                        <p class="small text-light-emphasis">
-                            Para comenzar, describe el tipo de aplicación que deseas construir
-                        </p>
+                </div>
+                
+                <!-- Panel derecho: Mensajes y progreso -->
+                <div class="col-md-8">
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i data-feather="terminal" class="me-2"></i>
+                                Proceso de Construcción
+                            </h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <!-- Área de mensajes -->
+                            <div id="chatMessages" class="chat-messages border-top">
+                                <!-- Mensaje de bienvenida -->
+                                <div class="chat-welcome p-4 text-center">
+                                    <div class="welcome-icon mb-3">
+                                        <i data-feather="package" class="welcome-feather"></i>
+                                    </div>
+                                    <h2 class="fw-bold mb-3">Constructor Autónomo</h2>
+                                    <p class="lead text-light-emphasis mb-4">
+                                        Este constructor funciona como un desarrollador autónomo que construye 
+                                        aplicaciones completas a partir de una sola instrucción.
+                                    </p>
+                                    
+                                    <div class="alert alert-info" role="alert">
+                                        <i data-feather="info" class="me-2"></i>
+                                        El proceso de construcción se mantiene incluso si se actualiza la página, 
+                                        y puedes pausarlo cuando lo necesites.
+                                    </div>
+                                    
+                                    <div class="mt-4">
+                                        <p class="small text-light-emphasis">
+                                            Proporciona una descripción detallada de la aplicación que deseas crear
+                                            en el panel izquierdo y haz clic en "Iniciar Construcción".
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Panel de opciones y controles -->
-        <div class="container-fluid mt-3 mb-3">
-            <div class="row align-items-center">
-                <div class="col-auto">
-                    <div class="form-check form-switch d-flex align-items-center">
-                        <input class="form-check-input me-2" type="checkbox" id="collaborationMode">
-                        <label class="form-check-label" for="collaborationMode">Modo colaborativo</label>
-                    </div>
-                </div>
-                <div class="col text-end">
-                    <button id="clearChatBtn" class="btn btn-sm btn-outline-secondary">
-                        <i data-feather="trash-2"></i> Limpiar
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Área de entrada de mensajes -->
-        <div class="chat-input-container container-fluid">
-            <form id="chatForm" class="card bg-dark border-0">
-                <div class="card-body p-2">
-                    <div class="input-group">
-                        <textarea id="userMessage" class="form-control" placeholder="Describe la aplicación que deseas construir..." rows="1" required></textarea>
-                        <button id="sendMessageBtn" type="submit" class="btn btn-primary">
-                            <i data-feather="send"></i>
-                        </button>
-                    </div>
-                </div>
-            </form>
         </div>
     </div>
 
@@ -150,8 +196,8 @@
     <!-- Librería de animaciones -->
     <script src="/static/js/animations.js"></script>
     
-    <!-- JavaScript del constructor -->
-    <script src="/static/js/constructor/constructor.js"></script>
+    <!-- JavaScript del constructor autónomo -->
+    <script src="/static/js/constructor/autonomous_builder.js"></script>
     
     <!-- Inicializar Feather Icons -->
     <script>
