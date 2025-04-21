@@ -776,7 +776,11 @@ def handle_chat():
         
         # Añadir capacidades de manipulación de archivos al prompt para todos los agentes
         file_capabilities = "\n\nPuedes ayudar al usuario a manipular archivos usando comandos como: 'crea un archivo index.js con este contenido...', 'modifica config.py para añadir...', 'muestra el contenido de app.js', etc. Puedes ejecutar comandos en la terminal con: 'ejecuta npm install', 'ejecuta python run.py', etc."
-        agent_prompt += file_capabilities
+        
+        # Añadir capacidades de exploración de repositorios
+        repo_capabilities = "\n\nTambién puedes explorar y manipular repositorios clonados usando comandos como: 'explora el repositorio nombre_repo', 'busca en el repositorio nombre_repo', 'muestra el archivo src/main.js del repositorio nombre_repo', 'modifica el archivo README.md del repositorio nombre_repo para añadir...', 'crea un archivo config.json en el repositorio nombre_repo', etc."
+        
+        agent_prompt += file_capabilities + repo_capabilities
         
         # Si está en modo colaborativo, añadir información sobre otros agentes
         if collaborative_mode:
@@ -2160,6 +2164,62 @@ def watch_workspace_files():
             
         # Sleep to avoid excessive CPU usage
         time.sleep(1)
+
+# Ruta para explorar repositorios mediante lenguaje natural
+@app.route('/api/explore_repository', methods=['POST'])
+def explore_repository():
+    """
+    Explora y manipula archivos en repositorios clonados mediante instrucciones en lenguaje natural.
+    
+    Espera:
+    - instruction: Instrucción en lenguaje natural de lo que se quiere hacer
+    - repo_name: Nombre del repositorio clonado donde explorar
+    - model: Modelo de IA a utilizar (default: openai)
+    
+    Retorna:
+    - Resultado de la exploración o manipulación solicitada
+    """
+    try:
+        data = request.json
+        instruction = data.get('instruction')
+        repo_name = data.get('repo_name')
+        model = data.get('model', 'openai')
+        
+        if not instruction:
+            return jsonify({
+                'success': False,
+                'error': 'Debe proporcionar una instrucción'
+            }), 400
+            
+        if not repo_name:
+            return jsonify({
+                'success': False,
+                'error': 'Debe especificar un repositorio'
+            }), 400
+            
+        # Obtener la ruta del workspace del usuario
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Construir la ruta al repositorio
+        repo_path = workspace_path / repo_name
+        
+        if not repo_path.exists():
+            return jsonify({
+                'success': False,
+                'error': f'El repositorio {repo_name} no existe'
+            }), 404
+            
+        # Explorar el repositorio según la instrucción
+        result = explore_repository_files(instruction, str(repo_path), model)
+        
+        return jsonify(result)
+    except Exception as e:
+        logging.error(f"Error al explorar repositorio: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al explorar el repositorio: {str(e)}'
+        }), 500
 
 # Start background task for file monitoring when running the app directly
 if __name__ == '__main__':
