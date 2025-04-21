@@ -1,5 +1,104 @@
 // CODESTORM - Sistema de chat con agentes especializados y funcionalidades avanzadas
 
+// Función para copiar el contenido de un mensaje al portapapeles
+function copyMessageToClipboard(messageElement) {
+  if (!messageElement) return;
+  
+  // Obtener el contenido del mensaje
+  const messageContent = messageElement.querySelector('.message-content');
+  if (!messageContent) return;
+  
+  // Extraer el texto plano del contenido HTML para copiar
+  const textToCopy = messageContent.textContent.trim();
+  
+  // Usar la API del portapapeles moderna si está disponible
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        showCopyFeedback(messageElement);
+      })
+      .catch(err => {
+        console.error('Error al copiar texto: ', err);
+        // Fallback al método alternativo
+        fallbackCopyToClipboard(textToCopy, messageElement);
+      });
+  } else {
+    // Método alternativo para contextos no seguros o navegadores antiguos
+    fallbackCopyToClipboard(textToCopy, messageElement);
+  }
+}
+
+// Método alternativo para copiar al portapapeles
+function fallbackCopyToClipboard(text, messageElement) {
+  // Crear un elemento textarea temporal
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  
+  // Hacer que el textarea no sea visible
+  textArea.style.position = "fixed";
+  textArea.style.top = "0";
+  textArea.style.left = "0";
+  textArea.style.width = "2em";
+  textArea.style.height = "2em";
+  textArea.style.padding = "0";
+  textArea.style.border = "none";
+  textArea.style.outline = "none";
+  textArea.style.boxShadow = "none";
+  textArea.style.background = "transparent";
+  
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  
+  let successful = false;
+  try {
+    successful = document.execCommand('copy');
+  } catch (err) {
+    console.error('Error en fallback de copiar:', err);
+  }
+  
+  document.body.removeChild(textArea);
+  
+  if (successful) {
+    showCopyFeedback(messageElement);
+  }
+}
+
+// Mostrar feedback visual al copiar
+function showCopyFeedback(messageElement) {
+  // Encontrar el botón de copiar
+  const copyButton = messageElement.querySelector('.copy-message');
+  if (!copyButton) return;
+  
+  // Cambiar el ícono temporalmente
+  const originalHTML = copyButton.innerHTML;
+  copyButton.innerHTML = '<i class="bi bi-check"></i>';
+  copyButton.title = '¡Copiado!';
+  copyButton.classList.add('btn-success');
+  copyButton.classList.remove('btn-outline-light');
+  
+  // Mostrar un tooltip o mensaje emergente
+  const tooltip = document.createElement('div');
+  tooltip.className = 'copy-tooltip';
+  tooltip.textContent = '¡Copiado al portapapeles!';
+  messageElement.appendChild(tooltip);
+  
+  // Eliminar el tooltip después de un tiempo
+  setTimeout(() => {
+    if (tooltip && tooltip.parentNode) {
+      tooltip.parentNode.removeChild(tooltip);
+    }
+  }, 2000);
+  
+  // Restaurar el botón después de un tiempo
+  setTimeout(() => {
+    copyButton.innerHTML = originalHTML;
+    copyButton.title = 'Copiar mensaje';
+    copyButton.classList.remove('btn-success');
+    copyButton.classList.add('btn-outline-light');
+  }, 1500);
+}
+
 // Función principal para inicializar el chat
 function initializeChat() {
   const chatContainer = document.getElementById('chat-container');
@@ -1001,7 +1100,7 @@ function addAgentMessage(message, agent) {
   messageInfo.className = 'message-info';
   messageInfo.innerHTML = `<span class="message-time">${getCurrentTime()}</span>
                            <span class="message-agent"><i class="bi ${agent.icon}"></i> ${agent.name}</span>
-                           <button class="copy-btn" onclick="copyMessageToClipboard(this)">
+                           <button class="btn btn-sm btn-outline-light copy-message" title="Copiar mensaje">
                              <i class="bi bi-clipboard"></i>
                            </button>`;
   
@@ -1009,6 +1108,15 @@ function addAgentMessage(message, agent) {
   messageElement.appendChild(messageInfo);
   
   chatMessages.appendChild(messageElement);
+  
+  // Configurar el botón de copiar
+  const copyButton = messageElement.querySelector('.copy-message');
+  if (copyButton) {
+    copyButton.addEventListener('click', function() {
+      copyMessageToClipboard(this.closest('.chat-message.agent-message'));
+    });
+  }
+  
   scrollToBottom(chatMessages);
   
   // Inicializar resaltado de sintaxis mejorado

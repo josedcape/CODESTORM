@@ -415,3 +415,42 @@
     transform: translateY(0);
   }
 }
+
+/* Estilos para tooltip de copia */
+.copy-tooltip {
+  position: absolute;
+  top: -40px;
+  right: 10px;
+  background-color: var(--bs-success);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  opacity: 0;
+  animation: fadeInOut 2s ease forwards;
+  z-index: 1000;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(10px); }
+  20% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Estilos mejorados para botones de copia */
+.copy-message {
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.copy-message:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.message-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
