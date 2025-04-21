@@ -406,31 +406,46 @@ function sendMessage(message) {
   });
   
   // Log completo con toda la información para diagnóstico
-  console.log("Enviando fetch a /api/chat con datos:", {
+  // Verificar si hay un documento seleccionado para usar como contexto
+  const documentSelector = document.getElementById('document-selector');
+  const selectedDocument = documentSelector ? documentSelector.value : '';
+  
+  // Datos de la solicitud
+  const requestData = {
     message,
     agent_id: agentId,
     context: conversationContext,
     model: selectedModel,
     collaborative_mode: collaborativeMode,
     conversation_state: window.app.conversationState
-  });
+  };
   
-  // Diagnóstico de conexión
-  addSystemMessage("⌛ Conectando con el servidor...");
+  // Si hay un documento seleccionado, usar la API con contexto de documento
+  const apiEndpoint = selectedDocument ? '/api/chat/with-context' : '/api/chat';
+  const apiData = selectedDocument 
+    ? {
+        message: message,
+        document_filename: selectedDocument,
+        agent_id: agentId
+      }
+    : requestData;
+    
+  // Mensaje de estado
+  if (selectedDocument) {
+    console.log("Enviando fetch a /api/chat/with-context con documento:", selectedDocument);
+    addSystemMessage(`⌛ Conectando con el servidor (usando documento "${selectedDocument}" como contexto)...`);
+  } else {
+    console.log("Enviando fetch a /api/chat con datos:", requestData);
+    addSystemMessage("⌛ Conectando con el servidor...");
+  }
   
-  fetch('/api/chat', {
+  // Realizar la solicitud
+  fetch(apiEndpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      message: message,
-      agent_id: agentId,
-      context: conversationContext,
-      model: selectedModel,
-      collaborative_mode: collaborativeMode,
-      conversation_state: window.app.conversationState
-    }),
+    body: JSON.stringify(apiData),
   })
   .then(response => {
     console.log("Respuesta recibida:", response.status, response.statusText);
