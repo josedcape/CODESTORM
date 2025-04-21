@@ -8,6 +8,7 @@ from flask import Flask, render_template, jsonify, request, send_from_directory,
 from werkzeug.utils import secure_filename
 import requests  # Usamos requests en lugar de aiohttp
 import project_analyzer  # Importar el analizador de proyectos
+from agents_utils import explore_repository_files  # Importar función para explorar repositorios
 # Configurar logging
 logging.basicConfig(level=logging.INFO,
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -912,6 +913,124 @@ def process_instruction():
                                           "ver repositorios", "listar repositorios"]:
             is_repo_exploration = True
             repo_name = None
+            
+        # CASO PARA EXPLORACIÓN DE REPOSITORIOS
+        if is_repo_exploration:
+            logger.info(f"Detectada intención de explorar repositorio: '{instruction}', repo: {repo_name}")
+            
+            # Si no se especificó un nombre de repositorio, listar los repositorios disponibles
+            if not repo_name:
+                # Buscar carpetas en el workspace que podrían ser repositorios
+                repos = []
+                for item in os.listdir(workspace):
+                    item_path = os.path.join(workspace, item)
+                    if os.path.isdir(item_path) and not item.startswith('.'):
+                        # Verificar si es un repositorio Git
+                        if os.path.exists(os.path.join(item_path, '.git')):
+                            repos.append(f"{item} (Git)")
+                        else:
+                            repos.append(item)
+                
+                if repos:
+                    response_message = "📚 Repositorios disponibles en tu espacio de trabajo:\n\n"
+                    for repo in repos:
+                        response_message += f"- {repo}\n"
+                    response_message += "\nPuedes explorar un repositorio específico usando 'explora el repositorio [nombre]'."
+                else:
+                    response_message = "📭 No hay repositorios disponibles en tu espacio de trabajo.\n\nPuedes clonar un repositorio usando la opción 'Clonar repositorio de GitHub' o crear uno nuevo con 'crea un archivo [nombre]'."
+                
+                return jsonify({
+                    'success': True,
+                    'response': response_message,
+                    'agent_id': agent_id,
+                    'model': model
+                })
+            
+            # Si se especificó un repositorio, verificar si existe
+            repo_path = os.path.join(workspace, repo_name)
+            
+            if not os.path.exists(repo_path):
+                return jsonify({
+                    'success': False,
+                    'error': f"El repositorio '{repo_name}' no existe en tu espacio de trabajo. Por favor, clona primero el repositorio usando la opción de GitHub o especifica un repositorio existente."
+                })
+            
+            # Explorar el repositorio según la instrucción
+            result = explore_repository_files(instruction, repo_path, model)
+            
+            if result.get('success'):
+                # Construir una respuesta contextual según la acción realizada
+                action = result.get('action', '')
+                response_message = f"✅ He procesado tu instrucción para explorar el repositorio '{repo_name}'.\n\n"
+                
+                if action == 'explore':
+                    # Formatear la lista de archivos/directorios para mostrarlos
+                    items = result.get('items', [])
+                    response_message += f"📂 Contenido del directorio '{result.get('path', '.')}' en el repositorio:\n\n"
+                    
+                    for item in items:
+                        if item['type'] == 'directory':
+                            response_message += f"📁 {item['name']}/\n"
+                        else:
+                            response_message += f"📄 {item['name']} ({item.get('file_type', '')})\n"
+                            
+                elif action == 'read':
+                    # Mostrar el contenido del archivo con formato
+                    content = result.get('content', '')
+                    file_type = result.get('file_type', '')
+                    response_message += f"📄 Contenido del archivo '{result.get('path', '')}':\n\n"
+                    response_message += f"```{file_type}\n{content}\n```\n"
+                    
+                elif action == 'modify':
+                    # Mostrar resumen de cambios realizados
+                    response_message += f"✏️ {result.get('message', '')}\n\n"
+                    if 'changes_summary' in result:
+                        response_message += "Cambios realizados:\n"
+                        response_message += f"```diff\n{result['changes_summary']}\n```\n"
+                    
+                elif action == 'create':
+                    # Mostrar información sobre el archivo creado
+                    response_message += f"✨ {result.get('message', '')}\n\n"
+                    if 'content' in result:
+                        file_extension = os.path.splitext(result.get('path', ''))[1].lstrip('.')
+                        preview = result.get('content', '')
+                        response_message += f"Vista previa del contenido:\n```{file_extension}\n{preview}\n```\n"
+                
+                elif action == 'search':
+                    # Mostrar resultados de búsqueda
+                    results = result.get('results', [])
+                    query = result.get('query', '')
+                    search_type = result.get('type', '')
+                    
+                    response_message += f"🔍 Búsqueda de '{query}' (tipo: {search_type}):\n\n"
+                    if results:
+                        for i, item in enumerate(results, 1):
+                            response_message += f"{i}. {item}\n"
+                    else:
+                        response_message += "No se encontraron resultados para esta búsqueda.\n"
+                
+                return jsonify({
+                    'success': True,
+                    'response': response_message,
+                    'agent_id': agent_id,
+                    'model': model
+                })
+            else:
+                # Si hubo algún error en la exploración
+                error_message = result.get('error', 'Error desconocido al explorar el repositorio')
+                response_message = f"❌ No pude completar la exploración: {error_message}\n\n"
+                
+                # Sugerir acciones alternativas según el tipo de error
+                if 'no existe' in error_message.lower():
+                    response_message += "Posibles soluciones:\n"
+                    response_message += "- Verifica el nombre del repositorio\n"
+                    response_message += "- Asegúrate de haber clonado el repositorio primero\n"
+                    response_message += "- Prueba a especificar la ruta correcta dentro del repositorio\n"
+                
+                return jsonify({
+                    'success': False,
+                    'error': response_message
+                })
         
         if is_build_app:
             logger.info(f"Detectada intención de construir aplicación: '{instruction}'")
