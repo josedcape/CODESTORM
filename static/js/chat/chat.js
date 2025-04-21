@@ -573,7 +573,10 @@ function handleCreationCommand(message) {
       const randomQuestion = questions[randomIndex];
       
       removeLoadingMessage();
-      addAgentMessage(`Para crear la página que necesitas, necesito más detalles. ${randomQuestion}`, window.app.activeAgent);
+      
+      // Usar window.app.activeAgent si está definido, sino usar null para que se use el valor por defecto
+      const agent = window.app && window.app.activeAgent ? window.app.activeAgent : null;
+      addAgentMessage(`Para crear la página que necesitas, necesito más detalles. ${randomQuestion}`, agent);
       
       return true; // Comando manejado
     } else if (hasColorPreferences || hasDetailedInstructions || message.length >= 30 || 
@@ -598,7 +601,10 @@ function handleCreationCommand(message) {
       const randomQuestion = questions[randomIndex];
       
       removeLoadingMessage();
-      addAgentMessage(`Para crear el componente adecuado, necesito más información. ${randomQuestion}`, window.app.activeAgent);
+      
+      // Usar window.app.activeAgent si está definido, sino usar null para que se use el valor por defecto
+      const agent = window.app && window.app.activeAgent ? window.app.activeAgent : null;
+      addAgentMessage(`Para crear el componente adecuado, necesito más información. ${randomQuestion}`, agent);
       
       return true; // Comando manejado
     }
@@ -618,7 +624,10 @@ function handleCreationCommand(message) {
       const randomQuestion = questions[randomIndex];
       
       removeLoadingMessage();
-      addAgentMessage(`Para diseñar el formulario adecuado, necesito más detalles. ${randomQuestion}`, window.app.activeAgent);
+      
+      // Usar window.app.activeAgent si está definido, sino usar null para que se use el valor por defecto
+      const agent = window.app && window.app.activeAgent ? window.app.activeAgent : null;
+      addAgentMessage(`Para diseñar el formulario adecuado, necesito más detalles. ${randomQuestion}`, agent);
       
       return true; // Comando manejado
     }
@@ -753,6 +762,13 @@ function addUserMessage(message) {
 // Añadir mensaje del agente al chat con estilo futurista
 function addAgentMessage(message, agent) {
   const chatMessages = document.getElementById('chat-messages');
+  
+  // Verificar si el agente está definido, y si no, usar un valor predeterminado
+  agent = agent || {
+    name: 'Asistente',
+    icon: 'bi-robot',
+    id: 'general'
+  };
   
   const messageElement = document.createElement('div');
   messageElement.className = 'chat-message agent-message';
