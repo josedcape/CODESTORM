@@ -6,6 +6,7 @@ y explorar/manipular archivos en repositorios.
 import os
 import re
 import json
+import time
 import logging
 import openai
 import anthropic
@@ -27,33 +28,66 @@ anthropic_client = None
 genai_configured = False
 
 def setup_ai_clients():
-    """Configura los clientes de las APIs de IA."""
+    """Configura los clientes de las APIs de IA con parámetros mejorados."""
     global openai_client, anthropic_client, genai_configured
     
     # Configurar OpenAI
     openai_api_key = os.environ.get("OPENAI_API_KEY")
-    if openai_api_key:
-        openai_client = openai.OpenAI(api_key=openai_api_key)
-        logger.info(f"OpenAI API key configurada: {openai_api_key[:5]}...{openai_api_key[-5:]}")
+    if openai_api_key and openai_api_key.strip():
+        try:
+            # Configuración mejorada con reintentos y timeout
+            openai_client = openai.OpenAI(
+                api_key=openai_api_key.strip(),
+                max_retries=3,
+                timeout=30.0
+            )
+            
+            # Verificar la conexión
+            models = openai_client.models.list()
+            if models:
+                logger.info(f"OpenAI API key configurada: {openai_api_key[:5]}...{openai_api_key[-5:]}")
+            else:
+                logger.warning("Clave de OpenAI configurada, pero no se pudieron listar los modelos")
+        except Exception as e:
+            logger.error(f"Error al configurar OpenAI: {str(e)}")
+            openai_client = None
     else:
-        logger.warning("No se encontró la clave de API de OpenAI en las variables de entorno")
+        logger.warning("No se encontró la clave de API de OpenAI en las variables de entorno o está vacía")
     
     # Configurar Anthropic
     anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if anthropic_api_key:
-        anthropic_client = anthropic.Anthropic(api_key=anthropic_api_key)
-        logger.info("Anthropic API key configured successfully.")
+    if anthropic_api_key and anthropic_api_key.strip():
+        try:
+            # Configuración con timeout
+            anthropic_client = anthropic.Anthropic(
+                api_key=anthropic_api_key.strip(),
+                timeout=30.0
+            )
+            logger.info("Anthropic API key configured successfully.")
+        except Exception as e:
+            logger.error(f"Error al configurar Anthropic: {str(e)}")
+            anthropic_client = None
     else:
-        logger.warning("No se encontró la clave de API de Anthropic en las variables de entorno")
+        logger.warning("No se encontró la clave de API de Anthropic en las variables de entorno o está vacía")
     
     # Configurar Google Gemini
     gemini_api_key = os.environ.get("GEMINI_API_KEY")
-    if gemini_api_key:
-        genai.configure(api_key=gemini_api_key)
-        genai_configured = True
-        logger.info("Gemini API key configured successfully.")
+    if gemini_api_key and gemini_api_key.strip():
+        try:
+            genai.configure(api_key=gemini_api_key.strip())
+            
+            # Verificar la configuración intentando obtener modelos
+            model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+            if model:
+                genai_configured = True
+                logger.info("Gemini API key configured successfully.")
+            else:
+                logger.warning("Clave de Gemini configurada, pero no se pudo crear un modelo")
+        except Exception as e:
+            logger.error(f"Error al configurar Gemini: {str(e)}")
+            genai_configured = False
     else:
-        logger.warning("No se encontró la clave de API de Google Gemini en las variables de entorno")
+        logger.warning("No se encontró la clave de API de Google Gemini en las variables de entorno o está vacía")
 
 # Configurar los clientes al importar el módulo
 setup_ai_clients()
@@ -168,14 +202,15 @@ def get_agent_name(agent_id):
     
     return agent_names.get(agent_id, "Asistente General")
 
-def generate_with_openai(prompt, system_prompt, temperature=0.7):
+def generate_with_openai(prompt, system_prompt, temperature=0.7, use_json=False):
     """
-    Genera contenido utilizando la API de OpenAI.
+    Genera contenido utilizando la API de OpenAI con manejo mejorado de errores.
     
     Args:
         prompt: Prompt para generar contenido
         system_prompt: Prompt de sistema para establecer el rol
         temperature: Temperatura para la generación (0.0 - 1.0)
+        use_json: Si es True, solicita respuesta en formato JSON
         
     Returns:
         str: Contenido generado
@@ -184,29 +219,74 @@ def generate_with_openai(prompt, system_prompt, temperature=0.7):
         raise ValueError("Cliente de OpenAI no configurado. Verifica la clave API.")
     
     try:
-        completion = openai_client.chat.completions.create(
-            model="gpt-4o", # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-            messages=[
+        # Preparar los parámetros de la solicitud
+        request_params = {
+            "model": "gpt-4o", # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            temperature=temperature,
-            max_tokens=4000
-        )
+            "temperature": temperature,
+            "max_tokens": 4000
+        }
         
-        return completion.choices[0].message.content.strip()
+        # Si se solicita JSON, agregar el formato de respuesta
+        if use_json:
+            request_params["response_format"] = {"type": "json_object"}
+            
+        # Realizar la solicitud con reintentos
+        for attempt in range(3):  # 3 intentos máximo
+            try:
+                completion = openai_client.chat.completions.create(**request_params)
+                content = completion.choices[0].message.content.strip()
+                
+                # Si se solicitó JSON, validar la respuesta
+                if use_json:
+                    try:
+                        json.loads(content)  # Verificar que es JSON válido
+                    except json.JSONDecodeError:
+                        logger.warning(f"OpenAI devolvió un JSON inválido en el intento {attempt+1}, reintentando...")
+                        if attempt == 2:  # Último intento
+                            logger.error("Todos los intentos de obtener JSON válido fallaron")
+                            raise ValueError("La respuesta no es un JSON válido después de múltiples intentos")
+                        continue  # Reintentar
+                
+                return content
+                
+            except openai.OpenAIError as e:
+                if attempt < 2:  # Todavía hay más intentos disponibles
+                    wait_time = 2 ** attempt  # Backoff exponencial: 1s, 2s, 4s
+                    logger.warning(f"Error de OpenAI (intento {attempt+1}/3): {str(e)}. Reintentando en {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Error persistente de OpenAI después de 3 intentos: {str(e)}")
+                    raise
+                    
+    except openai.APIError as e:
+        logger.error(f"Error de API de OpenAI: {str(e)}")
+        raise ValueError(f"Error en la API de OpenAI: {str(e)}")
+    except openai.APIConnectionError as e:
+        logger.error(f"Error de conexión con la API de OpenAI: {str(e)}")
+        raise ValueError(f"Error de conexión con OpenAI. Verifica tu conexión a internet: {str(e)}")
+    except openai.RateLimitError as e:
+        logger.error(f"Límite de tasa excedido en OpenAI: {str(e)}")
+        raise ValueError(f"Se ha excedido el límite de solicitudes a OpenAI. Intenta más tarde: {str(e)}")
+    except openai.AuthenticationError as e:
+        logger.error(f"Error de autenticación con OpenAI: {str(e)}")
+        raise ValueError(f"Error de autenticación con OpenAI. Verifica tu clave API: {str(e)}")
     except Exception as e:
-        logger.error(f"Error en generate_with_openai: {str(e)}")
-        raise
+        logger.error(f"Error inesperado en generate_with_openai: {str(e)}")
+        raise ValueError(f"Error inesperado al generar contenido con OpenAI: {str(e)}")
 
-def generate_with_anthropic(prompt, system_prompt, temperature=0.7):
+def generate_with_anthropic(prompt, system_prompt, temperature=0.7, use_json=False):
     """
-    Genera contenido utilizando la API de Anthropic.
+    Genera contenido utilizando la API de Anthropic con manejo mejorado de errores.
     
     Args:
         prompt: Prompt para generar contenido
         system_prompt: Prompt de sistema para establecer el rol
         temperature: Temperatura para la generación (0.0 - 1.0)
+        use_json: Si es True, se incluirá instrucción para responder en formato JSON
         
     Returns:
         str: Contenido generado
@@ -215,20 +295,63 @@ def generate_with_anthropic(prompt, system_prompt, temperature=0.7):
         raise ValueError("Cliente de Anthropic no configurado. Verifica la clave API.")
     
     try:
-        message = anthropic_client.messages.create(
-            model="claude-3-5-sonnet-20241022", # the newest Anthropic model is "claude-3-5-sonnet-20241022" which was released October 22, 2024.
-            system=system_prompt,
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            temperature=temperature,
-            max_tokens=4000
-        )
-        
-        return message.content[0].text
+        # Preparar el prompt con instrucciones específicas para formato JSON si se solicita
+        actual_prompt = prompt
+        if use_json:
+            actual_prompt = prompt + "\n\nIMPORTANTE: Tu respuesta debe estar en formato JSON válido sin explicaciones adicionales."
+            
+        # Realizar la solicitud con reintentos
+        for attempt in range(3):  # 3 intentos máximo
+            try:
+                message = anthropic_client.messages.create(
+                    model="claude-3-5-sonnet-20241022", # the newest Anthropic model is "claude-3-5-sonnet-20241022" which was released October 22, 2024.
+                    system=system_prompt,
+                    messages=[
+                        {"role": "user", "content": actual_prompt}
+                    ],
+                    temperature=temperature,
+                    max_tokens=4000
+                )
+                
+                content = message.content[0].text.strip()
+                
+                # Si se solicitó JSON, validar la respuesta
+                if use_json:
+                    try:
+                        json.loads(content)  # Verificar que es JSON válido
+                    except json.JSONDecodeError:
+                        logger.warning(f"Anthropic devolvió un JSON inválido en el intento {attempt+1}, reintentando...")
+                        if attempt == 2:  # Último intento
+                            logger.error("Todos los intentos de obtener JSON válido fallaron")
+                            raise ValueError("La respuesta no es un JSON válido después de múltiples intentos")
+                        continue  # Reintentar
+                
+                return content
+                
+            except Exception as e:
+                if attempt < 2:  # Todavía hay más intentos disponibles
+                    wait_time = 2 ** attempt  # Backoff exponencial: 1s, 2s, 4s
+                    logger.warning(f"Error de Anthropic (intento {attempt+1}/3): {str(e)}. Reintentando en {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Error persistente de Anthropic después de 3 intentos: {str(e)}")
+                    raise
+                    
+    except anthropic.APIError as e:
+        logger.error(f"Error de API de Anthropic: {str(e)}")
+        raise ValueError(f"Error en la API de Anthropic: {str(e)}")
+    except anthropic.APIConnectionError as e:
+        logger.error(f"Error de conexión con la API de Anthropic: {str(e)}")
+        raise ValueError(f"Error de conexión con Anthropic. Verifica tu conexión a internet: {str(e)}")
+    except anthropic.RateLimitError as e:
+        logger.error(f"Límite de tasa excedido en Anthropic: {str(e)}")
+        raise ValueError(f"Se ha excedido el límite de solicitudes a Anthropic. Intenta más tarde: {str(e)}")
+    except anthropic.AuthenticationError as e:
+        logger.error(f"Error de autenticación con Anthropic: {str(e)}")
+        raise ValueError(f"Error de autenticación con Anthropic. Verifica tu clave API: {str(e)}")
     except Exception as e:
-        logger.error(f"Error en generate_with_anthropic: {str(e)}")
-        raise
+        logger.error(f"Error inesperado en generate_with_anthropic: {str(e)}")
+        raise ValueError(f"Error inesperado al generar contenido con Anthropic: {str(e)}")
 
 def generate_with_gemini(prompt, system_prompt, temperature=0.7):
     """
