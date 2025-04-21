@@ -59,9 +59,22 @@ def list_files(directory='.', user_id='default', filter_system_files=True):
         filter_system_files: Si es True, filtra los archivos del sistema
     """
     workspace = get_user_workspace(user_id)
-    target_dir = os.path.join(workspace, directory)
     
-    if not os.path.exists(target_dir):
+    # Asegurarnos de que el directorio solicitado está dentro del workspace del usuario
+    # y normalizar para evitar path traversal
+    if directory == '/' or directory.startswith('/'):
+        # Si el usuario solicita la raíz del sistema (que no debería ocurrir normalmente),
+        # redirigirlo al workspace
+        directory = '.'
+    
+    target_dir = os.path.normpath(os.path.join(workspace, directory))
+    
+    # Verificar que el target_dir está dentro del workspace para seguridad
+    if not target_dir.startswith(os.path.normpath(workspace)):
+        logger.warning(f"Intento de acceso a directorio fuera del workspace: {directory}")
+        return []
+    
+    if not os.path.exists(target_dir) or not os.path.isdir(target_dir):
         return []
     
     # Cargar la lista de archivos del sistema si necesitamos filtrar
@@ -85,6 +98,16 @@ def list_files(directory='.', user_id='default', filter_system_files=True):
             # Construir la ruta relativa del archivo o directorio
             rel_path = os.path.join(directory, entry) if directory != '.' else entry
             entry_path = os.path.join(workspace, rel_path)
+            
+            # Verificar que la ruta resultante sigue dentro del workspace
+            if not os.path.normpath(entry_path).startswith(os.path.normpath(workspace)):
+                logger.warning(f"Saltando entrada potencialmente insegura: {rel_path}")
+                continue
+                
+            # Verificar que la entrada existe antes de intentar determinar su tipo
+            if not os.path.exists(entry_path):
+                continue
+                
             entry_type = 'directory' if os.path.isdir(entry_path) else 'file'
             
             # Verificar si este archivo o directorio debería ser filtrado
@@ -97,25 +120,24 @@ def list_files(directory='.', user_id='default', filter_system_files=True):
             # Solo agregar si no estamos filtrando este archivo
             if not should_filter:
                 if entry_type == 'file':
-                    file_size = os.path.getsize(entry_path)
-                    file_extension = os.path.splitext(entry)[1].lower()[1:] if '.' in entry else ''
-                    
-                    entries.append({
-                        'name': entry,
-                        'type': entry_type,
-                        'path': rel_path,
-                        'size': file_size,
-                        'extension': file_extension
-                    })
+                    try:
+                        file_size = os.path.getsize(entry_path)
+                        file_extension = os.path.splitext(entry)[1].lower()[1:] if '.' in entry else ''
+                        
+                        entries.append({
+                            'name': entry,
+                            'type': entry_type,
+                            'path': rel_path,
+                            'size': file_size,
+                            'extension': file_extension
+                        })
+                    except Exception as e:
+                        # Ignorar errores al acceder a archivos individuales
+                        logger.warning(f"Error al acceder al archivo {entry_path}: {e}")
+                        continue
                 else:
-                    # Para directorios, verificamos primero si tiene contenido que no sea del sistema
-                    if entry_type == 'directory' and filter_system_files:
-                        # Recursivamente verificar si hay archivos no del sistema en este directorio
-                        subdir_contents = list_files(rel_path, user_id, filter_system_files)
-                        if len(subdir_contents) == 0:
-                            # Si el directorio no tiene archivos útiles, lo filtramos
-                            continue
-                    
+                    # Para directorios, simplemente los incluimos sin recursión
+                    # para evitar problemas con directorios del sistema
                     entries.append({
                         'name': entry,
                         'type': entry_type,
@@ -775,6 +797,7 @@ def process_instruction():
     
     La instrucción puede ser:
     - Crear un archivo
+    - Crear una carpeta
     - Ejecutar un comando
     - Modificar un archivo existente
     """
@@ -791,18 +814,23 @@ def process_instruction():
                 'error': 'Se requiere una instrucción'
             }), 400
         
-        logger.info(f"Procesando instrucción con modelo: {model}, agente: {agent_id}")
+        logger.info(f"Procesando instrucción: '{instruction}' con modelo: {model}, agente: {agent_id}")
         workspace = get_user_workspace(user_id)
         
-        # Simulación de procesamiento de lenguaje natural:
-        # En una implementación real, aquí se conectaría con un modelo de IA
+        # Detectar si la instrucción parece ser un comando directo
+        command_prefixes = ['ejecuta ', 'corre ', 'run ', 'python ', 'node ', 'npm ', 'ls ', 'mkdir ', 'touch ', 'cat ']
+        is_command = any(instruction.lower().startswith(prefix) for prefix in command_prefixes)
         
-        # Detectar si la instrucción parece ser un comando
-        if instruction.startswith('ejecuta ') or instruction.startswith('corre ') or instruction.startswith('run '):
-            command = instruction.split(' ', 1)[1]
+        if is_command:
+            # Extraer el comando del prefijo
+            command = instruction
+            for prefix in ['ejecuta ', 'corre ', 'run ']:
+                if instruction.lower().startswith(prefix):
+                    command = instruction[len(prefix):]
+                    break
             
             # Registrar la acción
-            logger.info(f"Procesando instrucción como comando: '{command}' con agente {agent_id}, modelo {model}")
+            logger.info(f"Procesando instrucción como comando directo: '{command}' con agente {agent_id}")
             
             # Ejecutar el comando
             process = subprocess.Popen(
@@ -821,7 +849,7 @@ def process_instruction():
             
             # Registrar el resultado si hubo error
             if status != 0:
-                logger.warning(f"Instrucción comando '{command}' terminó con código {status}. Stderr: {stderr_text}")
+                logger.warning(f"Comando '{command}' terminó con código {status}. Stderr: {stderr_text}")
             
             return jsonify({
                 'success': True,
@@ -832,14 +860,122 @@ def process_instruction():
                 'agent_id': agent_id,
                 'model': model
             })
+        
+        # CASO 1: Crear una carpeta/directorio
+        # Patrones para detectar intención de crear una carpeta
+        create_dir_patterns = [
+            r'crea\s+(?:una|la)?\s*carpeta',
+            r'crea\s+(?:un|el)?\s*directorio',
+            r'crear\s+(?:una|la)?\s*carpeta',
+            r'crear\s+(?:un|el)?\s*directorio',
+            r'nueva\s+carpeta',
+            r'nuevo\s+directorio',
+            r'genera\s+(?:una|la)?\s*carpeta',
+            r'hacer\s+(?:una|la)?\s*carpeta'
+        ]
+        
+        is_create_dir = any(re.search(pattern, instruction.lower()) for pattern in create_dir_patterns)
+        
+        if is_create_dir:
+            logger.info(f"Detectada intención de crear carpeta: '{instruction}'")
             
-        # Detectar si la instrucción parece ser para crear un archivo
-        elif 'crea' in instruction.lower() and ('archivo' in instruction.lower() or 'fichero' in instruction.lower()):
-            # Extraer un nombre de archivo básico de la instrucción
-            filename_match = re.search(r'(?:llamado|nombrado|nombre)\s+["\']?([^"\']+)["\']?', instruction)
-            if filename_match:
-                filename = filename_match.group(1)
+            # Buscar el nombre de la carpeta
+            dirname_patterns = [
+                r'(?:llamada|nombrada|nombre|con\s+nombre|con\s+título)\s+["\']?([^"\']+)["\']?',
+                r'carpeta\s+["\']?([^"\']+)["\']?',
+                r'directorio\s+["\']?([^"\']+)["\']?',
+                r'crea\s+(?:una|la)?\s*carpeta\s+([a-zA-Z0-9_\-\.\/]+)',
+                r'crea\s+(?:un|el)?\s*directorio\s+([a-zA-Z0-9_\-\.\/]+)'
+            ]
+            
+            dirname = None
+            for pattern in dirname_patterns:
+                match = re.search(pattern, instruction)
+                if match:
+                    dirname = match.group(1).strip()
+                    break
+            
+            if not dirname:
+                # Si no se encuentra un nombre específico, crear uno genérico
+                import time
+                dirname = f"nueva_carpeta_{int(time.time())}"
+            
+            # Asegurarse de que no hay path traversal
+            if '..' in dirname or dirname.startswith('/'):
+                return jsonify({
+                    'success': False,
+                    'error': f"Nombre de directorio inválido: {dirname}"
+                }), 400
+            
+            # Buscar directorio padre específico
+            parent_dir_match = re.search(r'(?:en|dentro\s+de)\s+(?:la\s+carpeta|el\s+directorio)\s+["\']?([^"\']+)["\']?', instruction.lower())
+            
+            if parent_dir_match:
+                parent_dir = parent_dir_match.group(1).strip()
+                # Asegurarse de que no hay path traversal
+                if '..' in parent_dir or parent_dir.startswith('/'):
+                    return jsonify({
+                        'success': False,
+                        'error': f"Nombre de directorio inválido: {parent_dir}"
+                    }), 400
+                    
+                dir_path = os.path.join(workspace, parent_dir, dirname)
             else:
+                dir_path = os.path.join(workspace, dirname)
+            
+            # Crear la carpeta
+            try:
+                os.makedirs(dir_path, exist_ok=True)
+                
+                rel_path = os.path.relpath(dir_path, workspace)
+                
+                return jsonify({
+                    'success': True,
+                    'dir_path': rel_path,
+                    'result': f"Se ha creado la carpeta '{rel_path}' correctamente."
+                })
+            except Exception as e:
+                logger.error(f"Error al crear carpeta {dir_path}: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Error al crear carpeta: {str(e)}"
+                }), 500
+            
+        # CASO 2: Crear un archivo
+        # Patrones para detectar intención de crear un archivo
+        create_file_patterns = [
+            r'crea\s+(?:un|el)?\s*archivo',
+            r'crea\s+(?:un|el)?\s*fichero',
+            r'crear\s+(?:un|el)?\s*archivo',
+            r'crear\s+(?:un|el)?\s*fichero',
+            r'nuevo\s+archivo',
+            r'nuevo\s+fichero',
+            r'genera\s+(?:un|el)?\s*archivo',
+            r'hacer\s+(?:un|el)?\s*archivo'
+        ]
+        
+        is_create_file = any(re.search(pattern, instruction.lower()) for pattern in create_file_patterns)
+        
+        if is_create_file:
+            logger.info(f"Detectada intención de crear archivo: '{instruction}'")
+            
+            # Buscar el nombre del archivo
+            filename_patterns = [
+                r'(?:llamado|nombrado|nombre|con\s+nombre|con\s+título)\s+["\']?([^"\']+)["\']?',
+                r'archivo\s+["\']?([^"\']+)["\']?',
+                r'fichero\s+["\']?([^"\']+)["\']?',
+                r'crea\s+(?:un|el)?\s*([a-zA-Z0-9_\.-]+\.[a-zA-Z0-9]+)',
+                r'\s([a-zA-Z0-9_\.-]+\.[a-zA-Z0-9]+)'
+            ]
+            
+            filename = None
+            for pattern in filename_patterns:
+                match = re.search(pattern, instruction)
+                if match:
+                    filename = match.group(1).strip()
+                    break
+            
+            if not filename:
                 # Si no se encuentra un nombre específico, crear uno genérico
                 extension = '.txt'
                 if 'html' in instruction.lower(): extension = '.html'
@@ -849,40 +985,86 @@ def process_instruction():
                 
                 filename = f"nuevo_archivo{extension}"
             
+            # Añadir extensión si no tiene
+            if '.' not in filename:
+                if 'html' in instruction.lower(): filename += '.html'
+                elif 'css' in instruction.lower(): filename += '.css'
+                elif 'javascript' in instruction.lower() or 'js' in instruction.lower(): filename += '.js'
+                elif 'python' in instruction.lower() or 'py' in instruction.lower(): filename += '.py'
+                else: filename += '.txt'
+            
             # Contenido básico según el tipo de archivo
             content = ""
-            if filename.endswith('.html'):
+            ext = filename.split('.')[-1].lower()
+            
+            if ext in ['html', 'htm']:
                 content = "<!DOCTYPE html>\n<html>\n<head>\n    <title>Nuevo documento</title>\n</head>\n<body>\n    <h1>Nuevo documento</h1>\n    <p>Contenido del documento.</p>\n</body>\n</html>"
-            elif filename.endswith('.css'):
-                content = "body {\n    margin: 0;\n    padding: 0;\n    font-family: Arial, sans-serif;\n}"
-            elif filename.endswith('.js'):
-                content = "// Archivo JavaScript\nconsole.log('Nuevo archivo JavaScript');"
-            elif filename.endswith('.py'):
-                content = "# Archivo Python\n\ndef main():\n    print('Hola mundo')\n\nif __name__ == '__main__':\n    main()"
+            elif ext == 'css':
+                content = "/* Estilos CSS */\nbody {\n    margin: 0;\n    padding: 0;\n    font-family: Arial, sans-serif;\n    background-color: #f0f0f0;\n    color: #333;\n}"
+            elif ext == 'js':
+                content = "// Archivo JavaScript\nconsole.log('Nuevo archivo JavaScript');\n\n// Función principal\nfunction main() {\n    console.log('Iniciando aplicación...');\n}\n\n// Ejecutar cuando el documento esté listo\ndocument.addEventListener('DOMContentLoaded', main);"
+            elif ext == 'py':
+                content = "# Archivo Python\n\ndef main():\n    '''\n    Función principal del programa\n    '''\n    print('Hola mundo')\n\nif __name__ == '__main__':\n    main()"
+            elif ext == 'md':
+                content = "# Título Principal\n\n## Subtítulo\n\nEste es un archivo Markdown de ejemplo.\n\n* Punto 1\n* Punto 2\n* Punto 3\n\n```python\nprint('Código de ejemplo')\n```"
+            elif ext == 'json':
+                content = "{\n    \"nombre\": \"Ejemplo\",\n    \"descripcion\": \"Este es un archivo JSON de ejemplo\",\n    \"atributos\": [\n        \"simple\",\n        \"básico\",\n        \"ejemplo\"\n    ],\n    \"version\": 1.0\n}"
+            else:
+                content = f"Este es un archivo de texto ({ext}) creado con Codestorm Assistant.\n\nPuedes editar este archivo para añadir tu propio contenido."
+            
+            # Buscar directorio específico
+            dir_match = re.search(r'(?:en|dentro\s+de)\s+(?:la\s+carpeta|el\s+directorio)\s+["\']?([^"\']+)["\']?', instruction.lower())
+            
+            if dir_match:
+                dir_name = dir_match.group(1).strip()
+                # Asegurarse de que no hay path traversal
+                if '..' in dir_name or dir_name.startswith('/'):
+                    return jsonify({
+                        'success': False,
+                        'error': f"Nombre de directorio inválido: {dir_name}"
+                    }), 400
+                    
+                file_path = os.path.join(workspace, dir_name, filename)
+            else:
+                file_path = os.path.join(workspace, filename)
             
             # Crear el archivo
-            file_path = os.path.join(workspace, filename)
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            try:
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                
+                rel_path = os.path.relpath(file_path, workspace)
+                
+                return jsonify({
+                    'success': True,
+                    'file_path': rel_path,
+                    'content': content,
+                    'result': f"Se ha creado el archivo '{rel_path}' con contenido básico para {ext.upper()}."
+                })
+            except Exception as e:
+                logger.error(f"Error al crear archivo {file_path}: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': f"Error al crear archivo: {str(e)}"
+                }), 500
+        
+        # Respuesta genérica para instrucciones no reconocidas
+        logger.info(f"Instrucción no reconocida: '{instruction}'")
+        return jsonify({
+            'success': True,
+            'result': f"He recibido tu instrucción: '{instruction}'. Puedo ayudarte con lo siguiente:\n\n"
+                      "1) Para ejecutar un comando: comienza con 'ejecuta' o 'corre'.\n"
+                      "2) Para crear un archivo: usa 'crea un archivo nombre.ext'.\n"
+                      "3) Para crear una carpeta: usa 'crea una carpeta nombre'."
+        })
             
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            
-            return jsonify({
-                'success': True,
-                'file_path': filename,
-                'content': content,
-                'result': f"Se ha creado el archivo '{filename}' con contenido básico."
-            })
-            
-        else:
-            # Respuesta genérica para instrucciones no reconocidas
-            return jsonify({
-                'success': True,
-                'result': f"He recibido tu instrucción: '{instruction}'. "
-                          "Para ejecutar un comando, comienza con 'ejecuta'. "
-                          "Para crear un archivo, incluye 'crea archivo' en tu instrucción."
-            })
-            
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'success': False,
+            'error': 'Tiempo de ejecución agotado (30s)'
+        }), 504
     except Exception as e:
         logger.error(f"Error al procesar instrucción: {str(e)}")
         return jsonify({
