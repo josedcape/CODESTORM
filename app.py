@@ -834,11 +834,22 @@ def handle_chat():
             if match:
                 is_repo_exploration = True
                 # Extraer nombre del repositorio (está en el grupo 1 o 2 dependiendo del patrón)
-                if len(match.groups()) == 1:
+                # El nombre del repositorio podría ser None si no se especificó
+                if not match.groups():
+                    repo_name = None  # No se especificó un nombre de repositorio
+                elif len(match.groups()) == 1:
                     repo_name = match.group(1)
                 else:
                     repo_name = match.group(2)
                 break
+                
+        # Caso especial: si el mensaje es exactamente "explora el repositorio" sin nombre
+        if user_message.lower().strip() in ["explora el repositorio", "explorar el repositorio", 
+                                          "explora repositorio", "explorar repositorio",
+                                          "muestra los repositorios", "mostrar repositorios",
+                                          "ver repositorios", "listar repositorios"]:
+            is_repo_exploration = True
+            repo_name = None
         
         logging.debug(f"Mensaje recibido: '{user_message}'")
         logging.debug(f"¿Es una solicitud de generación de archivo complejo? {bool(is_complex_file_request)}")
