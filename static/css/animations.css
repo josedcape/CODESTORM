@@ -1,0 +1,238 @@
+/* Animaciones para Codestorm Assistant */
+
+/* Definiciones generales de animaciones */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 0 0 rgba(76, 185, 255, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(76, 185, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(76, 185, 255, 0); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes blink {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -100% 0; }
+  100% { background-position: 100% 0; }
+}
+
+/* Clases de animación */
+.fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.fade-out {
+  animation: fadeOut 0.3s ease forwards;
+}
+
+.slide-in-up {
+  animation: slideInUp 0.4s ease forwards;
+}
+
+.pulse-glow {
+  animation: pulseGlow 1.5s infinite;
+}
+
+/* Spinner de carga futurista */
+.spinner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(76, 185, 255, 0.1);
+  border-top: 3px solid var(--highlight-color);
+  border-right: 3px solid var(--medium-blue);
+  border-bottom: 3px solid var(--light-blue);
+  animation: spin 1s linear infinite;
+}
+
+.spinner-sm {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
+}
+
+.spinner-lg {
+  width: 60px;
+  height: 60px;
+  border-width: 4px;
+}
+
+/* Indicador de carga para mensajes */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.typing-indicator span {
+  height: 8px;
+  width: 8px;
+  margin: 0 2px;
+  background-color: var(--light-blue);
+  border-radius: 50%;
+  display: inline-block;
+  animation: blink 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Shimmer effect para estados de carga */
+.shimmer-effect {
+  background: linear-gradient(to right, 
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(76, 185, 255, 0.2) 50%, 
+    rgba(255, 255, 255, 0.1) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Transition estándar para elementos */
+.transition-all {
+  transition: all 0.3s ease;
+}
+
+/* Transición elegante para hover */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Animación de éxito para acciones completadas */
+@keyframes successPulse {
+  0% { background-color: rgba(40, 167, 69, 0); }
+  50% { background-color: rgba(40, 167, 69, 0.2); }
+  100% { background-color: rgba(40, 167, 69, 0); }
+}
+
+.success-pulse {
+  animation: successPulse 1s ease forwards;
+}
+
+/* Animación para botones de acción */
+.btn-futuristic {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-futuristic::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transition: all 0.6s;
+}
+
+.btn-futuristic:hover::after {
+  left: 100%;
+}
+
+/* Animación de notificación para elementos nuevos */
+@keyframes highlight {
+  0% { background-color: rgba(255, 193, 7, 0.2); }
+  100% { background-color: transparent; }
+}
+
+.highlight-new {
+  animation: highlight 2s ease forwards;
+}
+
+/* Animación de foco para elementos seleccionados */
+.focus-ring {
+  position: relative;
+}
+
+.focus-ring::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: inherit;
+  border: 2px solid var(--highlight-color);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.focus-ring:focus::before {
+  opacity: 1;
+}
+
+/* Contenedor para pantalla completa de carga */
+.fullscreen-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(9, 20, 40, 0.8);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(5px);
+}
+
+.fullscreen-loader .spinner {
+  margin-bottom: 20px;
+}
+
+.fullscreen-loader .message {
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  margin-top: 15px;
+}
