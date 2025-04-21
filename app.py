@@ -666,11 +666,20 @@ def execute_command():
 def handle_chat():
     """Procesa mensajes del chat usando el agente especializado seleccionado."""
     try:
-        # Mejorar logging para depuración
-        logging.info("Solicitud recibida en /api/chat")
+        # Mejorar logging para depuración detallada
+        logging.info("=== Solicitud recibida en /api/chat ===")
         
         data = request.json
-        logging.info(f"Datos recibidos: {data}")
+        logging.info(f"Datos recibidos (JSON): {data}")
+        
+        # Para depuración, verificamos si OpenAI está configurado correctamente
+        openai_key = os.environ.get('OPENAI_API_KEY')
+        anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
+        gemini_key = os.environ.get('GEMINI_API_KEY')
+        
+        logging.info(f"Estado API keys: OpenAI: {'Configurado' if openai_key else 'No configurado'}, "
+                    f"Anthropic: {'Configurado' if anthropic_key else 'No configurado'}, "
+                    f"Gemini: {'Configurado' if gemini_key else 'No configurado'}")
         
         user_message = data.get('message', '')
         agent_id = data.get('agent_id', 'default')
@@ -684,7 +693,7 @@ def handle_chat():
         conversation_state = data.get('conversation_state', {})
         
         logging.info(f"Procesando mensaje: '{user_message}' con agente: {agent_id}, modelo: {model_choice}")
-        logging.info(f"Estado de conversación: {conversation_state}")
+        logging.debug(f"Estado de conversación: {conversation_state}")
         
         if not user_message:
             logging.warning("Error: No se proporcionó mensaje")
