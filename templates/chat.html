@@ -483,6 +483,18 @@ pre code {
                                 <option value="general">Asistente General</option>
                             </select>
                         </div>
+                        
+                        <!-- Selector de Documentos -->
+                        <div class="selector-section">
+                            <span class="selector-label">Documento:</span>
+                            <select id="document-selector" class="selector-dropdown">
+                                <option value="" selected>Sin documento</option>
+                                <!-- Aquí se cargarán dinámicamente los documentos disponibles -->
+                            </select>
+                            <button class="btn btn-sm btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#documentModal">
+                                <i class="bi bi-file-earmark-plus"></i>
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- Información del agente seleccionado -->
@@ -715,6 +727,243 @@ pre code {
                 sendButton.click();
             }
         });
+        
+        // Inicializar funcionalidad de documentos
+        initializeDocumentFeatures();
     });
+    
+    // Función para inicializar características de documentos
+    function initializeDocumentFeatures() {
+        // Cargar documentos disponibles
+        loadAvailableDocuments();
+        
+        // Configurar eventos para cargar documentos
+        const uploadDocumentForm = document.getElementById('uploadDocumentForm');
+        if (uploadDocumentForm) {
+            uploadDocumentForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                uploadDocument();
+            });
+        }
+        
+        // Configurar selector de documentos
+        const documentSelector = document.getElementById('document-selector');
+        if (documentSelector) {
+            documentSelector.addEventListener('change', function() {
+                updateDocumentInfo(this.value);
+            });
+        }
+        
+        // Configurar botón de eliminar documento
+        const documentRemoveBtn = document.querySelector('.document-remove');
+        if (documentRemoveBtn) {
+            documentRemoveBtn.addEventListener('click', function() {
+                const selectedDoc = document.getElementById('document-selector').value;
+                if (selectedDoc) {
+                    deleteDocument(selectedDoc);
+                }
+            });
+        }
+    }
+    
+    // Cargar documentos disponibles
+    function loadAvailableDocuments() {
+        fetch('/api/documents/list')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const documentSelector = document.getElementById('document-selector');
+                    // Limpiar opciones existentes excepto la primera (Sin documento)
+                    while (documentSelector.options.length > 1) {
+                        documentSelector.remove(1);
+                    }
+                    
+                    // Añadir documentos disponibles
+                    data.documents.forEach(doc => {
+                        const option = document.createElement('option');
+                        option.value = doc.filename;
+                        option.textContent = doc.filename;
+                        documentSelector.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error al cargar documentos:', error);
+            });
+    }
+    
+    // Actualizar información del documento seleccionado
+    function updateDocumentInfo(filename) {
+        const documentDetails = document.querySelector('.document-details');
+        const documentStatus = document.querySelector('.document-status');
+        
+        if (!filename) {
+            documentDetails.style.display = 'none';
+            documentStatus.innerHTML = '<small>Selecciona un documento para usarlo como contexto en la conversación.</small>';
+            return;
+        }
+        
+        fetch(`/api/documents/info/${encodeURIComponent(filename)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const doc = data.document;
+                    
+                    // Mostrar detalles del documento
+                    document.querySelector('.document-type').textContent = doc.type.toUpperCase().substring(1);
+                    document.querySelector('.document-size').textContent = formatFileSize(doc.size);
+                    documentDetails.style.display = 'flex';
+                    
+                    // Actualizar estado
+                    const wordCount = doc.word_count ? doc.word_count.toLocaleString() : '?';
+                    documentStatus.innerHTML = `
+                        <small>Documento cargado: <strong>${doc.filename}</strong> (${wordCount} palabras)</small>
+                        <div class="mt-1 text-success">
+                            <small><i class="bi bi-check-circle"></i> Listo para usar como contexto</small>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error al obtener información del documento:', error);
+                documentDetails.style.display = 'none';
+                documentStatus.innerHTML = '<small class="text-danger">Error al cargar información del documento.</small>';
+            });
+    }
+    
+    // Subir documento
+    function uploadDocument() {
+        const fileInput = document.getElementById('documentFile');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            showUploadError('Selecciona un archivo para subir.');
+            return;
+        }
+        
+        const allowedTypes = ['.pdf', '.docx', '.doc', '.html', '.htm', '.md', '.txt', '.py', '.js', '.css', '.json', '.csv', '.xml', '.yml', '.yaml', '.pptx', '.epub'];
+        const file = fileInput.files[0];
+        const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedTypes.includes(fileExt)) {
+            showUploadError(`Tipo de archivo no permitido. Formatos soportados: ${allowedTypes.join(', ')}`);
+            return;
+        }
+        
+        // Mostrar estado de carga
+        const uploadStatus = document.getElementById('uploadStatus');
+        uploadStatus.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"></div> Subiendo documento...';
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        fetch('/api/documents/upload', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Actualizar lista de documentos
+                    loadAvailableDocuments();
+                    
+                    // Mostrar mensaje de éxito
+                    uploadStatus.innerHTML = `<div class="text-success"><i class="bi bi-check-circle"></i> Documento subido correctamente.</div>`;
+                    
+                    // Seleccionar el documento recién subido
+                    setTimeout(() => {
+                        const documentSelector = document.getElementById('document-selector');
+                        documentSelector.value = data.document.filename;
+                        updateDocumentInfo(data.document.filename);
+                        
+                        // Cerrar modal después de 1 segundo
+                        setTimeout(() => {
+                            const documentModal = bootstrap.Modal.getInstance(document.getElementById('documentModal'));
+                            documentModal.hide();
+                            uploadStatus.innerHTML = '';
+                            fileInput.value = '';
+                        }, 1000);
+                    }, 500);
+                } else {
+                    showUploadError(data.error || 'Error al subir el documento.');
+                }
+            })
+            .catch(error => {
+                console.error('Error al subir documento:', error);
+                showUploadError('Error de conexión al subir el documento.');
+            });
+    }
+    
+    // Eliminar documento
+    function deleteDocument(filename) {
+        if (!confirm(`¿Estás seguro de que deseas eliminar el documento "${filename}"?`)) {
+            return;
+        }
+        
+        fetch(`/api/documents/delete/${encodeURIComponent(filename)}`, {
+            method: 'DELETE'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Actualizar lista de documentos
+                    loadAvailableDocuments();
+                    
+                    // Limpiar selección
+                    document.getElementById('document-selector').value = '';
+                    updateDocumentInfo('');
+                    
+                    // Mostrar mensaje
+                    addSystemMessage(`El documento "${filename}" ha sido eliminado.`);
+                } else {
+                    console.error('Error al eliminar documento:', data.error);
+                    addSystemMessage(`Error al eliminar el documento: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error al eliminar documento:', error);
+                addSystemMessage('Error de conexión al eliminar el documento.');
+            });
+    }
+    
+    // Mostrar error en el formulario de subida
+    function showUploadError(message) {
+        const uploadStatus = document.getElementById('uploadStatus');
+        uploadStatus.innerHTML = `<div class="text-danger"><i class="bi bi-exclamation-circle"></i> ${message}</div>`;
+    }
+    
+    // Formatear tamaño de archivo
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+        else return (bytes / 1073741824).toFixed(1) + ' GB';
+    }
 </script>
+
+<!-- Modal para subir documentos -->
+<div class="modal fade" id="documentModal" tabindex="-1" aria-labelledby="documentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="documentModalLabel">Subir Documento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadDocumentForm">
+                    <div class="mb-3">
+                        <label for="documentFile" class="form-label">Selecciona un documento:</label>
+                        <input type="file" class="form-control bg-dark text-light border-secondary" id="documentFile" required>
+                        <div class="form-text text-light-50">
+                            Formatos soportados: PDF, DOCX, HTML, MD, TXT, PY, JS, etc.
+                        </div>
+                    </div>
+                    <div id="uploadStatus" class="mb-3"></div>
+                    <div class="d-flex justify-content-end">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Subir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
