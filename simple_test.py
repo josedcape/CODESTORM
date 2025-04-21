@@ -875,6 +875,44 @@ def process_instruction():
         
         is_build_app = any(re.search(pattern, instruction.lower()) for pattern in build_app_patterns)
         
+        # Patrones para detectar exploración de repositorios
+        repo_patterns = [
+            r'explora(?:r)? (?:el )?(?:repositorio|repo)(?: ([a-zA-Z0-9_\-\.]+))?',  # Nombre del repo opcional
+            r'explora(?:r)? (?:los )?archivos(?: del| en el)? (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'busca(?:r)? (?:en )?(?:el )?(?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'modifica(?:r)? (?:el )?archivo ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'lee(?:r)? (?:el )?archivo ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'crea(?:r)? (?:un )?archivo ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'lista(?:r)? (?:los )?archivos (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'muestra(?:me)? (?:el )?(?:contenido|código) de ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'(?:ver|mostrar|listar) (?:el )?(?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)'
+        ]
+        
+        is_repo_exploration = False
+        repo_name = None
+        
+        # Comprobar si el mensaje coincide con algún patrón de exploración
+        for pattern in repo_patterns:
+            match = re.search(pattern, instruction.lower())
+            if match:
+                is_repo_exploration = True
+                # Extraer nombre del repositorio (está en el grupo 1 o 2 dependiendo del patrón)
+                if not match.groups():
+                    repo_name = None  # No se especificó un nombre de repositorio
+                elif len(match.groups()) == 1:
+                    repo_name = match.group(1)
+                else:
+                    repo_name = match.group(2)
+                break
+                
+        # Caso especial: si el mensaje es exactamente "explora el repositorio" sin nombre
+        if instruction.lower().strip() in ["explora el repositorio", "explorar el repositorio", 
+                                          "explora repositorio", "explorar repositorio",
+                                          "muestra los repositorios", "mostrar repositorios",
+                                          "ver repositorios", "listar repositorios"]:
+            is_repo_exploration = True
+            repo_name = None
+        
         if is_build_app:
             logger.info(f"Detectada intención de construir aplicación: '{instruction}'")
             
