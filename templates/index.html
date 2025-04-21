@@ -172,7 +172,11 @@
                             </select>
                             <div class="form-text">Selecciona el tipo de asistente según la tarea que necesites realizar.</div>
                         </div>
-                        <textarea id="instruction-input" class="form-control instruction-input chat-input" placeholder="Escribe tus instrucciones en lenguaje natural (por ejemplo, 'Crea un nuevo archivo llamado ejemplo.txt con Hola Mundo como contenido')"></textarea>
+                        <textarea id="instruction-input" class="form-control instruction-input chat-input" placeholder="Escribe tus instrucciones en lenguaje natural. Puedes:
+- Crear archivos (ej: 'crea un archivo index.html')
+- Crear carpetas (ej: 'crea una carpeta llamada src')
+- Ejecutar comandos (ej: 'ejecuta ls -la')
+- Construir aplicaciones (ej: 'crea una aplicación Flask llamada miproyecto')"></textarea>
                         <div class="d-flex justify-content-end mt-2">
                             <button id="clear-btn" class="btn btn-secondary me-3">
                                 <i class="bi bi-x"></i> Limpiar
@@ -235,7 +239,7 @@
         
         <!-- Features Section -->
         <div class="row mt-4 mb-5">
-            <div class="col-md-4 mb-4">
+            <div class="col-md-3 mb-4">
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="bi bi-chat-square-text"></i>
@@ -244,7 +248,7 @@
                     <p>Convierte tus instrucciones en lenguaje natural a comandos precisos del terminal o acciones sobre archivos.</p>
                 </div>
             </div>
-            <div class="col-md-4 mb-4">
+            <div class="col-md-3 mb-4">
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="bi bi-code-square"></i>
@@ -253,13 +257,22 @@
                     <p>Accede a diferentes agentes especializados según tus necesidades de desarrollo.</p>
                 </div>
             </div>
-            <div class="col-md-4 mb-4">
+            <div class="col-md-3 mb-4">
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="bi bi-file-earmark-code"></i>
                     </div>
                     <h4>Gestión de Archivos Inteligente</h4>
                     <p>Administra tus archivos y directorios de manera intuitiva con ayuda de inteligencia artificial.</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-rocket-takeoff"></i>
+                    </div>
+                    <h4>Creación de Aplicaciones</h4>
+                    <p>Construye aplicaciones completas con un solo comando. Soporta Flask, Node.js, Express y más.</p>
                 </div>
             </div>
         </div>

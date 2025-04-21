@@ -799,6 +799,7 @@ def process_instruction():
     - Crear un archivo
     - Crear una carpeta
     - Ejecutar un comando
+    - Construir una aplicación
     - Modificar un archivo existente
     """
     try:
@@ -818,7 +819,7 @@ def process_instruction():
         workspace = get_user_workspace(user_id)
         
         # Detectar si la instrucción parece ser un comando directo
-        command_prefixes = ['ejecuta ', 'corre ', 'run ', 'python ', 'node ', 'npm ', 'ls ', 'mkdir ', 'touch ', 'cat ']
+        command_prefixes = ['ejecuta ', 'corre ', 'run ', 'python ', 'node ', 'npm ', 'ls ', 'mkdir ', 'touch ', 'cat ', 'git ']
         is_command = any(instruction.lower().startswith(prefix) for prefix in command_prefixes)
         
         if is_command:
@@ -860,8 +861,297 @@ def process_instruction():
                 'agent_id': agent_id,
                 'model': model
             })
+            
+        # CASO 1: Construir una aplicación
+        # Patrones para detectar intención de construir una aplicación
+        build_app_patterns = [
+            r'(?:construye|crea|genera|haz|monta|inicia)\s+(?:una|un)?\s*(?:aplicaci[oó]n|app|proyecto|programa)',
+            r'(?:inicia|configura|prepara)\s+(?:una|un)?\s*(?:proyecto|aplicaci[oó]n)',
+            r'(?:crea|genera)\s+(?:una|un)?\s*(?:proyecto|aplicaci[oó]n)\s+(?:de|con)\s+(?:Flask|React|Node|Express|Vue|Angular)',
+            r'(?:quiero|necesito)\s+(?:hacer|crear|construir)\s+(?:una|un)?\s*(?:aplicaci[oó]n|app|proyecto)',
+            r'(?:ayuda|ayudame)\s+a\s+(?:crear|construir|desarrollar)\s+(?:una|un)?\s*(?:aplicaci[oó]n|app|proyecto)'
+        ]
         
-        # CASO 1: Crear una carpeta/directorio
+        is_build_app = any(re.search(pattern, instruction.lower()) for pattern in build_app_patterns)
+        
+        if is_build_app:
+            logger.info(f"Detectada intención de construir aplicación: '{instruction}'")
+            
+            # Detectar tipo de aplicación
+            app_type = 'web'  # por defecto
+            framework = 'flask'  # por defecto
+            
+            # Detectar frameworks/tecnologías mencionados
+            tech_patterns = {
+                'flask': r'(?:flask|python\s+web|aplicación\s+web\s+python)',
+                'django': r'(?:django)',
+                'react': r'(?:react|reactjs)',
+                'vue': r'(?:vue|vuejs)',
+                'angular': r'(?:angular)',
+                'node': r'(?:node|nodejs)',
+                'express': r'(?:express|expressjs)',
+                'api': r'(?:api|rest\s+api|restful)',
+                'web': r'(?:web|página|pagina|sitio)',
+                'desktop': r'(?:desktop|escritorio)',
+                'mobile': r'(?:mobile|móvil|movil|android|ios)'
+            }
+            
+            for tech, pattern in tech_patterns.items():
+                if re.search(pattern, instruction.lower()):
+                    if tech in ['flask', 'django', 'react', 'vue', 'angular', 'node', 'express']:
+                        framework = tech
+                    if tech in ['web', 'api', 'desktop', 'mobile']:
+                        app_type = tech
+            
+            # Extraer el nombre de la aplicación/proyecto
+            app_name_patterns = [
+                r'(?:llamad[oa]|nombrad[oa]|nombre|con\s+nombre|con\s+título)\s+["\']?([^"\']+)["\']?',
+                r'(?:un|una)\s+(?:proyecto|aplicación)\s+(?:llamad[oa]|nombrad[oa])\s+["\']?([^"\']+)["\']?',
+                r'(?:proyecto|aplicación)\s+["\']?([^"\']+)["\']?'
+            ]
+            
+            app_name = None
+            for pattern in app_name_patterns:
+                match = re.search(pattern, instruction)
+                if match:
+                    app_name = match.group(1).strip()
+                    break
+            
+            if not app_name:
+                # Si no se especifica un nombre, generar uno por defecto
+                import time
+                app_name = f"{framework}_app_{int(time.time())}"
+            
+            # Validar el nombre del proyecto
+            app_name = app_name.replace(' ', '_').replace('-', '_').lower()
+                
+            # Ejecutar comandos secuenciales para crear la aplicación según el framework
+            commands = []
+            result_messages = []
+            
+            # Crear directorio para la aplicación
+            app_dir = os.path.join(workspace, app_name)
+            os.makedirs(app_dir, exist_ok=True)
+            result_messages.append(f"✅ Creado directorio para proyecto: {app_name}")
+            
+            # Scaffold específico según el framework
+            if framework == 'flask':
+                # Crear estructura básica de una aplicación Flask
+                commands.append(f"cd {app_name} && touch app.py")
+                commands.append(f"cd {app_name} && mkdir templates static")
+                commands.append(f"cd {app_name} && mkdir static/css static/js static/images")
+                commands.append(f"cd {app_name} && touch templates/index.html static/css/style.css static/js/main.js")
+                commands.append(f"cd {app_name} && touch requirements.txt")
+                
+                # Crear contenido de app.py
+                app_py_content = """from flask import Flask, render_template
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+"""
+                with open(os.path.join(app_dir, "app.py"), "w") as f:
+                    f.write(app_py_content)
+                    
+                # Crear contenido de index.html
+                index_html_content = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Aplicación Flask</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Bienvenido a mi aplicación</h1>
+        <p>Esta es una aplicación Flask creada con Codestorm Assistant.</p>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>"""
+                with open(os.path.join(app_dir, "templates", "index.html"), "w") as f:
+                    f.write(index_html_content)
+                    
+                # Crear contenido de style.css
+                style_css_content = """body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    color: #333;
+}"""
+                with open(os.path.join(app_dir, "static", "css", "style.css"), "w") as f:
+                    f.write(style_css_content)
+                    
+                # Crear contenido de main.js
+                main_js_content = """document.addEventListener('DOMContentLoaded', function() {
+    console.log('Aplicación cargada correctamente');
+});"""
+                with open(os.path.join(app_dir, "static", "js", "main.js"), "w") as f:
+                    f.write(main_js_content)
+                    
+                # Crear requirements.txt
+                requirements_content = """flask==3.1.0
+gunicorn==23.0.0
+"""
+                with open(os.path.join(app_dir, "requirements.txt"), "w") as f:
+                    f.write(requirements_content)
+                    
+                result_messages.append(f"✅ Creada estructura básica de Flask en '{app_name}'")
+                result_messages.append(f"✅ Archivos creados: app.py, templates/index.html, static/css/style.css, static/js/main.js, requirements.txt")
+                
+            elif framework == 'node' or framework == 'express':
+                # Crear estructura básica de una aplicación Node.js/Express
+                commands.append(f"cd {app_name} && touch app.js package.json")
+                commands.append(f"cd {app_name} && mkdir public views routes")
+                commands.append(f"cd {app_name} && mkdir public/css public/js public/images")
+                commands.append(f"cd {app_name} && touch public/css/style.css public/js/main.js")
+                commands.append(f"cd {app_name} && touch views/index.html routes/index.js")
+                
+                # Crear package.json
+                package_json_content = """{
+  "name": "%s",
+  "version": "1.0.0",
+  "description": "Aplicación Node.js creada con Codestorm Assistant",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}""" % app_name
+                with open(os.path.join(app_dir, "package.json"), "w") as f:
+                    f.write(package_json_content)
+                    
+                # Crear app.js para Express
+                app_js_content = """const express = require('express');
+const path = require('path');
+const indexRoutes = require('./routes/index');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Routes
+app.use('/', indexRoutes);
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});"""
+                with open(os.path.join(app_dir, "app.js"), "w") as f:
+                    f.write(app_js_content)
+                    
+                # Crear routes/index.js
+                routes_content = """const express = require('express');
+const path = require('path');
+const router = express.Router();
+
+router.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../views/index.html'));
+});
+
+module.exports = router;"""
+                with open(os.path.join(app_dir, "routes", "index.js"), "w") as f:
+                    f.write(routes_content)
+                    
+                # Crear index.html
+                index_html_content = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Aplicación Node</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Bienvenido a mi aplicación</h1>
+        <p>Esta es una aplicación Node.js creada con Codestorm Assistant.</p>
+    </div>
+    <script src="/js/main.js"></script>
+</body>
+</html>"""
+                with open(os.path.join(app_dir, "views", "index.html"), "w") as f:
+                    f.write(index_html_content)
+                
+                result_messages.append(f"✅ Creada estructura básica de Node.js en '{app_name}'")
+                result_messages.append(f"✅ Archivos creados: app.js, package.json, routes/index.js, views/index.html")
+                result_messages.append(f"Para iniciar el servidor, ejecuta: 'cd {app_name} && npm install && npm start'")
+                
+            elif framework == 'react':
+                result_messages.append(f"✅ Para crear una aplicación React, se recomienda usar create-react-app.")
+                result_messages.append(f"Ejecuta: 'npx create-react-app {app_name}' para crear una aplicación React completa.")
+                
+            # Ejecutar cada comando creado
+            for command in commands:
+                try:
+                    process = subprocess.Popen(
+                        command,
+                        shell=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        cwd=workspace
+                    )
+                    stdout, stderr = process.communicate(timeout=30)
+                    status = process.returncode
+                    
+                    if status != 0:
+                        stderr_text = stderr.decode('utf-8', errors='replace')
+                        logger.warning(f"Comando '{command}' terminó con código {status}. Stderr: {stderr_text}")
+                        result_messages.append(f"⚠️ Advertencia al ejecutar '{command}': {stderr_text}")
+                except Exception as e:
+                    logger.error(f"Error ejecutando comando '{command}': {e}")
+                    result_messages.append(f"⚠️ Error ejecutando '{command}': {str(e)}")
+            
+            # Instrucciones finales
+            if framework == 'flask':
+                result_messages.append("\n🚀 Para ejecutar la aplicación Flask:")
+                result_messages.append(f"1. Navega al directorio: 'cd {app_name}'")
+                result_messages.append("2. Instala las dependencias: 'pip install -r requirements.txt'")
+                result_messages.append("3. Inicia el servidor: 'python app.py'")
+                result_messages.append("4. Abre http://localhost:5000 en tu navegador")
+            elif framework == 'node' or framework == 'express':
+                result_messages.append("\n🚀 Para ejecutar la aplicación Node.js:")
+                result_messages.append(f"1. Navega al directorio: 'cd {app_name}'")
+                result_messages.append("2. Instala las dependencias: 'npm install'")
+                result_messages.append("3. Inicia el servidor: 'npm start'")
+                result_messages.append("4. Abre http://localhost:3000 en tu navegador")
+                
+            # Enviar resultado combinado
+            return jsonify({
+                'success': True,
+                'command': f"Creación de aplicación {framework}: {app_name}",
+                'result': '\n'.join(result_messages),
+                'app_type': app_type,
+                'framework': framework,
+                'app_name': app_name
+            })
+        
+        # CASO 2: Crear una carpeta/directorio
         # Patrones para detectar intención de crear una carpeta
         create_dir_patterns = [
             r'crea\s+(?:una|la)?\s*carpeta',
@@ -941,7 +1231,7 @@ def process_instruction():
                     'error': f"Error al crear carpeta: {str(e)}"
                 }), 500
             
-        # CASO 2: Crear un archivo
+        # CASO 3: Crear un archivo
         # Patrones para detectar intención de crear un archivo
         create_file_patterns = [
             r'crea\s+(?:un|el)?\s*archivo',
@@ -1057,7 +1347,8 @@ def process_instruction():
             'result': f"He recibido tu instrucción: '{instruction}'. Puedo ayudarte con lo siguiente:\n\n"
                       "1) Para ejecutar un comando: comienza con 'ejecuta' o 'corre'.\n"
                       "2) Para crear un archivo: usa 'crea un archivo nombre.ext'.\n"
-                      "3) Para crear una carpeta: usa 'crea una carpeta nombre'."
+                      "3) Para crear una carpeta: usa 'crea una carpeta nombre'.\n"
+                      "4) Para construir una aplicación: 'crea una aplicación [tipo]' (ej: Flask, Node, React).\n"
         })
             
     except subprocess.TimeoutExpired:
