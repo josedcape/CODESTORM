@@ -277,7 +277,15 @@ function sendMessage(message) {
     collaborative_mode: collaborativeMode
   });
   
-  // Enviar al backend con información completa
+  // Enviar al backend con información completa y mejor manejo de errores
+  console.log("Enviando datos al servidor:", {
+    message, 
+    agent_id: agentId, 
+    context: conversationContext, 
+    model: selectedModel, 
+    collaborative_mode: collaborativeMode
+  });
+  
   fetch('/api/chat', {
     method: 'POST',
     headers: {
@@ -359,9 +367,22 @@ function sendMessage(message) {
     processHtmlCodeForPreview(data.response);
   })
   .catch(error => {
-    console.error('Error:', error);
+    console.error('Error en la comunicación con el servidor:', error);
     removeLoadingMessage();
-    addSystemMessage('Error de conexión. Por favor, verifica tu conexión e intenta de nuevo.');
+    
+    // Mensaje de error más detallado para facilitar la depuración
+    const errorMessage = `Error de conexión: ${error.message || 'Desconocido'}. 
+    Por favor, verifica tu conexión e intenta de nuevo. Si el problema persiste, 
+    es posible que haya un problema con las claves de API o la configuración del servidor.`;
+    
+    addSystemMessage(errorMessage);
+    
+    // Verificar si hay problemas de CORS o conexión
+    if (error.message && (error.message.includes('NetworkError') || error.message.includes('CORS'))) {
+      console.warn('Posible problema de CORS o red detectado');
+      // Sugerir verificar las configuraciones de API
+      addSystemMessage('Nota: Es posible que las claves de API no estén configuradas correctamente. Contacta al administrador del sistema.');
+    }
   });
 }
 

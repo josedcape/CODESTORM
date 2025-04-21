@@ -663,7 +663,12 @@ def execute_command():
 def handle_chat():
     """Procesa mensajes del chat usando el agente especializado seleccionado."""
     try:
+        # Mejorar logging para depuración
+        logging.info("Solicitud recibida en /api/chat")
+        
         data = request.json
+        logging.info(f"Datos recibidos: {data}")
+        
         user_message = data.get('message', '')
         agent_id = data.get('agent_id', 'default')
         agent_prompt = data.get('agent_prompt', '')
@@ -671,7 +676,10 @@ def handle_chat():
         model_choice = data.get('model', 'openai')
         collaborative_mode = data.get('collaborative_mode', True)  # Modo colaborativo activado por defecto
         
+        logging.info(f"Procesando mensaje: '{user_message}' con agente: {agent_id}, modelo: {model_choice}")
+        
         if not user_message:
+            logging.warning("Error: No se proporcionó mensaje")
             return jsonify({'error': 'No message provided'}), 400
             
         # Configurar prompts específicos según el agente seleccionado
