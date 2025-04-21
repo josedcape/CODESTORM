@@ -886,6 +886,10 @@ def handle_chat():
         complete_prompt = f"{conversation_history}Usuario: {user_message}"
         
         try:
+            # Agregar registro detallado antes de la llamada
+            logging.info(f"Enviando prompt al modelo {model_choice}: {complete_prompt[:100]}...")
+            logging.info(f"Usando prompt de sistema: {agent_prompt[:100]}...")
+            
             # Usar la función centralizada de generate_content de agents_utils
             # que gestiona todos los modelos con manejo de errores y fallbacks
             response = generate_content(
@@ -895,7 +899,8 @@ def handle_chat():
                 temperature=0.7
             )
             
-            logging.info(f"Respuesta generada correctamente con {model_choice}")
+            # Registrar parte de la respuesta para depuración
+            logging.info(f"Respuesta generada correctamente con {model_choice}: {response[:100]}...")
             
         except Exception as e:
             logging.error(f"Error al generar respuesta con {model_choice}: {str(e)}")
@@ -918,7 +923,7 @@ def handle_chat():
                     temperature=0.7
                 )
                 
-                logging.info(f"Respuesta generada correctamente con modelo de respaldo {fallback_model}")
+                logging.info(f"Respuesta generada correctamente con modelo de respaldo {fallback_model}: {response[:100]}...")
                 
             except Exception as fallback_error:
                 logging.error(f"Error en el modelo de respaldo: {str(fallback_error)}")
