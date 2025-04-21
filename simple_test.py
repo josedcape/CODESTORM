@@ -865,11 +865,12 @@ def process_instruction():
         # CASO 1: Construir una aplicación
         # Patrones para detectar intención de construir una aplicación
         build_app_patterns = [
-            r'(?:construye|crea|genera|haz|monta|inicia)\s+(?:una|un)?\s*(?:aplicaci[oó]n|app|proyecto|programa)',
-            r'(?:inicia|configura|prepara)\s+(?:una|un)?\s*(?:proyecto|aplicaci[oó]n)',
-            r'(?:crea|genera)\s+(?:una|un)?\s*(?:proyecto|aplicaci[oó]n)\s+(?:de|con)\s+(?:Flask|React|Node|Express|Vue|Angular)',
-            r'(?:quiero|necesito)\s+(?:hacer|crear|construir)\s+(?:una|un)?\s*(?:aplicaci[oó]n|app|proyecto)',
-            r'(?:ayuda|ayudame)\s+a\s+(?:crear|construir|desarrollar)\s+(?:una|un)?\s*(?:aplicaci[oó]n|app|proyecto)'
+            r'(?:construye|crea|genera|haz|monta|inicia)\s+(?:una|un)?\s*(?:aplicaci[oó]n|app|proyecto|programa|chatbot|sitio|página|pagina|web)',
+            r'(?:inicia|configura|prepara)\s+(?:una|un)?\s*(?:proyecto|aplicaci[oó]n|chatbot|sitio|página|pagina|web)',
+            r'(?:crea|genera)\s+(?:una|un)?\s*(?:proyecto|aplicaci[oó]n|chatbot|sitio|página|pagina|web)\s+(?:de|con|usando|basad[oa]\s+en)\s+(?:Flask|React|Node|Express|Vue|Angular)',
+            r'(?:quiero|necesito)\s+(?:hacer|crear|construir|desarrollar)\s+(?:una|un)?\s*(?:aplicaci[oó]n|app|proyecto|chatbot|sitio|página|pagina|web)',
+            r'(?:ayuda|ayudame)\s+a\s+(?:crear|construir|desarrollar)\s+(?:una|un)?\s*(?:aplicaci[oó]n|app|proyecto|chatbot|sitio|página|pagina|web)',
+            r'(?:crea|construye|genera|desarrolla)\s+(?:una|un)?\s*(?:chatbot|bot)\s+(?:usando|con|basad[oa]\s+en|moderno)?\s+(?:que\s+tenga|que\s+use)?'
         ]
         
         is_build_app = any(re.search(pattern, instruction.lower()) for pattern in build_app_patterns)
@@ -883,7 +884,7 @@ def process_instruction():
             
             # Detectar frameworks/tecnologías mencionados
             tech_patterns = {
-                'flask': r'(?:flask|python\s+web|aplicación\s+web\s+python)',
+                'flask': r'(?:flask|python\s+web|aplicación\s+web\s+python|framework\s+(?:con|de)\s+flask|chatbot\s+(?:con|usando|basado\s+en)\s+flask|flask\s+framework)',
                 'django': r'(?:django)',
                 'react': r'(?:react|reactjs)',
                 'vue': r'(?:vue|vuejs)',
@@ -891,7 +892,7 @@ def process_instruction():
                 'node': r'(?:node|nodejs)',
                 'express': r'(?:express|expressjs)',
                 'api': r'(?:api|rest\s+api|restful)',
-                'web': r'(?:web|página|pagina|sitio)',
+                'web': r'(?:web|página|pagina|sitio|chatbot|aplicación)',
                 'desktop': r'(?:desktop|escritorio)',
                 'mobile': r'(?:mobile|móvil|movil|android|ios)'
             }
@@ -906,8 +907,9 @@ def process_instruction():
             # Extraer el nombre de la aplicación/proyecto
             app_name_patterns = [
                 r'(?:llamad[oa]|nombrad[oa]|nombre|con\s+nombre|con\s+título)\s+["\']?([^"\']+)["\']?',
-                r'(?:un|una)\s+(?:proyecto|aplicación)\s+(?:llamad[oa]|nombrad[oa])\s+["\']?([^"\']+)["\']?',
-                r'(?:proyecto|aplicación)\s+["\']?([^"\']+)["\']?'
+                r'(?:un|una)\s+(?:proyecto|aplicación|chatbot)\s+(?:llamad[oa]|nombrad[oa])\s+["\']?([^"\']+)["\']?',
+                r'(?:proyecto|aplicación|chatbot|app)\s+["\']?([^"\']+)["\']?',
+                r'(?:crea|construye|genera|desarrolla)\s+(?:una|un)?\s*(?:chatbot|bot)\s+(?:moderno|simple)?\s+(?:llamad[oa]|nombrad[oa])?\s+["\']?([^"\']+)["\']?'
             ]
             
             app_name = None
