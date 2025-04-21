@@ -44,8 +44,43 @@ function initializeChat() {
     setActiveAgent(selectedAgentId);
   });
   
+  // Inicializar selectores para dispositivos móviles
+  initMobileSelectors();
+  
   // Inicializar detección de comandos de creación de páginas
   initCreationCommandDetection();
+}
+
+// Inicializar selectores para dispositivos móviles
+function initMobileSelectors() {
+  const mobileModelSelect = document.getElementById('mobile-model-select');
+  const mobileAgentSelector = document.getElementById('mobile-agent-selector');
+  const desktopModelSelect = document.getElementById('model-select');
+  
+  if (mobileModelSelect && desktopModelSelect) {
+    // Sincronizar selección inicial
+    mobileModelSelect.value = desktopModelSelect.value;
+    
+    // Sincronizar cambios de modelo
+    mobileModelSelect.addEventListener('change', function() {
+      desktopModelSelect.value = this.value;
+      console.log("Modelo cambiado a: " + this.value);
+    });
+    
+    desktopModelSelect.addEventListener('change', function() {
+      if (mobileModelSelect) {
+        mobileModelSelect.value = this.value;
+      }
+    });
+  }
+  
+  if (mobileAgentSelector) {
+    mobileAgentSelector.addEventListener('change', function() {
+      const selectedAgentId = this.value;
+      setActiveAgent(selectedAgentId);
+      console.log("Agente móvil cambiado a: " + selectedAgentId);
+    });
+  }
 }
 
 // Cargar los agentes en el selector
@@ -108,10 +143,16 @@ function setActiveAgent(agentId) {
   window.app = window.app || {};
   window.app.activeAgent = window.SPECIALIZED_AGENTS[agentId] || window.SPECIALIZED_AGENTS.developer;
   
-  // Actualizar el valor del selector
+  // Actualizar el valor de los selectores (desktop y móvil)
   const agentSelector = document.getElementById('agent-selector');
+  const mobileAgentSelector = document.getElementById('mobile-agent-selector');
+  
   if (agentSelector) {
     agentSelector.value = agentId;
+  }
+  
+  if (mobileAgentSelector) {
+    mobileAgentSelector.value = agentId;
   }
   
   // Actualizar la descripción del agente

@@ -10,13 +10,41 @@
 
 <!-- Highlight.js para resaltado de sintaxis -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+<style>
+/* Estilos para mejorar la visualización en dispositivos móviles */
+@media (max-width: 768px) {
+    .mobile-hidden {
+        display: none !important;
+    }
+    
+    .card-header-futuristic .agent-controls {
+        display: flex;
+        align-items: center;
+    }
+    
+    .card-header-futuristic .agent-controls select {
+        max-width: 150px;
+        font-size: 0.8rem;
+        margin-left: 5px;
+    }
+    
+    .chat-container-futuristic {
+        height: calc(100vh - 180px) !important;
+    }
+    
+    #chat-messages {
+        max-height: calc(100vh - 220px) !important;
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="row">
-        <!-- Panel de Configuración de Agentes -->
-        <div class="col-lg-3 col-md-4">
+        <!-- Panel de Configuración de Agentes - Oculto en móviles -->
+        <div class="col-lg-3 col-md-4 mobile-hidden">
             <div class="card card-futuristic h-100 mb-4">
                 <div class="card-header card-header-futuristic">
                     <span><i class="bi bi-cpu me-2"></i>Configuración de Agentes</span>
@@ -70,6 +98,21 @@
                     <div class="card card-futuristic h-100">
                         <div class="card-header card-header-futuristic d-flex justify-content-between align-items-center">
                             <span><i class="bi bi-chat-dots me-2"></i>Chat con Agente Especializado</span>
+                            
+                            <!-- Controles de agente para dispositivos móviles -->
+                            <div class="agent-controls d-none d-md-none d-sm-flex">
+                                <select id="mobile-model-select" class="form-select form-select-sm me-2">
+                                    <option value="openai" selected>OpenAI</option>
+                                    <option value="anthropic">Claude</option>
+                                    <option value="gemini">Gemini</option>
+                                </select>
+                                <select id="mobile-agent-selector" class="form-select form-select-sm">
+                                    <option value="developer" selected>Desarrollo</option>
+                                    <option value="architect">Arquitectura</option>
+                                    <option value="advanced">Avanzado</option>
+                                    <option value="general">General</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="card-body p-0 d-flex flex-column" style="height: calc(100vh - 350px);">
                             <div id="chat-container" class="chat-container-futuristic">
