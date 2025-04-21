@@ -252,8 +252,11 @@
                                 <button id="copy-button" class="btn btn-sm btn-outline-secondary me-2">
                                     <i class="fa-regular fa-copy me-1"></i> Copiar
                                 </button>
-                                <button id="apply-button" class="btn btn-sm btn-primary">
+                                <button id="apply-button" class="btn btn-sm btn-primary me-2">
                                     <i class="fa-solid fa-check me-1"></i> Aplicar cambios
+                                </button>
+                                <button id="send-to-assistant-button" class="btn btn-sm btn-accent">
+                                    <i class="fa-solid fa-robot me-1"></i> Enviar al asistente
                                 </button>
                             </div>
                         </div>
@@ -409,6 +412,27 @@
             codeInput.value = correctedCode.textContent;
             alert('Cambios aplicados al editor.');
         });
+        
+        // Botón para enviar al asistente
+        const sendToAssistantButton = document.getElementById('send-to-assistant-button');
+        if (sendToAssistantButton) {
+            sendToAssistantButton.addEventListener('click', function() {
+                const code = correctedCode.textContent;
+                const instructions = instructionsInput.value.trim();
+                
+                if (!code) {
+                    alert('No hay código para enviar al asistente.');
+                    return;
+                }
+                
+                // Crear un mensaje para el asistente
+                const message = `Por favor, ayúdame con este código en ${currentLanguage}:\n\n\`\`\`${currentLanguage}\n${code}\n\`\`\`\n\nInstrucciones adicionales: ${instructions || 'Revisar y optimizar el código.'}`;
+                
+                // Redirigir a la página de chat con el mensaje como parámetro
+                const encodedMessage = encodeURIComponent(message);
+                window.location.href = `/chat?message=${encodedMessage}`;
+            });
+        }
         
         // Función para renderizar los cambios en la vista de cambios
         function renderChanges(changes) {
