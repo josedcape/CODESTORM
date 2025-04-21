@@ -1049,6 +1049,22 @@ def process_natural_language_internal(text):
                 'success': False,
                 'message': 'No se proporcionó texto para procesar'
             }
+            
+        # Verificar primero si es una petición para crear una carpeta
+        folder_pattern = re.compile(r'(?:crea|genera|hacer|crear).*?(?:un|una|el|la)?\s*(?:directorio|carpeta|folder|dirección)(?:\s+(?:llamad[oa]|nombrad[oa]|con\s+nombre))?\s*[\"\'"]?([a-zA-Z0-9_\-\.\/]+)[\"\'"]?', re.IGNORECASE)
+        folder_match = folder_pattern.search(text)
+        
+        if folder_match:
+            folder_name = folder_match.group(1).strip()
+            command = f"mkdir -p {folder_name}"
+            result = execute_command_internal(command)
+            return {
+                'success': True,
+                'action': 'create_folder',
+                'folder_name': folder_name,
+                'output': result.get('stdout', '') + '\n' + result.get('stderr', ''),
+                'message': f'¡Carpeta "{folder_name}" creada correctamente!'
+            }
         
         # Patrones para diferentes acciones - Versión mejorada y más precisa
         file_patterns = {
@@ -1487,6 +1503,21 @@ def process_natural_language():
                 'success': False,
                 'message': 'No se proporcionó texto para procesar'
             }), 400
+            
+        # Verificar primero si es una petición para crear una carpeta
+        folder_pattern = re.compile(r'(?:crea|genera|hacer|crear).*?(?:un|una|el|la)?\s*(?:directorio|carpeta|folder|dirección)(?:\s+(?:llamad[oa]|nombrad[oa]|con\s+nombre))?\s*[\"\'"]?([a-zA-Z0-9_\-\.\/]+)[\"\'"]?', re.IGNORECASE)
+        folder_match = folder_pattern.search(text)
+        
+        if folder_match:
+            folder_name = folder_match.group(1).strip()
+            command = f"mkdir -p {folder_name}"
+            result = execute_command_internal(command)
+            return jsonify({
+                'success': True,
+                'action': 'create_folder',
+                'folder_name': folder_name,
+                'output': result.get('stdout', '') + '\n' + result.get('stderr', '')
+            })
         
         # Patrones para diferentes acciones - Versión mejorada y más precisa
         file_patterns = {
