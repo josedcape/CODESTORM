@@ -1356,6 +1356,26 @@ module.exports = router;"""
                 result_messages.append("2. Instala las dependencias: 'npm install'")
                 result_messages.append("3. Inicia el servidor: 'npm start'")
                 result_messages.append("4. Abre http://localhost:3000 en tu navegador")
+            
+            # Añadir recomendaciones para mejoras del proyecto usando el analizador
+            try:
+                # Analizar el proyecto recién creado
+                project_path = os.path.join(workspace, app_name)
+                recommendations = project_analyzer.get_next_steps(project_path)
+                
+                # Añadir las recomendaciones a la respuesta
+                if recommendations:
+                    result_messages.append("\n📋 Recomendaciones para mejorar tu proyecto:")
+                    for i, recommendation in enumerate(recommendations[:7], 1):  # Mostrar máximo 7 recomendaciones
+                        result_messages.append(f"{i}. {recommendation}")
+                    
+                    if len(recommendations) > 7:
+                        result_messages.append(f"   ... y {len(recommendations) - 7} sugerencias más.")
+                        
+                    result_messages.append("\nEstas sugerencias te ayudarán a seguir las mejores prácticas y mejorar tu aplicación.")
+            except Exception as e:
+                logger.error(f"Error al generar recomendaciones: {str(e)}")
+                # No mostramos el error al usuario, simplemente continuamos sin recomendaciones
                 
             # Enviar resultado combinado
             return jsonify({
