@@ -634,6 +634,7 @@ def api_chat():
         message = data.get('message', '')
         agent_id = data.get('agent_id', 'general')
         model_choice = data.get('model', 'openai')
+        context = data.get('context', [])
         
         # Para depuración, verificamos si las claves API están configuradas
         openai_key = os.environ.get('OPENAI_API_KEY')
@@ -654,38 +655,27 @@ def api_chat():
                 'error': error_msg
             }), 400
         
-        # Determinar si el mensaje es simple (solo saludo) o complejo
-        is_simple_message = len(message.split()) <= 3 and any(word in message.lower() for word in 
-                                                          ['hola', 'saludos', 'hi', 'hello', 'hey', 'buenos días', 'buenas'])
+        # Filtrar mensajes de sistema del contexto (como "Conectando con el servidor...")
+        filtered_context = [msg for msg in context if msg.get('role') != 'system' and msg.get('content')]
         
-        logger.info(f"Tipo de mensaje: {'Simple (saludo)' if is_simple_message else 'Complejo'}")
+        # Importar aquí para evitar problemas de importación circular
+        from agents_utils import generate_response
         
-        # Respuesta dependiendo de si el mensaje es simple o complejo
-        agent_name = {
-            'developer': "Desarrollador Experto",
-            'architect': "Arquitecto de Software",
-            'advanced': "Especialista Avanzado",
-            'general': "Asistente General"
-        }.get(agent_id, "Asistente General")
+        # Llamar a la función real de generación de respuesta
+        response_data = generate_response(
+            user_message=message,
+            agent_id=agent_id,
+            context=filtered_context,
+            model=model_choice
+        )
         
-        if is_simple_message:
-            # Para mensajes simples, respuesta rápida sin llamar al servicio
-            response = f"¡Hola! Soy el {agent_name}. ¿En qué puedo ayudarte hoy? 😀"
-        else:
-            # Para mensajes complejos, simulamos una respuesta elaborada
-            # En un entorno real, aquí se conectaría con el servicio de IA
-            response = f"""Soy el {agent_name}. He analizado tu mensaje: '{message}'.
-
-Para ayudarte con esta solicitud, primero necesito entender mejor tus requisitos. 
-¿Podrías proporcionarme más detalles sobre lo que necesitas específicamente?
-
-Por ejemplo:
-- ¿Cuál es el objetivo principal de tu proyecto?
-- ¿Qué tecnologías prefieres utilizar?
-- ¿Tienes alguna restricción o requisito especial?
-
-Estoy aquí para ayudarte a desarrollar una solución óptima. 🚀"""
+        if not response_data.get('success'):
+            return jsonify({
+                'success': False,
+                'error': response_data.get('error', 'Error generando respuesta')
+            }), 500
         
+        response = response_data.get('response', '')
         logger.info(f"Respuesta generada correctamente para '{message}'")
         
         return jsonify({
@@ -694,12 +684,12 @@ Estoy aquí para ayudarte a desarrollar una solución óptima. 🚀"""
             'response': response,
             'agent_id': agent_id,
             'debug_info': {
-                'message_type': 'simple' if is_simple_message else 'complex',
                 'api_keys_configured': {
                     'openai': bool(openai_key),
                     'anthropic': bool(anthropic_key),
                     'gemini': bool(gemini_key)
-                }
+                },
+                'message_type': 'complex'
             }
         })
     except Exception as e:
