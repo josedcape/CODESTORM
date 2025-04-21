@@ -11,6 +11,9 @@ function initializeChat() {
   // Cargar los agentes en el selector
   loadAgentSelector();
   
+  // Verificar si hay un mensaje en la URL (enviado desde el corrector de código)
+  checkMessageFromUrl(chatInput);
+  
   // Evento para enviar mensaje y autoajustar altura
   chatForm.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -28,6 +31,12 @@ function initializeChat() {
     this.style.height = 'auto';
     this.style.height = (this.scrollHeight) + 'px';
   });
+  
+  // Si se recibió un mensaje de la URL, ajustar la altura inicial
+  if (chatInput.value) {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = (chatInput.scrollHeight) + 'px';
+  }
   
   // Evento para cambiar de agente
   agentSelector.addEventListener('change', function() {
@@ -851,6 +860,48 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Verificar si hay un mensaje en la URL (enviado desde el corrector de código)
+function checkMessageFromUrl(chatInput) {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const message = urlParams.get('message');
+    
+    if (message) {
+      // Decodificar el mensaje
+      const decodedMessage = decodeURIComponent(message);
+      
+      // Establecer el mensaje en el campo de texto
+      if (chatInput) {
+        chatInput.value = decodedMessage;
+        
+        // Simular un clic en el botón de enviar después de un breve retraso
+        // para dar tiempo a que se cargue toda la página
+        setTimeout(() => {
+          const sendButton = document.querySelector('.chat-send-button');
+          if (sendButton) {
+            // Opcional: Desplazarse al campo de chat para que el usuario vea que se está enviando
+            chatInput.scrollIntoView({ behavior: 'smooth' });
+            
+            // Notificar al usuario
+            addSystemMessage('Mensaje recibido del corrector de código. Enviando al asistente...');
+            
+            // Enviar el mensaje automáticamente
+            sendMessage(decodedMessage);
+            
+            // Limpiar el campo después de enviar
+            chatInput.value = '';
+            
+            // Limpiar la URL para evitar reenvíos al recargar la página
+            history.replaceState({}, document.title, window.location.pathname);
+          }
+        }, 1000);
+      }
+    }
+  } catch (error) {
+    console.error('Error al procesar mensaje de URL:', error);
+  }
 }
 
 // Exponer funciones necesarias globalmente
