@@ -177,6 +177,11 @@ def code_corrector():
     """Ruta al corrector de código."""
     return render_template('code_corrector.html')
 
+@app.route('/constructor')
+def constructor():
+    """Ruta al constructor de tareas."""
+    return render_template('constructor.html')
+
 @app.route('/api/analyze_code', methods=['POST'])
 def analyze_code():
     """
@@ -619,7 +624,7 @@ def process_code():
             'error': str(e)
         }), 500
 
-# API para chat y generación de contenido
+# APIs para chat y generación de contenido
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     """API para chat con agentes especializados."""
@@ -779,6 +784,155 @@ def api_execute_command():
         return jsonify({
             'success': False,
             'error': str(e)
+        }), 500
+
+@app.route('/api/constructor', methods=['POST'])
+def api_constructor():
+    """
+    API específica para el Constructor de Tareas.
+    
+    Permite la creación guiada de aplicaciones mediante análisis, 
+    retroalimentación y construcción paso a paso. Mantiene un estado
+    de conversación más complejo que incluye las fases del proyecto,
+    archivos generados y progreso de implementación.
+    
+    Espera:
+    - message: mensaje del usuario
+    - agent_id: ID del agente especializado (default: architect)
+    - context: historial de mensajes
+    - model: modelo de IA a utilizar (openai, anthropic, gemini)
+    - collaborative_mode: si está activado el modo colaborativo
+    - conversation_state: estado de la conversación específico del constructor
+    
+    Retorna:
+    - La respuesta al mensaje
+    - Acciones especiales a realizar (crear archivos, ejecutar comandos, etc.)
+    - Estado de conversación actualizado
+    """
+    try:
+        # Registro detallado para diagnóstico
+        logger.info("=== Solicitud recibida en /api/constructor ===")
+        
+        data = request.json
+        logger.info(f"Datos recibidos (JSON): {data}")
+        
+        user_id = data.get('user_id', 'default')
+        message = data.get('message', '')
+        agent_id = data.get('agent_id', 'architect')  # Por defecto usamos el arquitecto
+        model_choice = data.get('model', 'openai')
+        context = data.get('context', [])
+        conversation_state = data.get('conversation_state', {})
+        
+        # Para depuración, verificamos si las claves API están configuradas
+        openai_key = os.environ.get('OPENAI_API_KEY')
+        anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
+        gemini_key = os.environ.get('GEMINI_API_KEY')
+        
+        logger.info(f"Estado API keys: OpenAI: {'Configurado' if openai_key else 'No configurado'}, "
+                   f"Anthropic: {'Configurado' if anthropic_key else 'No configurado'}, "
+                   f"Gemini: {'Configurado' if gemini_key else 'No configurado'}")
+        
+        logger.info(f"Procesando mensaje de constructor: '{message}' con agente: {agent_id}, modelo: {model_choice}")
+        
+        if not message or message.strip() == '':
+            error_msg = 'Se requiere un mensaje no vacío'
+            logger.warning(f"Error: {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg
+            }), 400
+        
+        # Filtrar mensajes de sistema del contexto
+        filtered_context = [msg for msg in context if msg.get('role') != 'system' and msg.get('content')]
+        
+        # Para el constructor, añadimos instrucciones especiales al mensaje
+        # para enfocarlo en el desarrollo guiado de aplicaciones
+        special_instructions = f"""
+        Estás actuando como un Constructor de Tareas especializado, guiando paso a paso el desarrollo de una aplicación.
+        
+        Estado actual del proyecto:
+        - Fase: {conversation_state.get('taskPhase', 'initial')}
+        - Tipo de proyecto: {conversation_state.get('projectType', 'No definido')}
+        - Progreso de implementación: {conversation_state.get('implementationProgress', 0)}%
+        
+        Tu objetivo es:
+        1. Analizar los requisitos del proyecto
+        2. Planificar la estructura de los archivos y componentes
+        3. Guiar la implementación paso a paso
+        4. Sugerir mejoras y probar la funcionalidad
+        
+        Proporciona orientación precisa, realiza preguntas cuando necesites más información,
+        y ayuda al usuario a completar su proyecto de manera efectiva.
+        """
+        
+        # Importar aquí para evitar problemas de importación circular
+        from agents_utils import generate_response
+        
+        # Modificar el mensaje para incluir las instrucciones especiales
+        enhanced_message = f"{message}\n\n{special_instructions}"
+        
+        # Llamar a la función de generación de respuesta
+        response_data = generate_response(
+            user_message=enhanced_message,
+            agent_id=agent_id,
+            context=filtered_context,
+            model=model_choice
+        )
+        
+        if not response_data.get('success'):
+            return jsonify({
+                'success': False,
+                'error': response_data.get('error', 'Error generando respuesta')
+            }), 500
+        
+        response = response_data.get('response', '')
+        logger.info(f"Respuesta de constructor generada correctamente para '{message}'")
+        
+        # Analizamos el mensaje para detectar acciones a realizar
+        actions = []
+        
+        # Por ahora, solo un constructor de acciones simple
+        # En una implementación completa, se analizaría la respuesta para detectar
+        # creación de archivos, ejecución de comandos, actualización de progreso, etc.
+        
+        # Actualizar el estado de la conversación
+        # En una implementación real, se actualizaría según el análisis de la respuesta
+        if conversation_state.get('taskPhase') == 'initial' and len(filtered_context) <= 2:
+            # Primera interacción, cambiar a fase de análisis
+            conversation_state['taskPhase'] = 'analysis'
+            conversation_state['implementationProgress'] = 10
+            
+            # Añadir acción para actualizar progreso
+            actions.append({
+                'type': 'update_progress',
+                'progress': 10
+            })
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'response': response,
+            'agent_id': agent_id,
+            'actions': actions,
+            'conversation_state': conversation_state,
+            'debug_info': {
+                'api_keys_configured': {
+                    'openai': bool(openai_key),
+                    'anthropic': bool(anthropic_key),
+                    'gemini': bool(gemini_key)
+                },
+                'message_type': 'complex'
+            }
+        })
+    except Exception as e:
+        error_details = str(e)
+        logger.error(f"Error en el constructor: {error_details}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_details,
+            'error_type': type(e).__name__,
+            'suggestion': "Por favor, verifica el formato de tu solicitud y que todos los campos requeridos estén presentes."
         }), 500
 
 @app.route('/api/process', methods=['POST'])

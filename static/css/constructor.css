@@ -1,0 +1,195 @@
+/**
+ * Estilos para el Constructor de Tareas
+ */
+
+/* Contenedor principal del constructor */
+.constructor-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--bs-dark);
+}
+
+/* Notificaciones de archivos creados */
+.file-notification {
+    margin: 1rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background-color: rgba(13, 110, 253, 0.1);
+    border-left: 4px solid #0d6efd;
+}
+
+.file-notification-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #0d6efd;
+}
+
+.file-notification pre {
+    margin: 0;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    max-height: 300px;
+    overflow: auto;
+}
+
+/* Notificaciones de comandos ejecutados */
+.command-notification {
+    margin: 1rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background-color: rgba(25, 135, 84, 0.1);
+    border-left: 4px solid #198754;
+}
+
+.command-notification-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #198754;
+}
+
+.command-notification pre {
+    margin: 0;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    max-height: 300px;
+    overflow: auto;
+}
+
+/* Contenedor de progreso */
+.progress-container {
+    margin: 1.5rem;
+    padding: 1rem;
+    background-color: rgba(33, 37, 41, 0.2);
+    border-radius: 0.5rem;
+}
+
+.progress-container h5 {
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    color: var(--bs-light);
+}
+
+/* Notificación de siguiente paso */
+.next-step-notification {
+    margin: 1rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background-color: rgba(255, 193, 7, 0.1);
+    border-left: 4px solid #ffc107;
+}
+
+.next-step-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #ffc107;
+}
+
+.next-step-content {
+    padding: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 0.25rem;
+}
+
+/* Estilos adicionales para la página de bienvenida */
+.chat-welcome {
+    max-width: 750px;
+    margin: 2rem auto;
+    background-color: rgba(33, 37, 41, 0.2);
+    border-radius: 1rem;
+    transition: all 0.3s ease;
+}
+
+.chat-welcome:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-icon {
+    font-size: 2.5rem;
+    width: 5rem;
+    height: 5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #0d6efd, #6610f2);
+    border-radius: 50%;
+    color: white;
+}
+
+.welcome-feather {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.welcome-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.feature {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: rgba(33, 37, 41, 0.2);
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.feature:hover {
+    background-color: rgba(33, 37, 41, 0.4);
+    transform: translateY(-2px);
+}
+
+.feature i {
+    color: #0d6efd;
+}
+
+/* Animaciones para elementos específicos del constructor */
+@keyframes progress-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+    }
+}
+
+.progress-bar {
+    animation: progress-pulse 2s infinite;
+}
+
+@keyframes notify-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.file-notification,
+.command-notification,
+.next-step-notification {
+    animation: notify-fade-in 0.5s ease-out forwards;
+}
