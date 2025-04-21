@@ -540,18 +540,43 @@ def process_code():
 def api_chat():
     """API para chat con agentes especializados."""
     try:
-        data = request.json
-        user_id = data.get('user_id', 'default')
-        message = data.get('message')
-        agent_id = data.get('agent_id', 'general')
+        # Registro detallado para diagnóstico
+        logger.info("=== Solicitud recibida en /api/chat ===")
         
-        if not message:
+        data = request.json
+        logger.info(f"Datos recibidos (JSON): {data}")
+        
+        user_id = data.get('user_id', 'default')
+        message = data.get('message', '')
+        agent_id = data.get('agent_id', 'general')
+        model_choice = data.get('model', 'openai')
+        
+        # Para depuración, verificamos si las claves API están configuradas
+        openai_key = os.environ.get('OPENAI_API_KEY')
+        anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
+        gemini_key = os.environ.get('GEMINI_API_KEY')
+        
+        logger.info(f"Estado API keys: OpenAI: {'Configurado' if openai_key else 'No configurado'}, "
+                   f"Anthropic: {'Configurado' if anthropic_key else 'No configurado'}, "
+                   f"Gemini: {'Configurado' if gemini_key else 'No configurado'}")
+        
+        logger.info(f"Procesando mensaje: '{message}' con agente: {agent_id}, modelo: {model_choice}")
+        
+        if not message or message.strip() == '':
+            error_msg = 'Se requiere un mensaje no vacío'
+            logger.warning(f"Error: {error_msg}")
             return jsonify({
                 'success': False,
-                'error': 'Se requiere un mensaje'
+                'error': error_msg
             }), 400
         
-        # Respuesta simulada (en una implementación real, aquí se conectaría con el servicio de IA)
+        # Determinar si el mensaje es simple (solo saludo) o complejo
+        is_simple_message = len(message.split()) <= 3 and any(word in message.lower() for word in 
+                                                          ['hola', 'saludos', 'hi', 'hello', 'hey', 'buenos días', 'buenas'])
+        
+        logger.info(f"Tipo de mensaje: {'Simple (saludo)' if is_simple_message else 'Complejo'}")
+        
+        # Respuesta dependiendo de si el mensaje es simple o complejo
         agent_name = {
             'developer': "Desarrollador Experto",
             'architect': "Arquitecto de Software",
@@ -559,19 +584,50 @@ def api_chat():
             'general': "Asistente General"
         }.get(agent_id, "Asistente General")
         
-        response = f"Soy {agent_name}. He recibido tu mensaje: '{message}'. ¿En qué puedo ayudarte?"
+        if is_simple_message:
+            # Para mensajes simples, respuesta rápida sin llamar al servicio
+            response = f"¡Hola! Soy el {agent_name}. ¿En qué puedo ayudarte hoy? 😀"
+        else:
+            # Para mensajes complejos, simulamos una respuesta elaborada
+            # En un entorno real, aquí se conectaría con el servicio de IA
+            response = f"""Soy el {agent_name}. He analizado tu mensaje: '{message}'.
+
+Para ayudarte con esta solicitud, primero necesito entender mejor tus requisitos. 
+¿Podrías proporcionarme más detalles sobre lo que necesitas específicamente?
+
+Por ejemplo:
+- ¿Cuál es el objetivo principal de tu proyecto?
+- ¿Qué tecnologías prefieres utilizar?
+- ¿Tienes alguna restricción o requisito especial?
+
+Estoy aquí para ayudarte a desarrollar una solución óptima. 🚀"""
+        
+        logger.info(f"Respuesta generada correctamente para '{message}'")
         
         return jsonify({
             'success': True,
             'message': message,
             'response': response,
-            'agent_id': agent_id
+            'agent_id': agent_id,
+            'debug_info': {
+                'message_type': 'simple' if is_simple_message else 'complex',
+                'api_keys_configured': {
+                    'openai': bool(openai_key),
+                    'anthropic': bool(anthropic_key),
+                    'gemini': bool(gemini_key)
+                }
+            }
         })
     except Exception as e:
-        logger.error(f"Error en el chat: {str(e)}")
+        error_details = str(e)
+        logger.error(f"Error en el chat: {error_details}")
+        
+        # Proporcionar más detalles sobre el error para facilitar el diagnóstico
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': error_details,
+            'error_type': type(e).__name__,
+            'suggestion': "Por favor, verifica el formato de tu solicitud y que todos los campos requeridos estén presentes."
         }), 500
 
 # API para ejecución de comandos
@@ -778,8 +834,79 @@ def process_instruction():
 def health():
     return jsonify({
         'status': 'ok',
-        'message': 'Aplicación funcionando correctamente'
+        'message': 'Aplicación funcionando correctamente',
+        'diagnostic_routes': ['health', 'api/test_apis']
     })
+
+# Ruta de prueba de APIs
+@app.route('/api/test_apis', methods=['GET'])
+def test_apis():
+    """Prueba las conexiones a las APIs de IA para diagnóstico."""
+    results = {
+        'status': 'testing',
+        'apis': {
+            'openai': {'status': 'unknown'},
+            'anthropic': {'status': 'unknown'},
+            'gemini': {'status': 'unknown'}
+        }
+    }
+    
+    # Verificar OpenAI
+    openai_key = os.environ.get('OPENAI_API_KEY')
+    if openai_key:
+        try:
+            logger.info("Probando conexión con OpenAI...")
+            results['apis']['openai'] = {
+                'status': 'configured',
+                'message': 'API key configurada, pero no se prueba la conexión en esta versión simplificada'
+            }
+        except Exception as e:
+            error_msg = str(e)
+            results['apis']['openai'] = {
+                'status': 'error',
+                'message': error_msg[:100] + '...' if len(error_msg) > 100 else error_msg
+            }
+            logger.error(f"Error al verificar OpenAI: {error_msg}")
+    else:
+        results['apis']['openai'] = {
+            'status': 'not_configured',
+            'message': 'API key no configurada'
+        }
+    
+    # Verificar Anthropic
+    anthropic_key = os.environ.get('ANTHROPIC_API_KEY')
+    if anthropic_key:
+        results['apis']['anthropic'] = {
+            'status': 'configured',
+            'message': 'API key configurada, pero no se prueba la conexión en esta versión simplificada'
+        }
+    else:
+        results['apis']['anthropic'] = {
+            'status': 'not_configured',
+            'message': 'API key no configurada'
+        }
+    
+    # Verificar Gemini
+    gemini_key = os.environ.get('GEMINI_API_KEY')
+    if gemini_key:
+        results['apis']['gemini'] = {
+            'status': 'configured',
+            'message': 'API key configurada, pero no se prueba la conexión en esta versión simplificada'
+        }
+    else:
+        results['apis']['gemini'] = {
+            'status': 'not_configured',
+            'message': 'API key no configurada'
+        }
+    
+    # Agregar información sobre las rutas de chat
+    results['chat_endpoints'] = {
+        'handle_chat': '/api/chat',
+        'generate_response': '/api/generate',
+        'process_code': '/api/process_code'
+    }
+    
+    return jsonify(results)
 
 # Servir archivos estáticos
 @app.route('/static/<path:filename>')
