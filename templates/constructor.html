@@ -1,174 +1,161 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Constructor de Tareas - CODESTORM</title>
+    <title>Constructor de Tareas - CODESTORM Assistant</title>
     
-    <!-- CSS Bootstrap y personalizado -->
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+    <!-- CSS Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    
+    <!-- CSS personalizado -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/animations.css">
+    <link rel="stylesheet" href="/static/css/constructor.css">
     
     <!-- Highlight.js para resaltado de código -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
     
-    <!-- Iconos -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
 </head>
-<body class="futuristic-theme">
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Barra lateral -->
-            <div class="col-md-3 col-lg-2 sidebar p-0">
-                <div class="sidebar-content">
-                    <!-- Logo y título -->
-                    <div class="px-3 pt-4 pb-2 text-center">
-                        <a href="/" class="text-decoration-none">
-                            <h2 class="sidebar-logo futuristic-text">
-                                <span class="tech-text">CODE</span><span class="gradient-text">STORM</span>
-                            </h2>
-                        </a>
-                        <p class="small text-white-50">Asistente de Desarrollo Avanzado</p>
+<body>
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <img src="/static/images/logo.svg" alt="CODESTORM Logo" width="30" height="30" class="d-inline-block align-text-top me-2">
+                CODESTORM
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i data-feather="home"></i> Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/chat"><i data-feather="message-square"></i> Asistente</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/constructor"><i data-feather="package"></i> Constructor</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/files"><i data-feather="folder"></i> Archivos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/code_corrector"><i data-feather="code"></i> Corrector</a>
+                    </li>
+                </ul>
+                <div class="dropdown">
+                    <button class="btn btn-outline-light dropdown-toggle" type="button" id="modelSelector" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i data-feather="cpu"></i> <span id="currentModel">OpenAI</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="modelSelector">
+                        <li><a class="dropdown-item model-option" href="#" data-model="openai">OpenAI</a></li>
+                        <li><a class="dropdown-item model-option" href="#" data-model="anthropic">Anthropic</a></li>
+                        <li><a class="dropdown-item model-option" href="#" data-model="gemini">Gemini</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenedor principal -->
+    <div class="constructor-container">
+        <!-- Área de mensajes -->
+        <div class="chat-messages-container">
+            <div id="chatMessages" class="chat-messages">
+                <!-- Mensaje de bienvenida -->
+                <div class="chat-welcome p-4 text-center">
+                    <div class="welcome-icon mb-3">
+                        <i data-feather="package" class="welcome-feather"></i>
+                    </div>
+                    <h2 class="fw-bold mb-3">Constructor de Tareas</h2>
+                    <p class="lead text-light-emphasis mb-4">
+                        Desarrolla aplicaciones paso a paso con guía interactiva y retroalimentación inmediata.
+                    </p>
+                    
+                    <!-- Características principales -->
+                    <div class="welcome-features">
+                        <div class="feature">
+                            <i data-feather="layers"></i>
+                            <span>Planificación del proyecto</span>
+                        </div>
+                        <div class="feature">
+                            <i data-feather="code"></i>
+                            <span>Generación de código</span>
+                        </div>
+                        <div class="feature">
+                            <i data-feather="terminal"></i>
+                            <span>Ejecución automática</span>
+                        </div>
+                        <div class="feature">
+                            <i data-feather="check-circle"></i>
+                            <span>Pruebas y verificación</span>
+                        </div>
                     </div>
                     
-                    <!-- Navegación principal -->
-                    <nav class="sidebar-nav mt-3">
-                        <div class="list-group list-group-flush">
-                            <a href="/" class="list-group-item list-group-item-action">
-                                <i data-feather="home"></i> Inicio
-                            </a>
-                            <a href="/chat" class="list-group-item list-group-item-action">
-                                <i data-feather="message-circle"></i> Chat
-                            </a>
-                            <a href="/constructor" class="list-group-item list-group-item-action active">
-                                <i data-feather="layers"></i> Constructor
-                            </a>
-                            <a href="/files" class="list-group-item list-group-item-action">
-                                <i data-feather="file-text"></i> Archivos
-                            </a>
-                            <a href="/code_corrector" class="list-group-item list-group-item-action">
-                                <i data-feather="code"></i> Corrector de Código
-                            </a>
-                        </div>
-                    </nav>
-                    
-                    <!-- Información de la versión -->
-                    <div class="mt-5 px-3 py-2 sidebar-footer">
-                        <p class="small text-white-50 mb-0">v1.5.0 - Entorno Futurista</p>
+                    <div class="mt-4">
+                        <p class="small text-light-emphasis">
+                            Para comenzar, describe el tipo de aplicación que deseas construir
+                        </p>
                     </div>
                 </div>
             </div>
-            
-            <!-- Contenido principal -->
-            <div class="col-md-9 col-lg-10 ms-sm-auto p-0">
-                <!-- Barra superior -->
-                <header class="header-bar p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h1 class="h4 mb-0 futuristic-text">Constructor de Tareas</h1>
-                        <div class="d-flex">
-                            <button id="clearChatBtn" class="btn btn-outline-secondary btn-sm me-2">
-                                <i data-feather="trash-2"></i> Limpiar
-                            </button>
-                            <div class="dropdown">
-                                <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" id="modelDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i data-feather="cpu"></i> Modelo: <span id="currentModel">OpenAI</span>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="modelDropdown">
-                                    <li><a class="dropdown-item model-option" data-model="openai" href="#">OpenAI</a></li>
-                                    <li><a class="dropdown-item model-option" data-model="anthropic" href="#">Anthropic</a></li>
-                                    <li><a class="dropdown-item model-option" data-model="gemini" href="#">Gemini</a></li>
-                                </ul>
-                            </div>
-                        </div>
+        </div>
+        
+        <!-- Panel de opciones y controles -->
+        <div class="container-fluid mt-3 mb-3">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <div class="form-check form-switch d-flex align-items-center">
+                        <input class="form-check-input me-2" type="checkbox" id="collaborationMode">
+                        <label class="form-check-label" for="collaborationMode">Modo colaborativo</label>
                     </div>
-                </header>
-                
-                <!-- Área principal del constructor -->
-                <main class="container-fluid pt-0 mt-0">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="chat-container">
-                                <!-- Área de mensajes -->
-                                <div class="chat-messages" id="chatMessages">
-                                    <div class="chat-welcome p-4 text-center">
-                                        <div class="welcome-icon mb-3">
-                                            <i data-feather="layers" class="welcome-feather"></i>
-                                        </div>
-                                        <h2 class="h4 mb-3 futuristic-text">Constructor de Tareas Avanzado</h2>
-                                        <p class="mb-4">Describe tu proyecto y el Constructor te guiará paso a paso en el desarrollo completo de tu aplicación.</p>
-                                        <div class="welcome-features">
-                                            <div class="feature">
-                                                <i data-feather="code"></i>
-                                                <span>Análisis de requisitos</span>
-                                            </div>
-                                            <div class="feature">
-                                                <i data-feather="git-branch"></i>
-                                                <span>Planificación estructurada</span>
-                                            </div>
-                                            <div class="feature">
-                                                <i data-feather="file-plus"></i>
-                                                <span>Creación de archivos</span>
-                                            </div>
-                                            <div class="feature">
-                                                <i data-feather="terminal"></i>
-                                                <span>Ejecución de comandos</span>
-                                            </div>
-                                            <div class="feature">
-                                                <i data-feather="refresh-cw"></i>
-                                                <span>Ciclo de retroalimentación</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Área de entrada de mensajes -->
-                                <div class="chat-input-container">
-                                    <form id="chatForm" class="chat-form">
-                                        <div class="input-group">
-                                            <textarea id="userMessage" class="form-control chat-input" placeholder="Describe tu proyecto o tarea para comenzar..." rows="2"></textarea>
-                                            <button id="sendMessageBtn" type="submit" class="btn btn-primary send-button">
-                                                <i data-feather="send"></i>
-                                            </button>
-                                        </div>
-                                        <div class="chat-toolbar">
-                                            <div class="d-flex justify-content-between align-items-center w-100">
-                                                <div class="chat-controls">
-                                                    <span class="toolbar-info small text-white-50">
-                                                        <i data-feather="info" class="feather-small"></i>
-                                                        Sé específico en los detalles de tu proyecto
-                                                    </span>
-                                                </div>
-                                                <div class="collaboration-toggle">
-                                                    <div class="form-check form-switch">
-                                                        <input class="form-check-input" type="checkbox" id="collaborationMode" checked>
-                                                        <label class="form-check-label small text-white-50" for="collaborationMode">Modo colaborativo</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </main>
+                </div>
+                <div class="col text-end">
+                    <button id="clearChatBtn" class="btn btn-sm btn-outline-secondary">
+                        <i data-feather="trash-2"></i> Limpiar
+                    </button>
+                </div>
             </div>
+        </div>
+        
+        <!-- Área de entrada de mensajes -->
+        <div class="chat-input-container container-fluid">
+            <form id="chatForm" class="card bg-dark border-0">
+                <div class="card-body p-2">
+                    <div class="input-group">
+                        <textarea id="userMessage" class="form-control" placeholder="Describe la aplicación que deseas construir..." rows="1" required></textarea>
+                        <button id="sendMessageBtn" type="submit" class="btn btn-primary">
+                            <i data-feather="send"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- JavaScript requerido -->
+    <!-- JavaScript de Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
-    <script src="{{ url_for('static', filename='js/animations.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/constructor/constructor.js') }}"></script>
     
+    <!-- Marked.js para procesamiento de Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Highlight.js para resaltado de código -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    
+    <!-- Librería de animaciones -->
+    <script src="/static/js/animations.js"></script>
+    
+    <!-- JavaScript del constructor -->
+    <script src="/static/js/constructor/constructor.js"></script>
+    
+    <!-- Inicializar Feather Icons -->
     <script>
-        // Inicializar iconos Feather
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
             feather.replace();
         });
     </script>

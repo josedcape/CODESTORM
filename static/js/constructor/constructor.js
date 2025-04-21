@@ -98,11 +98,10 @@ document.addEventListener('DOMContentLoaded', function() {
             conversation_state: conversationState
         };
         
-        console.log('Enviando fetch a /api/chat con datos:', requestData);
+        console.log('Enviando fetch a /api/constructor con datos:', requestData);
         
-        // Usamos el mismo endpoint que el chat, pero posteriormente
-        // implementaremos un endpoint específico para el constructor
-        fetch('/api/chat', {
+        // Usamos el endpoint específico para el constructor
+        fetch('/api/constructor', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -114,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(data => {
-            console.log('Datos recibidos de /api/chat:', data);
+            console.log('Datos recibidos de /api/constructor:', data);
             
             // Eliminar el mensaje de sistema de carga
             removeSystemMessages();
