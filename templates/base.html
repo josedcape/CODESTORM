@@ -64,8 +64,8 @@
     
     <div class="container-fluid">
         <div class="row">
-            <!-- Barra lateral (solo visible en páginas específicas) -->
-            {% if '/chat' in request.path or '/dashboard' in request.path %}
+            <!-- Barra lateral (solo visible en dashboard, no en chat) -->
+            {% if '/dashboard' in request.path %}
             <div class="col-md-3 col-lg-2 px-0 sidebar">
                 <div class="d-flex flex-column flex-shrink-0 p-3 futuristic-sidebar">
                     {% block sidebar %}
@@ -76,9 +76,9 @@
                     <div class="mb-3">
                         <label class="form-label">Seleccionar Modelo de IA:</label>
                         <select class="form-select form-select-sm futuristic-select">
-                            <option value="openai">OpenAI (GPT-4)</option>
+                            <option value="openai">OpenAI (GPT-4o)</option>
                             <option value="anthropic">Anthropic (Claude)</option>
-                            <option value="gemini" selected>Google (Gemini)</option>
+                            <option value="gemini">Google (Gemini)</option>
                         </select>
                     </div>
                     
@@ -87,7 +87,7 @@
                         <select class="form-select form-select-sm futuristic-select">
                             <option value="general">Asistente General</option>
                             <option value="developer">Desarrollador de Código</option>
-                            <option value="architect" selected>Agente de Arquitectura</option>
+                            <option value="architect">Agente de Arquitectura</option>
                             <option value="advanced">Experto Avanzado</option>
                         </select>
                     </div>
@@ -116,7 +116,7 @@
             {% endif %}
             
             <!-- Contenido principal -->
-            <div class="{% if '/chat' in request.path or '/dashboard' in request.path %}col-md-9 ms-sm-auto col-lg-10{% else %}col-12{% endif %} px-md-4 main-content">
+            <div class="{% if '/dashboard' in request.path %}col-md-9 ms-sm-auto col-lg-10{% else %}col-12{% endif %} px-md-4 main-content">
                 <div class="content-container">
                     {% block content %}
                     <div class="container mt-5">
