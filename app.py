@@ -23,6 +23,9 @@ import eventlet
 import requests
 import google.generativeai as genai
 
+# Importar utilidades para agentes con los prompts mejorados con emojis
+from agents_utils import get_agent_system_prompt, get_agent_name, generate_content
+
 # Comentamos el monkey patch para evitar conflictos con OpenAI y otras bibliotecas
 # eventlet.monkey_patch(os=True, select=True, socket=True, thread=True, time=True)
 
@@ -687,16 +690,11 @@ def handle_chat():
             logging.warning("Error: No se proporcionó mensaje")
             return jsonify({'error': 'No message provided'}), 400
             
-        # Configurar prompts específicos según el agente seleccionado
-        agent_prompts = {
-            'developer': "Eres un Agente de Desarrollo experto en optimización y edición de código en tiempo real. Tu objetivo es ayudar a los usuarios con tareas de programación, desde la corrección de errores hasta la implementación de funcionalidades completas. Puedes modificar archivos, ejecutar comandos y resolver problemas técnicos específicos.",
-            'architect': "Eres un Agente de Arquitectura especializado en diseñar arquitecturas escalables y optimizadas. Ayudas a los usuarios a tomar decisiones sobre la estructura del código, patrones de diseño y selección de tecnologías. Puedes proporcionar diagramas conceptuales y recomendaciones sobre la organización de componentes.",
-            'advanced': "Eres un Agente Avanzado de Software con experiencia en integraciones complejas y funcionalidades avanzadas. Puedes asesorar sobre tecnologías emergentes, optimización de rendimiento y soluciones a problemas técnicos sofisticados. Tienes la capacidad de coordinar entre diferentes componentes y sistemas."
-        }
-        
-        # Si no se proporcionó un prompt específico, usar uno predefinido basado en el agente
+        # Usar los prompts mejorados con emojis desde agents_utils.py
+        # Si no se proporcionó un prompt específico, obtener uno desde la utilidad
         if not agent_prompt:
-            agent_prompt = agent_prompts.get(agent_id, "Eres un asistente de desarrollo de software experto y útil.")
+            # Usar el prompt del sistema mejorado con emojis
+            agent_prompt = get_agent_system_prompt(agent_id)
         
         # Añadir capacidades de manipulación de archivos al prompt para todos los agentes
         file_capabilities = "\n\nPuedes ayudar al usuario a manipular archivos usando comandos como: 'crea un archivo index.js con este contenido...', 'modifica config.py para añadir...', 'muestra el contenido de app.js', etc. Puedes ejecutar comandos en la terminal con: 'ejecuta npm install', 'ejecuta python run.py', etc."
