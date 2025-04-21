@@ -21,45 +21,106 @@ def get_user_workspace(user_id='default'):
     """Obtiene o crea un espacio de trabajo para el usuario."""
     workspace_dir = os.path.join(os.getcwd(), 'user_workspaces', user_id)
     
-    # Asegurarnos de que el directorio exista pero completamente vacío
+    # Asegurarnos de que el directorio exista
     os.makedirs(workspace_dir, exist_ok=True)
     
-    # El explorador comienza completamente vacío sin README.md
-    # El usuario debe crear sus propios archivos mediante la interfaz
+    # Guardar registros de los archivos originales/sistema si no existe
+    system_files_record = os.path.join(workspace_dir, '.system_files.json')
+    if not os.path.exists(system_files_record):
+        # Si es la primera vez, registrar los archivos actuales como del sistema
+        try:
+            system_files = []
+            for root, dirs, files in os.walk(workspace_dir):
+                rel_path = os.path.relpath(root, workspace_dir)
+                if rel_path == '.':
+                    rel_path = ''
+                for file in files:
+                    if file != '.system_files.json':  # No incluir este archivo
+                        file_path = os.path.join(rel_path, file)
+                        system_files.append(file_path)
             
+            # Guardar la lista de archivos originales
+            with open(system_files_record, 'w') as f:
+                json.dump(system_files, f)
+                
+            logger.info(f"Creado registro de archivos del sistema en {workspace_dir}")
+        except Exception as e:
+            logger.error(f"Error al crear registro de archivos del sistema: {e}")
+    
     return workspace_dir
 
-def list_files(directory='.', user_id='default'):
-    """Lista archivos y directorios en una ruta especificada."""
+def list_files(directory='.', user_id='default', filter_system_files=True):
+    """
+    Lista archivos y directorios en una ruta especificada.
+    
+    Args:
+        directory: Directorio relativo dentro del workspace
+        user_id: ID del usuario
+        filter_system_files: Si es True, filtra los archivos del sistema
+    """
     workspace = get_user_workspace(user_id)
     target_dir = os.path.join(workspace, directory)
     
     if not os.path.exists(target_dir):
         return []
     
+    # Cargar la lista de archivos del sistema si necesitamos filtrar
+    system_files = []
+    if filter_system_files:
+        system_files_record = os.path.join(workspace, '.system_files.json')
+        try:
+            if os.path.exists(system_files_record):
+                with open(system_files_record, 'r') as f:
+                    system_files = json.load(f)
+        except Exception as e:
+            logger.error(f"Error al cargar la lista de archivos del sistema: {e}")
+    
     try:
         entries = []
         for entry in os.listdir(target_dir):
-            entry_path = os.path.join(target_dir, entry)
+            # Saltamos el archivo de sistema que contiene los registros
+            if entry == '.system_files.json':
+                continue
+                
+            # Construir la ruta relativa del archivo o directorio
+            rel_path = os.path.join(directory, entry) if directory != '.' else entry
+            entry_path = os.path.join(workspace, rel_path)
             entry_type = 'directory' if os.path.isdir(entry_path) else 'file'
             
-            if entry_type == 'file':
-                file_size = os.path.getsize(entry_path)
-                file_extension = os.path.splitext(entry)[1].lower()[1:] if '.' in entry else ''
-                
-                entries.append({
-                    'name': entry,
-                    'type': entry_type,
-                    'path': os.path.join(directory, entry) if directory != '.' else entry,
-                    'size': file_size,
-                    'extension': file_extension
-                })
-            else:
-                entries.append({
-                    'name': entry,
-                    'type': entry_type,
-                    'path': os.path.join(directory, entry) if directory != '.' else entry
-                })
+            # Verificar si este archivo o directorio debería ser filtrado
+            should_filter = False
+            if filter_system_files and entry_type == 'file':
+                # Verificar si el archivo está en la lista de archivos del sistema
+                if rel_path in system_files:
+                    should_filter = True
+                    
+            # Solo agregar si no estamos filtrando este archivo
+            if not should_filter:
+                if entry_type == 'file':
+                    file_size = os.path.getsize(entry_path)
+                    file_extension = os.path.splitext(entry)[1].lower()[1:] if '.' in entry else ''
+                    
+                    entries.append({
+                        'name': entry,
+                        'type': entry_type,
+                        'path': rel_path,
+                        'size': file_size,
+                        'extension': file_extension
+                    })
+                else:
+                    # Para directorios, verificamos primero si tiene contenido que no sea del sistema
+                    if entry_type == 'directory' and filter_system_files:
+                        # Recursivamente verificar si hay archivos no del sistema en este directorio
+                        subdir_contents = list_files(rel_path, user_id, filter_system_files)
+                        if len(subdir_contents) == 0:
+                            # Si el directorio no tiene archivos útiles, lo filtramos
+                            continue
+                    
+                    entries.append({
+                        'name': entry,
+                        'type': entry_type,
+                        'path': rel_path
+                    })
         
         return entries
     except Exception as e:

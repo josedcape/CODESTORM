@@ -324,45 +324,115 @@
                 spinner.classList.remove('d-none');
                 executeBtn.disabled = true;
                 
-                // Process instruction
+                // Detectar si la instrucción parece ser un comando directo
+                const isDirectCommand = 
+                    instruction.startsWith('ejecuta ') || 
+                    instruction.startsWith('corre ') || 
+                    instruction.startsWith('run ') ||
+                    instruction.startsWith('python ') ||
+                    instruction.startsWith('node ') ||
+                    instruction.startsWith('npm ') ||
+                    instruction.startsWith('ls ') ||
+                    instruction.startsWith('mkdir ') ||
+                    instruction.startsWith('touch ') ||
+                    instruction.startsWith('cat ');
+                
+                // Si es un comando directo, ejecutarlo directamente usando /api/execute en lugar de /api/process
                 const agent = document.getElementById('agent-select').value;
-                fetch('/api/process', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        instruction: instruction,
-                        model: model,
-                        agent_id: agent
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.command) {
-                        commandDisplay.textContent = data.command;
-                        outputDisplay.innerHTML = formatOutput(data.result, data.error, data.status);
-                    } else {
-                        commandDisplay.textContent = '';
-                        outputDisplay.textContent = data.result || 'Instrucción procesada correctamente';
+                
+                if (isDirectCommand) {
+                    // Extraer el comando real (quitar el prefijo "ejecuta", "corre", etc.)
+                    let command = instruction;
+                    if (instruction.startsWith('ejecuta ')) {
+                        command = instruction.substring(8);
+                    } else if (instruction.startsWith('corre ')) {
+                        command = instruction.substring(6);
+                    } else if (instruction.startsWith('run ')) {
+                        command = instruction.substring(4);
                     }
                     
-                    // Reload file list
-                    loadFiles(directoryPath.textContent || '.');
-                    
-                    // Show success notification
-                    showNotification(data.result || 'Instrucción procesada correctamente', 'success');
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    outputDisplay.textContent = 'Error al procesar instrucción: ' + error.message;
-                    showNotification('Error al procesar instrucción: ' + error.message, 'danger');
-                })
-                .finally(() => {
-                    // Hide loading
-                    spinner.classList.add('d-none');
-                    executeBtn.disabled = false;
-                });
+                    // Ejecutar el comando directamente
+                    console.log("Ejecutando comando directamente:", command);
+                    fetch('/api/execute', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            command: command,
+                            agent_id: agent
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            commandDisplay.textContent = data.command;
+                            outputDisplay.innerHTML = formatOutput(data.stdout, data.stderr, data.status);
+                            
+                            // Mostrar notificación de éxito
+                            if (data.status === 0) {
+                                showNotification('Comando ejecutado correctamente', 'success');
+                            } else {
+                                showNotification(`Comando terminó con código ${data.status}`, 'warning');
+                            }
+                        } else {
+                            outputDisplay.innerHTML = `<span class="text-danger">Error: ${data.error}</span>`;
+                            showNotification('Error al ejecutar el comando', 'danger');
+                        }
+                        
+                        // Reload file list
+                        loadFiles(directoryPath.textContent || '.');
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        outputDisplay.innerHTML = `<span class="text-danger">Error: ${error.message}</span>`;
+                        showNotification('Error de conexión', 'danger');
+                    })
+                    .finally(() => {
+                        // Hide loading
+                        spinner.classList.add('d-none');
+                        executeBtn.disabled = false;
+                    });
+                } else {
+                    // Procesar como instrucción en lenguaje natural
+                    fetch('/api/process', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            instruction: instruction,
+                            model: model,
+                            agent_id: agent
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.command) {
+                            commandDisplay.textContent = data.command;
+                            outputDisplay.innerHTML = formatOutput(data.result, data.error, data.status);
+                        } else {
+                            commandDisplay.textContent = '';
+                            outputDisplay.textContent = data.result || 'Instrucción procesada correctamente';
+                        }
+                        
+                        // Reload file list after processing
+                        loadFiles(directoryPath.textContent || '.');
+                        
+                        // Show success notification
+                        showNotification(data.result || 'Instrucción procesada correctamente', 'success');
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        outputDisplay.textContent = 'Error al procesar instrucción: ' + error.message;
+                        showNotification('Error al procesar instrucción: ' + error.message, 'danger');
+                    })
+                    .finally(() => {
+                        // Hide loading
+                        spinner.classList.add('d-none');
+                        executeBtn.disabled = false;
+                    });
+                }
             }
             
             function clearInputs() {
