@@ -1,14 +1,17 @@
 """
 Utilidades para la gestión de agentes especializados en Codestorm Assistant.
-Incluye funciones para generar respuestas, procesar comandos y usar contexto de documentos.
+Incluye funciones para generar respuestas, procesar comandos, usar contexto de documentos
+y explorar/manipular archivos en repositorios.
 """
 import os
 import re
+import json
 import logging
 import openai
 import anthropic
 import google.generativeai as genai
 from dotenv import load_dotenv
+import file_explorer
 
 # Cargar variables de entorno
 load_dotenv()
@@ -592,6 +595,345 @@ IMPORTANTE: Tu respuesta debe tener este formato JSON:
             'success': False,
             'error': f'Error analizando código: {str(e)}'
         }
+
+def explore_repository_files(instruction, repo_path, model="openai"):
+    """
+    Explora archivos en un repositorio y permite realizar modificaciones según instrucciones.
+    
+    Args:
+        instruction: Instrucción en lenguaje natural sobre qué hacer
+        repo_path: Ruta al repositorio clonado
+        model: Modelo de IA a utilizar
+        
+    Returns:
+        dict: Resultado de la operación con los archivos o cambios realizados
+    """
+    try:
+        # Primero, analizar la instrucción para determinar la acción a realizar
+        system_prompt = """
+        Eres un asistente especializado en analizar instrucciones sobre archivos y repositorios.
+        Tu tarea es determinar qué tipo de acción se requiere y qué archivos están involucrados.
+        
+        Clasifica la instrucción en una de estas categorías:
+        1. Explorar/listar: Si se solicita ver archivos o directorios
+        2. Leer: Si se pide ver el contenido de un archivo específico
+        3. Modificar: Si se pide cambiar el contenido de un archivo
+        4. Crear: Si se pide crear un nuevo archivo
+        5. Buscar: Si se pide buscar algo dentro del repositorio
+        
+        Devuelve un objeto JSON con:
+        - action: La acción a realizar (explore, read, modify, create, search)
+        - target: La ruta del archivo o directorio objetivo (relativa desde la raíz del repositorio)
+        - details: Cualquier detalle adicional de la modificación o búsqueda
+        """
+        
+        analysis_prompt = f"""
+        Instrucción del usuario: {instruction}
+        
+        Analiza esta instrucción y determina qué acción debo realizar con los archivos.
+        Devuelve un objeto JSON con los campos action, target, details.
+        
+        Ejemplos de formatos de respuesta:
+        
+        Para explorar un directorio:
+        {{"action": "explore", "target": "src/", "details": "Listar archivos del directorio src"}}
+        
+        Para leer un archivo:
+        {{"action": "read", "target": "README.md", "details": "Leer el contenido del archivo README.md"}}
+        
+        Para modificar un archivo:
+        {{"action": "modify", "target": "index.html", "details": "Añadir un nuevo botón en la sección de formularios"}}
+        
+        Para crear un archivo:
+        {{"action": "create", "target": "css/styles.css", "details": "Crear un archivo CSS con estilos básicos"}}
+        
+        Para buscar en el repositorio:
+        {{"action": "search", "target": "", "details": "Buscar todos los archivos que contengan 'function login'"}}
+        """
+        
+        # Analizamos la instrucción
+        analysis_result = generate_content(analysis_prompt, system_prompt, model, temperature=0.2)
+        
+        # Intentamos extraer el JSON de la respuesta
+        analysis_json = None
+        try:
+            # Buscar patrón JSON en la respuesta
+            json_pattern = r'\{.*\}'
+            json_match = re.search(json_pattern, analysis_result, re.DOTALL)
+            
+            if json_match:
+                analysis_json = json.loads(json_match.group())
+            else:
+                # Intentar cargar la respuesta completa como JSON
+                analysis_json = json.loads(analysis_result)
+        except Exception as e:
+            logger.error(f"Error al extraer JSON de la respuesta: {str(e)}")
+            return {
+                'success': False,
+                'error': f"No se pudo procesar la instrucción: {str(e)}",
+                'analysis_result': analysis_result
+            }
+        
+        if not analysis_json or 'action' not in analysis_json:
+            return {
+                'success': False,
+                'error': 'No se pudo determinar la acción a realizar',
+                'analysis_result': analysis_result
+            }
+        
+        # Ejecutar la acción correspondiente
+        action = analysis_json.get('action', '').lower()
+        target = analysis_json.get('target', '')
+        details = analysis_json.get('details', '')
+        
+        # Construir ruta completa
+        target_path = os.path.join(repo_path, target) if target else repo_path
+        
+        # Asegurar que no se salga del directorio del repositorio (prevenir directory traversal)
+        if not os.path.abspath(target_path).startswith(os.path.abspath(repo_path)):
+            return {
+                'success': False,
+                'error': 'Acceso denegado: la ruta se sale del repositorio'
+            }
+        
+        # Realizar la acción correspondiente
+        if action == 'explore':
+            # Listar archivos de un directorio
+            max_depth = 2  # Profundidad por defecto
+            success, items, error = file_explorer.list_directory(target_path, 1, max_depth)
+            
+            if success:
+                # Convertir rutas absolutas a relativas
+                for item in items:
+                    if 'path' in item:
+                        item['path'] = os.path.relpath(item['path'], repo_path)
+                
+                return {
+                    'success': True,
+                    'action': 'explore',
+                    'path': target,
+                    'items': items,
+                    'message': f"Explorando directorio: {target or '.'}"
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': error
+                }
+        
+        elif action == 'read':
+            # Leer contenido de un archivo
+            success, content, file_type = file_explorer.get_file_content(target_path)
+            
+            if success:
+                return {
+                    'success': True,
+                    'action': 'read',
+                    'path': target,
+                    'content': content,
+                    'file_type': file_type,
+                    'message': f"Contenido del archivo: {target}"
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': content  # En caso de error, content contiene el mensaje de error
+                }
+        
+        elif action == 'modify':
+            # Primero leemos el archivo actual
+            read_success, current_content, file_type = file_explorer.get_file_content(target_path)
+            
+            if not read_success:
+                return {
+                    'success': False,
+                    'error': current_content  # Mensaje de error
+                }
+            
+            # Generamos el contenido modificado
+            modification_system_prompt = f"""
+            Eres un experto en modificación de código y archivos.
+            Tu tarea es aplicar los cambios solicitados a un archivo existente.
+            Respeta el estilo, la estructura y la integridad del archivo original.
+            Asegúrate de que el resultado sea completamente funcional.
+            
+            Tipo de archivo: {file_type}
+            """
+            
+            modification_prompt = f"""
+            Instrucción: {details}
+            
+            Archivo actual ({target}):
+            ```{file_type}
+            {current_content}
+            ```
+            
+            Aplica los cambios solicitados y devuelve el contenido completo del archivo modificado.
+            No incluyas explicaciones, solo devuelve el contenido actualizado del archivo.
+            """
+            
+            try:
+                # Generamos la versión modificada
+                modified_content = generate_content(modification_prompt, modification_system_prompt, model)
+                
+                # Limpiamos el contenido para eliminar posibles marcadores de código
+                cleaned_content = modified_content
+                # Eliminar marcadores de código si están presentes
+                code_block_pattern = r'```(?:\w+)?\n([\s\S]*?)\n```'
+                code_matches = re.findall(code_block_pattern, modified_content)
+                if code_matches:
+                    cleaned_content = code_matches[0]  # Tomamos el primer bloque de código
+                
+                # Actualizamos el archivo
+                update_success, message = file_explorer.update_file_content(target_path, cleaned_content)
+                
+                if update_success:
+                    # Calculamos un resumen de cambios (diferencias)
+                    changes_summary = f"Se modificó el archivo {target}.\n"
+                    
+                    if len(current_content) < 1000 and len(cleaned_content) < 1000:
+                        import difflib
+                        diff = list(difflib.unified_diff(
+                            current_content.splitlines(keepends=True),
+                            cleaned_content.splitlines(keepends=True),
+                            fromfile=f'original/{target}',
+                            tofile=f'modificado/{target}',
+                            n=3
+                        ))
+                        if diff:
+                            changes_summary += "Cambios realizados:\n"
+                            changes_summary += ''.join(diff[:20])  # Limitamos a 20 líneas de diff
+                            if len(diff) > 20:
+                                changes_summary += f"\n... y {len(diff) - 20} líneas más"
+                    
+                    return {
+                        'success': True,
+                        'action': 'modify',
+                        'path': target,
+                        'message': message,
+                        'changes_summary': changes_summary
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': message
+                    }
+            except Exception as e:
+                logger.error(f"Error al modificar archivo: {str(e)}")
+                return {
+                    'success': False,
+                    'error': f"Error al modificar el archivo: {str(e)}"
+                }
+        
+        elif action == 'create':
+            # Generamos el contenido para el nuevo archivo
+            creation_system_prompt = f"""
+            Eres un experto en creación de archivos y código.
+            Tu tarea es crear un nuevo archivo según las especificaciones proporcionadas.
+            Debes devolver contenido funcional y bien formateado.
+            
+            Basado en el nombre '{target}', debes crear un archivo apropiado para su extensión.
+            """
+            
+            # Determinar el tipo de archivo por su extensión
+            file_extension = os.path.splitext(target)[1].lstrip('.').lower() if target else ''
+            
+            creation_prompt = f"""
+            Instrucción: {details}
+            
+            Crea el contenido para un nuevo archivo: {target}
+            Tipo de archivo: {file_extension}
+            
+            Genera el contenido completo del archivo. No incluyas explicaciones, solo devuelve el contenido.
+            """
+            
+            try:
+                # Generamos el contenido
+                new_content = generate_content(creation_prompt, creation_system_prompt, model)
+                
+                # Limpiamos el contenido para eliminar posibles marcadores de código
+                cleaned_content = new_content
+                # Eliminar marcadores de código si están presentes
+                code_block_pattern = r'```(?:\w+)?\n([\s\S]*?)\n```'
+                code_matches = re.findall(code_block_pattern, new_content)
+                if code_matches:
+                    cleaned_content = code_matches[0]  # Tomamos el primer bloque de código
+                
+                # Creamos el archivo
+                create_success, message = file_explorer.create_file(target_path, cleaned_content)
+                
+                if create_success:
+                    return {
+                        'success': True,
+                        'action': 'create',
+                        'path': target,
+                        'message': message,
+                        'content': cleaned_content[:500] + ('...' if len(cleaned_content) > 500 else '')
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': message
+                    }
+            except Exception as e:
+                logger.error(f"Error al crear archivo: {str(e)}")
+                return {
+                    'success': False,
+                    'error': f"Error al crear el archivo: {str(e)}"
+                }
+        
+        elif action == 'search':
+            # Determinar tipo de búsqueda
+            search_type = 'name'  # Por defecto
+            search_query = details
+            
+            if 'content:' in details.lower():
+                search_type = 'content'
+                search_query = details.split('content:', 1)[1].strip()
+            elif 'extension:' in details.lower():
+                search_type = 'extension'
+                search_query = details.split('extension:', 1)[1].strip()
+            
+            # Realizar la búsqueda
+            success, found_items, error = file_explorer.find_file(repo_path, search_query, search_type)
+            
+            if success:
+                # Convertir rutas absolutas a relativas
+                relative_items = []
+                for item in found_items:
+                    if item.startswith(repo_path):
+                        relative_items.append(os.path.relpath(item, repo_path))
+                    else:
+                        relative_items.append(item)
+                
+                return {
+                    'success': True,
+                    'action': 'search',
+                    'query': search_query,
+                    'type': search_type,
+                    'results': relative_items,
+                    'count': len(relative_items),
+                    'message': f"Se encontraron {len(relative_items)} resultados para la búsqueda"
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': error
+                }
+        
+        else:
+            return {
+                'success': False,
+                'error': f"Acción no reconocida: {action}"
+            }
+    
+    except Exception as e:
+        logger.error(f"Error al explorar repositorio: {str(e)}")
+        return {
+            'success': False,
+            'error': f"Error al procesar la instrucción: {str(e)}"
+        }
+
 
 def process_natural_language_command(text, workspace_path, model="openai"):
     """

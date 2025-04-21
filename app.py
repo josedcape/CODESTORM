@@ -27,7 +27,7 @@ import requests
 import google.generativeai as genai
 
 # Importar utilidades para agentes con los prompts mejorados con emojis
-from agents_utils import get_agent_system_prompt, get_agent_name, generate_content
+from agents_utils import get_agent_system_prompt, get_agent_name, generate_content, explore_repository_files
 
 # Importar rutas de diagnóstico
 from diagnostic_routes import register_diagnostic_routes
