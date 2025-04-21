@@ -457,18 +457,45 @@ function sendMessage(message) {
   
   // Si hay un documento seleccionado, usar la API con contexto de documento
   const apiEndpoint = selectedDocument ? '/api/chat/with-context' : '/api/chat';
+  
+  // Comprobar si el documento ya ha sido procesado previamente (buscando en el historial de chat)
+  let documentAlreadyProcessed = false;
+  let documentContent = '';
+  
+  // Buscar en el historial de mensajes si el documento ya fue procesado
+  if (selectedDocument && window.app.conversationState.messageHistory.length > 0) {
+    for (const msg of window.app.conversationState.messageHistory) {
+      if (msg.role === 'assistant' && 
+          msg.content && 
+          msg.content.includes(`He extraído el contenido del documento '${selectedDocument}'`)) {
+        documentAlreadyProcessed = true;
+        documentContent = msg.content;
+        console.log(`Documento ${selectedDocument} ya procesado anteriormente, usando contexto existente`);
+        break;
+      }
+    }
+  }
+  
+  // Preparar datos para la API según si es un nuevo documento o uno ya procesado
   const apiData = selectedDocument 
     ? {
         message: message,
         document_filename: selectedDocument,
-        agent_id: agentId
+        agent_id: agentId,
+        document_already_processed: documentAlreadyProcessed,
+        context: conversationContext  // Incluir contexto de conversación para documentos procesados
       }
     : requestData;
     
   // Mensaje de estado
   if (selectedDocument) {
-    console.log("Enviando fetch a /api/chat/with-context con documento:", selectedDocument);
-    addSystemMessage(`⌛ Conectando con el servidor (usando documento "${selectedDocument}" como contexto)...`);
+    if (documentAlreadyProcessed) {
+      console.log("Enviando fetch a /api/chat/with-context con documento ya procesado:", selectedDocument);
+      addSystemMessage(`⌛ Conectando con el servidor (usando documento "${selectedDocument}" ya procesado como contexto)...`);
+    } else {
+      console.log("Enviando fetch a /api/chat/with-context con documento nuevo:", selectedDocument);
+      addSystemMessage(`⌛ Conectando con el servidor (usando documento "${selectedDocument}" como contexto)...`);
+    }
   } else {
     console.log("Enviando fetch a /api/chat con datos:", requestData);
     addSystemMessage("⌛ Conectando con el servidor...");
