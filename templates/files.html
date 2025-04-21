@@ -477,6 +477,42 @@
         </div>
     </div>
 
+    <!-- Modal Clonar Repositorio GitHub -->
+    <div class="modal fade modal-futuristic" id="cloneGithubModal" tabindex="-1" aria-labelledby="cloneGithubModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cloneGithubModalLabel">
+                        <i class="bi bi-github me-2"></i>Clonar Repositorio GitHub
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="clone-github-form">
+                        <div class="mb-3">
+                            <label for="repo-url" class="form-label">URL del Repositorio:</label>
+                            <input type="text" class="form-control" id="repo-url" placeholder="https://github.com/usuario/repositorio">
+                            <small class="text-muted">Ejemplo: https://github.com/usuario/repositorio.git</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="repo-branch" class="form-label">Rama (opcional):</label>
+                            <input type="text" class="form-control" id="repo-branch" placeholder="main">
+                            <small class="text-muted">Dejar en blanco para clonar la rama por defecto</small>
+                        </div>
+                        <div class="progress mb-3" style="display: none;" id="clone-progress-container">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%" id="clone-progress"></div>
+                        </div>
+                        <div class="alert alert-info" id="clone-status" style="display: none;"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-futuristic" id="clone-repo-btn">Clonar Repositorio</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Notificaciones -->
     <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 5000;"></div>
 
@@ -514,6 +550,7 @@
             const createFileModal = new bootstrap.Modal(document.getElementById('createFileModal'));
             const createFolderModal = new bootstrap.Modal(document.getElementById('createFolderModal'));
             const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            const cloneGithubModal = new bootstrap.Modal(document.getElementById('cloneGithubModal'));
             
             // Cargar archivos iniciales
             loadFiles(currentPath);
@@ -530,6 +567,48 @@
             createFolderBtn.addEventListener('click', () => {
                 document.getElementById('folder-name').value = '';
                 createFolderModal.show();
+            });
+            
+            // GitHub Repository Clone
+            const cloneGithubBtn = document.getElementById('clone-github-btn');
+            const cloneRepoBtn = document.getElementById('clone-repo-btn');
+            
+            cloneGithubBtn.addEventListener('click', () => {
+                document.getElementById('repo-url').value = '';
+                document.getElementById('repo-branch').value = '';
+                document.getElementById('clone-status').style.display = 'none';
+                document.getElementById('clone-progress-container').style.display = 'none';
+                cloneGithubModal.show();
+            });
+            
+            cloneRepoBtn.addEventListener('click', () => {
+                const repoUrl = document.getElementById('repo-url').value.trim();
+                const repoBranch = document.getElementById('repo-branch').value.trim() || null;
+                
+                if (!repoUrl) {
+                    showNotification('Por favor, ingresa la URL del repositorio', 'warning');
+                    return;
+                }
+                
+                // Validar que es una URL de GitHub
+                if (!repoUrl.includes('github.com')) {
+                    showNotification('Por favor, ingresa una URL válida de GitHub', 'warning');
+                    return;
+                }
+                
+                // Mostrar progreso
+                const progressContainer = document.getElementById('clone-progress-container');
+                const statusContainer = document.getElementById('clone-status');
+                progressContainer.style.display = 'block';
+                statusContainer.style.display = 'block';
+                statusContainer.className = 'alert alert-info';
+                statusContainer.textContent = 'Clonando repositorio, por favor espera...';
+                
+                // Deshabilitar botón mientras se clona
+                cloneRepoBtn.disabled = true;
+                
+                // Llamar a la API para clonar
+                cloneGithubRepository(repoUrl, repoBranch);
             });
             
             saveFileBtn.addEventListener('click', () => {
