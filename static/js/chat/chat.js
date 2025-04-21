@@ -935,16 +935,27 @@ function addLoadingMessage() {
   }
   
   const messageElement = document.createElement('div');
-  messageElement.className = 'chat-message agent-message loading-message';
+  messageElement.className = 'chat-message agent-message loading-message fade-in';
   messageElement.id = 'loading-message';
   
+  // Usar nuestros nuevos indicadores de carga modernos
   const messageContent = document.createElement('div');
   messageContent.className = 'message-content';
-  messageContent.innerHTML = `<div class="loading-indicator">
-                                <div class="loading-dots">
-                                  <span></span><span></span><span></span>
-                                </div>
-                              </div>`;
+  
+  // Obtener el agente actual para personalizar el mensaje
+  const agentSelector = document.getElementById('agent-selector');
+  const agentName = agentSelector ? agentSelector.options[agentSelector.selectedIndex].text : "Asistente";
+  
+  messageContent.innerHTML = `
+    <div class="typing-indicator">
+      <div class="message-header">
+        <div class="message-sender shimmer-effect">${agentName}</div>
+      </div>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  `;
   
   messageElement.appendChild(messageContent);
   
