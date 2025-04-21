@@ -916,13 +916,24 @@ def process_instruction():
             for pattern in app_name_patterns:
                 match = re.search(pattern, instruction)
                 if match:
-                    app_name = match.group(1).strip()
-                    break
+                    # Extraer el nombre y verificar que tenga sentido (no sea una frase completa)
+                    potential_name = match.group(1).strip()
+                    # Si el nombre tiene más de 3 palabras o más de 30 caracteres, probablemente no es un nombre válido
+                    if len(potential_name.split()) <= 3 and len(potential_name) <= 30:
+                        app_name = potential_name
+                        break
             
             if not app_name:
-                # Si no se especifica un nombre, generar uno por defecto
+                # Generar un nombre temático según el tipo de aplicación
                 import time
-                app_name = f"{framework}_app_{int(time.time())}"
+                timestamp = int(time.time())
+                
+                if "chatbot" in instruction.lower():
+                    app_name = f"chatbot_{timestamp}"
+                elif "web" in instruction.lower():
+                    app_name = f"webapp_{timestamp}"
+                else:
+                    app_name = f"{framework}_app_{timestamp}"
             
             # Validar el nombre del proyecto
             app_name = app_name.replace(' ', '_').replace('-', '_').lower()
@@ -946,7 +957,63 @@ def process_instruction():
                 commands.append(f"cd {app_name} && touch requirements.txt")
                 
                 # Crear contenido de app.py
-                app_py_content = """from flask import Flask, render_template
+                # Si es un chatbot, crear una aplicación específica de chatbot
+                is_chatbot = "chatbot" in instruction.lower() or "bot" in instruction.lower()
+                
+                if is_chatbot:
+                    app_py_content = """from flask import Flask, render_template, request, jsonify
+
+app = Flask(__name__)
+
+# Historial de mensajes para mantener contexto
+chat_history = []
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    data = request.json
+    message = data.get('message', '')
+    
+    if not message:
+        return jsonify({'error': 'Mensaje vacío'}), 400
+    
+    # Guardar mensaje del usuario
+    chat_history.append({'role': 'user', 'content': message})
+    
+    # Generar respuesta (en una aplicación real, aquí se conectaría con un modelo de IA)
+    response = generate_response(message)
+    
+    # Guardar respuesta del chatbot
+    chat_history.append({'role': 'bot', 'content': response})
+    
+    return jsonify({
+        'response': response,
+        'history': chat_history[-10:]  # Devolver los últimos 10 mensajes
+    })
+
+def generate_response(message):
+    # Lógica simple de respuesta (en una aplicación real se conectaría a OpenAI, etc.)
+    message = message.lower()
+    
+    if 'hola' in message or 'saludos' in message:
+        return '¡Hola! ¿En qué puedo ayudarte hoy?'
+    elif 'ayuda' in message:
+        return 'Estoy aquí para ayudarte. ¿Qué necesitas saber?'
+    elif 'gracias' in message:
+        return 'De nada, estoy para servirte.'
+    elif '?' in message:
+        return 'Buena pregunta. En una implementación real, conectaría esto con OpenAI o otro modelo de IA para darte una respuesta más precisa.'
+    else:
+        return 'Entiendo lo que dices. Para obtener mejores respuestas, conéctame con la API de OpenAI modificando el código de este chatbot.'
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+"""
+                else:
+                    app_py_content = """from flask import Flask, render_template
 
 app = Flask(__name__)
 
@@ -961,7 +1028,47 @@ if __name__ == '__main__':
                     f.write(app_py_content)
                     
                 # Crear contenido de index.html
-                index_html_content = """<!DOCTYPE html>
+                if is_chatbot:
+                    index_html_content = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Moderno</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Chatbot Inteligente</h3>
+                    </div>
+                    <div class="card-body chat-container" id="chat-messages">
+                        <div class="message bot-message">
+                            <div class="message-content">
+                                ¡Hola! Soy tu asistente virtual. ¿En qué puedo ayudarte hoy?
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="input-group">
+                            <input type="text" id="user-input" class="form-control" placeholder="Escribe tu mensaje aquí...">
+                            <button class="btn btn-primary" id="send-button">Enviar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>"""
+                else:
+                    index_html_content = """<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -1001,7 +1108,114 @@ h1 {
                     f.write(style_css_content)
                     
                 # Crear contenido de main.js
-                main_js_content = """document.addEventListener('DOMContentLoaded', function() {
+                if is_chatbot:
+                    main_js_content = """document.addEventListener('DOMContentLoaded', function() {
+    const chatMessages = document.getElementById('chat-messages');
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
+    
+    // Función para agregar mensajes al chat
+    function addMessage(message, isUser = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.textContent = message;
+        
+        messageDiv.appendChild(contentDiv);
+        chatMessages.appendChild(messageDiv);
+        
+        // Scroll al final del chat
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    // Función para enviar mensaje al servidor
+    async function sendMessage() {
+        const message = userInput.value.trim();
+        if (!message) return;
+        
+        // Mostrar mensaje del usuario
+        addMessage(message, true);
+        
+        // Limpiar input
+        userInput.value = '';
+        
+        try {
+            // Enviar mensaje al servidor
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message })
+            });
+            
+            const data = await response.json();
+            
+            // Mostrar respuesta del chatbot
+            addMessage(data.response);
+        } catch (error) {
+            console.error('Error:', error);
+            addMessage('Lo siento, ha ocurrido un error al procesar tu mensaje.', false);
+        }
+    }
+    
+    // Event listeners
+    sendButton.addEventListener('click', sendMessage);
+    
+    userInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    // Estilos CSS adicionales para los mensajes
+    const style = document.createElement('style');
+    style.textContent = `
+        .chat-container {
+            height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+        
+        .user-message {
+            justify-content: flex-end;
+        }
+        
+        .bot-message {
+            justify-content: flex-start;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            word-break: break-word;
+        }
+        
+        .user-message .message-content {
+            background-color: #007bff;
+            color: white;
+            border-bottom-right-radius: 0;
+        }
+        
+        .bot-message .message-content {
+            background-color: #f1f0f0;
+            color: #333;
+            border-bottom-left-radius: 0;
+        }
+    `;
+    document.head.appendChild(style);
+});"""
+                else:
+                    main_js_content = """document.addEventListener('DOMContentLoaded', function() {
     console.log('Aplicación cargada correctamente');
 });"""
                 with open(os.path.join(app_dir, "static", "js", "main.js"), "w") as f:
