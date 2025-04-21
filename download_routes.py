@@ -4,10 +4,9 @@ import logging
 import zipfile
 import io
 import shutil
+import subprocess
 from pathlib import Path
 from flask import request, jsonify, send_file, session
-import git
-from github import Github
 import requests
 
 def download_file_route(app, get_user_workspace):
@@ -121,9 +120,18 @@ def clone_repository_route(app, get_user_workspace, socketio):
             if target_path.exists():
                 return jsonify({'error': f'Ya existe un directorio con el nombre {repo_name}'}), 400
                 
-            # Clone the repository
+            # Clone the repository using subprocess instead of GitPython
             try:
-                git.Repo.clone_from(repo_url, target_path)
+                process = subprocess.Popen(
+                    ["git", "clone", repo_url, str(target_path)],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                stdout, stderr = process.communicate(timeout=60)
+                
+                if process.returncode != 0:
+                    error_msg = stderr.decode('utf-8', errors='replace')
+                    return jsonify({'error': f'Error al clonar el repositorio: {error_msg}'}), 500
             except Exception as e:
                 return jsonify({'error': f'Error al clonar el repositorio: {str(e)}'}), 500
                 

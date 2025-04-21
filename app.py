@@ -20,8 +20,6 @@ import openai
 import anthropic
 from anthropic import Anthropic
 import eventlet
-import git
-from github import Github
 import requests
 import google.generativeai as genai
 
