@@ -700,17 +700,8 @@ def generate_response(user_message, agent_id="general", context=None, model="ope
         simple_greeting_pattern = r'^(hola|hello|hi|hey|buenas|saludos|qué tal|que tal|ey|hey)[\s!.\?]*$'
         is_simple_greeting = re.match(simple_greeting_pattern, user_message.lower().strip())
         
-        # Para saludos simples, dar una respuesta directa sin consultar al modelo
-        if is_simple_greeting:
-            logger.info(f"Tipo de mensaje: Simple (saludo)")
-            agent_name = get_agent_name(agent_id)
-            return {
-                'success': True,
-                'response': f"¡Hola! Soy el {agent_name}. ¿En qué puedo ayudarte hoy? 😀"
-            }
-        
-        # Para mensajes complejos, utilizar el modelo de IA
-        logger.info(f"Tipo de mensaje: Complejo")
+        # Para saludos simples, también usar el modelo de IA para responder
+        logger.info(f"Tipo de mensaje: {'Simple (saludo)' if is_simple_greeting else 'Complejo'}")
         system_prompt = get_agent_system_prompt(agent_id)
         agent_name = get_agent_name(agent_id)
         
@@ -755,15 +746,7 @@ def generate_response(user_message, agent_id="general", context=None, model="ope
         # Añadir el mensaje actual del usuario
         prompt_parts.append(f"""Usuario: {user_message}
         
-        Como {agent_name}, responde al mensaje del usuario de manera útil, clara y precisa. 
-        
-        INSTRUCCIONES PARA RESPONDER:
-        1. Si es la primera interacción o el usuario hace una solicitud general, comienza tu respuesta con: "Soy el {agent_name}. He analizado tu mensaje: '{user_message}'."
-        2. Si el usuario no proporciona suficiente información, solicita más detalles específicos.
-        3. Mantén un tono profesional y amigable en español.
-        4. Si el usuario solicita crear un archivo o una aplicación, primero pide más detalles si no son suficientes, como tecnologías, funcionalidades, etc.
-        5. Estructura tus respuestas de forma clara y utiliza elementos de formato como listas o negritas cuando sea apropiado.
-        """)
+        Como {agent_name}, responde al mensaje del usuario de manera útil, clara y precisa. Utiliza tu conocimiento y habilidades para proporcionar la mejor respuesta posible en español.""")
         
         # Combinar todas las partes del prompt
         prompt = "\n\n".join(prompt_parts)
