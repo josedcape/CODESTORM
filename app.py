@@ -86,6 +86,9 @@ def get_file_type(filename):
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
+# Registrar rutas de diagnóstico
+register_diagnostic_routes(app)
+
 # Configure database
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
