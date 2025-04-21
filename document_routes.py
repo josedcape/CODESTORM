@@ -319,6 +319,8 @@ def chat_with_context():
     - document_filename: Nombre del documento a usar como contexto
     - agent_id: ID del agente a utilizar (opcional)
     - user_id: ID del usuario (opcional)
+    - document_already_processed: Booleano que indica si el documento ya fue procesado (opcional)
+    - context: Contexto previo de la conversación (opcional)
     
     Retorna:
     - Respuesta del asistente considerando el contexto del documento
@@ -330,6 +332,8 @@ def chat_with_context():
         document_filename = data.get('document_filename')
         agent_id = data.get('agent_id', 'general')
         user_id = data.get('user_id', 'default')
+        document_already_processed = data.get('document_already_processed', False)
+        conversation_context = data.get('context', [])
         
         if not message:
             return jsonify({
@@ -342,8 +346,60 @@ def chat_with_context():
                 'success': False,
                 'error': 'No se ha especificado un documento como contexto'
             }), 400
+        
+        # Si el documento ya fue procesado, usar el contexto de la conversación previa
+        if document_already_processed and conversation_context:
+            logger.info(f"Usando contexto existente para documento ya procesado: {document_filename}")
             
-        # Cargar el documento como contexto
+            # Para documentos ya procesados, usar el contexto de conversación para responder
+            import agents_utils
+            
+            # Extraer el contenido del documento del historial de conversación
+            document_content = ""
+            for msg in conversation_context:
+                if msg.get('role') == 'assistant' and f"He extraído el contenido del documento '{document_filename}'" in msg.get('content', ''):
+                    document_content = msg.get('content', '')
+                    break
+            
+            # Construir un contexto de documento sintético
+            document_context = {
+                'content': document_content,
+                'source': document_filename,
+                'word_count': len(document_content.split())
+            }
+            
+            # Generar respuesta usando el agente con el contexto del documento
+            response_result = agents_utils.generate_response(
+                user_message=message,
+                agent_id=agent_id,
+                context=conversation_context,
+                model="openai",  # Se podría hacer configurable
+                document_context=document_context
+            )
+            
+            if not response_result['success']:
+                error_msg = response_result.get('error', 'Error al generar respuesta')
+                logger.warning(f"Error en generate_response: {error_msg}.")
+                
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al generar respuesta: {error_msg}'
+                }), 500
+                
+            response = response_result['response']
+            
+            return jsonify({
+                'success': True,
+                'message': message,
+                'response': response,
+                'document': {
+                    'filename': document_filename,
+                    'processed': True
+                },
+                'agent_id': agent_id
+            })
+            
+        # Si es la primera vez que se procesa, cargar el documento
         filename = secure_filename(document_filename)
         file_path = os.path.join(UPLOAD_FOLDER, user_id, filename)
         
