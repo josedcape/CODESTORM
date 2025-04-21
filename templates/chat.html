@@ -334,6 +334,40 @@ pre code {
     display: none;
 }
 
+/* Indicador de carga */
+.loading-animation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    gap: 8px;
+}
+
+.loading-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: rgba(255, 215, 0, 0.6);
+    animation: loadingAnimation 1.4s infinite ease-in-out both;
+}
+
+.loading-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.loading-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes loadingAnimation {
+    0%, 80%, 100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
 /* Animaciones */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
@@ -344,6 +378,29 @@ pre code {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
+}
+
+/* Estilos para código inline */
+.inline-code {
+    font-family: 'JetBrains Mono', monospace;
+    background-color: rgba(40, 44, 52, 0.5);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #e6e6e6;
+}
+
+/* Estilos para los enlaces */
+.chat-link {
+    color: #3498db;
+    text-decoration: none;
+    border-bottom: 1px dotted #3498db;
+    transition: all 0.2s ease;
+}
+
+.chat-link:hover {
+    color: #2980b9;
+    border-bottom: 1px solid #2980b9;
 }
 
 /* Responsivo */
@@ -524,7 +581,7 @@ pre code {
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script src="{{ url_for('static', filename='js/chat/chat.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chat/chat-new.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Configuración de agentes especializados
