@@ -972,6 +972,97 @@
                 deleteModal.show();
             }
             
+            // Función para clonar repositorio de GitHub
+            function cloneGithubRepository(repoUrl, branch = null) {
+                const data = {
+                    repo_url: repoUrl,
+                    branch: branch
+                };
+                
+                fetch('/api/github/clone', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const statusContainer = document.getElementById('clone-status');
+                    const progressContainer = document.getElementById('clone-progress-container');
+                    const cloneRepoBtn = document.getElementById('clone-repo-btn');
+                    
+                    if (data.success) {
+                        statusContainer.className = 'alert alert-success';
+                        statusContainer.textContent = data.message;
+                        
+                        // Mostrar detalles del repositorio clonado
+                        let repoDetails = document.createElement('div');
+                        repoDetails.innerHTML = `
+                            <p class="mt-2 mb-1"><strong>Repositorio:</strong> ${data.repo_name}</p>
+                            <p class="mb-1"><strong>Ruta:</strong> ${data.repo_path}</p>
+                            <p class="mb-0"><small>El repositorio ha sido clonado exitosamente. Se recargará el explorador de archivos.</small></p>
+                        `;
+                        statusContainer.appendChild(repoDetails);
+                        
+                        // Recargar los archivos después de 2 segundos
+                        setTimeout(() => {
+                            loadFiles('.');
+                            cloneRepoBtn.disabled = false;
+                            // Opcionalmente cerrar el modal después de un tiempo
+                            setTimeout(() => {
+                                cloneGithubModal.hide();
+                            }, 3000);
+                        }, 2000);
+                    } else {
+                        statusContainer.className = 'alert alert-danger';
+                        statusContainer.textContent = 'Error al clonar repositorio: ' + (data.error || 'Error desconocido');
+                        cloneRepoBtn.disabled = false;
+                    }
+                    
+                    progressContainer.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const statusContainer = document.getElementById('clone-status');
+                    const progressContainer = document.getElementById('clone-progress-container');
+                    const cloneRepoBtn = document.getElementById('clone-repo-btn');
+                    
+                    statusContainer.className = 'alert alert-danger';
+                    statusContainer.textContent = 'Error al procesar la solicitud: ' + error.message;
+                    progressContainer.style.display = 'none';
+                    cloneRepoBtn.disabled = false;
+                });
+            }
+            
+            // Función para eliminar un repositorio de GitHub
+            function deleteGithubRepository(repoPath) {
+                const data = {
+                    repo_path: repoPath
+                };
+                
+                fetch('/api/github/delete', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        loadFiles('.');
+                    } else {
+                        showNotification('Error al eliminar repositorio: ' + (data.error || 'Error desconocido'), 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al procesar la solicitud: ' + error.message, 'danger');
+                });
+            }
+            
             function updateBreadcrumb(path) {
                 const parts = path === '.' ? [] : path.split('/');
                 let html = '<li class="breadcrumb-item"><a href="#" data-path="."><i class="bi bi-house-door"></i> /</a></li>';
