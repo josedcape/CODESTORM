@@ -814,13 +814,15 @@ def handle_chat():
         # Detectar instrucciones de exploración de repositorios
         # Patrones para detectar exploración de repositorios
         repo_patterns = [
-            r'explora(?:r)? (?:el )?(?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'explora(?:r)? (?:el )?(?:repositorio|repo)(?: ([a-zA-Z0-9_\-\.]+))?',  # Nombre del repo opcional
+            r'explora(?:r)? (?:los )?archivos(?: del| en el)? (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
             r'busca(?:r)? (?:en )?(?:el )?(?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
             r'modifica(?:r)? (?:el )?archivo ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
             r'lee(?:r)? (?:el )?archivo ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
             r'crea(?:r)? (?:un )?archivo ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
             r'lista(?:r)? (?:los )?archivos (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
-            r'muestra(?:me)? (?:el )?(?:contenido|código) de ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)'
+            r'muestra(?:me)? (?:el )?(?:contenido|código) de ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'(?:ver|mostrar|listar) (?:el )?(?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)'
         ]
         
         is_repo_exploration = False
@@ -882,13 +884,38 @@ def handle_chat():
                 # Continuar con el procesamiento normal si falla
         
         # Si es una solicitud de exploración de repositorio
-        if is_repo_exploration and repo_name:
+        if is_repo_exploration:
             try:
                 # Obtener la ruta del workspace del usuario
                 user_id = session.get('user_id', 'default')
                 workspace_path = get_user_workspace(user_id)
                 
-                # Construir la ruta al repositorio
+                # Si no se especificó un nombre de repositorio, listar los repositorios disponibles
+                if not repo_name:
+                    # Buscar carpetas en el workspace que podrían ser repositorios
+                    repos = []
+                    for item in os.listdir(workspace_path):
+                        item_path = os.path.join(workspace_path, item)
+                        if os.path.isdir(item_path) and not item.startswith('.'):
+                            # Verificar si es un repositorio Git
+                            if os.path.exists(os.path.join(item_path, '.git')):
+                                repos.append(f"{item} (Git)")
+                            else:
+                                repos.append(item)
+                    
+                    if repos:
+                        response_message = "📚 Repositorios disponibles en tu espacio de trabajo:\n\n"
+                        for repo in repos:
+                            response_message += f"- {repo}\n"
+                        response_message += "\nPuedes explorar un repositorio específico usando 'explora el repositorio [nombre]'."
+                    else:
+                        response_message = "📭 No hay repositorios disponibles en tu espacio de trabajo.\n\nPuedes clonar un repositorio usando la opción 'Clonar repositorio de GitHub' o crear uno nuevo con 'crea un archivo [nombre]'."
+                    
+                    return jsonify({
+                        'response': response_message
+                    })
+                
+                # Si se especificó un repositorio, verificar si existe
                 repo_path = workspace_path / repo_name
                 
                 if not repo_path.exists():
