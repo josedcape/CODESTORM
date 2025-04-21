@@ -491,6 +491,21 @@ function sendMessage(message) {
     // Remover indicador de carga
     removeLoadingMessage();
     
+    // Restablecer el botón de envío (arreglar problema del spinner que se queda cargando)
+    const sendButton = document.getElementById('send-button');
+    if (sendButton) {
+      sendButton.disabled = false;
+      sendButton.classList.remove('btn-ripple');
+      if (typeof AnimationUtils !== 'undefined') {
+        AnimationUtils.hideSpinner(sendButton);
+      } else {
+        // Fallback si AnimationUtils no está disponible
+        if (sendButton.querySelector('.spinner')) {
+          sendButton.innerHTML = '<i class="bi bi-send"></i>';
+        }
+      }
+    }
+    
     // Log de la respuesta para diagnóstico
     console.log("Datos recibidos de /api/chat:", data);
     
@@ -525,8 +540,9 @@ function sendMessage(message) {
         chatMessages.appendChild(processingElement);
         scrollToBottom(chatMessages);
         
-        // Remover después de un breve retraso
+        // Remover después de un breve retraso y habilitar el chat de nuevo
         setTimeout(() => {
+          // Eliminar el mensaje de procesamiento
           processingElement.remove();
           
           // Guardar respuesta en el historial
@@ -538,6 +554,18 @@ function sendMessage(message) {
           
           // Mostrar la respuesta del agente con el contenido del documento
           addAgentMessage(data.response, activeAgent);
+          
+          // Mensaje adicional para invitar a hacer preguntas sobre el documento
+          addSystemMessage("✅ El documento ha sido procesado. Ahora puedes hacer preguntas específicas sobre su contenido.");
+          
+          // Scroll hasta el final
+          scrollToBottom(chatMessages);
+          
+          // Poner el foco en el campo de entrada
+          const chatInput = document.getElementById('message-input');
+          if (chatInput) {
+            chatInput.focus();
+          }
         }, 1500);
       }
     } else {
@@ -622,6 +650,21 @@ function sendMessage(message) {
   .catch(error => {
     console.error('Error en la comunicación con el servidor:', error);
     removeLoadingMessage();
+    
+    // Restablecer el botón de envío en caso de error
+    const sendButton = document.getElementById('send-button');
+    if (sendButton) {
+      sendButton.disabled = false;
+      sendButton.classList.remove('btn-ripple');
+      if (typeof AnimationUtils !== 'undefined') {
+        AnimationUtils.hideSpinner(sendButton);
+      } else {
+        // Fallback si AnimationUtils no está disponible
+        if (sendButton.querySelector('.spinner')) {
+          sendButton.innerHTML = '<i class="bi bi-send"></i>';
+        }
+      }
+    }
     
     // Mensaje de error más detallado para facilitar la depuración
     const errorMessage = `Error de conexión: ${error.message || 'Desconocido'}. 
