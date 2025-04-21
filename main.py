@@ -8,6 +8,7 @@ import logging
 from routes_analyzer import register_analyzer_routes
 from document_routes import register_document_routes
 from github_routes import register_github_routes
+from file_explorer_routes import register_file_explorer_routes
 from simple_test import app, get_user_workspace
 
 # Configurar logging para este módulo
@@ -32,6 +33,13 @@ try:
     logger.info("Rutas de GitHub registradas correctamente")
 except Exception as e:
     logger.error(f"Error al registrar rutas de GitHub: {str(e)}")
+    
+# Registrar las rutas para exploración de archivos
+try:
+    register_file_explorer_routes(app)
+    logger.info("Rutas de exploración de archivos registradas correctamente")
+except Exception as e:
+    logger.error(f"Error al registrar rutas de exploración de archivos: {str(e)}")
 
 # Solo ejecutar la aplicación si este archivo es el punto de entrada
 if __name__ == '__main__':

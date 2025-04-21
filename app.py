@@ -811,9 +811,37 @@ def handle_chat():
         # Por ejemplo: "crea una página de ventas atractiva y moderna"
         is_complex_file_request = re.search(r'(?:crea|genera|hacer|crear|implementa|programa|desarrolla|diseña|haz)\s+(?:una?|el)?\s*(?:página|pagina|sitio|web|componente|interfaz|archivo|aplicación|app)|(?:p[áa]gina\s+de\s+ventas)', user_message, re.IGNORECASE)
         
+        # Detectar instrucciones de exploración de repositorios
+        # Patrones para detectar exploración de repositorios
+        repo_patterns = [
+            r'explora(?:r)? (?:el )?(?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'busca(?:r)? (?:en )?(?:el )?(?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'modifica(?:r)? (?:el )?archivo ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'lee(?:r)? (?:el )?archivo ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'crea(?:r)? (?:un )?archivo ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'lista(?:r)? (?:los )?archivos (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)',
+            r'muestra(?:me)? (?:el )?(?:contenido|código) de ([a-zA-Z0-9_\-\.\/]+) (?:en|del) (?:repositorio|repo) ([a-zA-Z0-9_\-\.]+)'
+        ]
+        
+        is_repo_exploration = False
+        repo_name = None
+        
+        # Comprobar si el mensaje coincide con algún patrón de exploración
+        for pattern in repo_patterns:
+            match = re.search(pattern, user_message.lower())
+            if match:
+                is_repo_exploration = True
+                # Extraer nombre del repositorio (está en el grupo 1 o 2 dependiendo del patrón)
+                if len(match.groups()) == 1:
+                    repo_name = match.group(1)
+                else:
+                    repo_name = match.group(2)
+                break
+        
         logging.debug(f"Mensaje recibido: '{user_message}'")
         logging.debug(f"¿Es una solicitud de generación de archivo complejo? {bool(is_complex_file_request)}")
         logging.debug(f"¿Es una operación de archivo específica? {bool(is_file_operation)}")
+        logging.debug(f"¿Es una exploración de repositorio? {bool(is_repo_exploration)} - Repo: {repo_name}")
         
         # Procesar comando directo de terminal si se detecta uno
         if direct_command_match:
@@ -853,6 +881,100 @@ def handle_chat():
                 logging.error(f"Error al ejecutar comando directo: {str(e)}")
                 # Continuar con el procesamiento normal si falla
         
+        # Si es una solicitud de exploración de repositorio
+        if is_repo_exploration and repo_name:
+            try:
+                # Obtener la ruta del workspace del usuario
+                user_id = session.get('user_id', 'default')
+                workspace_path = get_user_workspace(user_id)
+                
+                # Construir la ruta al repositorio
+                repo_path = workspace_path / repo_name
+                
+                if not repo_path.exists():
+                    return jsonify({
+                        'response': f"❌ El repositorio '{repo_name}' no existe en tu espacio de trabajo. Por favor, clona primero el repositorio usando la opción de GitHub o especifica un repositorio existente."
+                    })
+                
+                # Explorar el repositorio según la instrucción
+                result = explore_repository_files(user_message, str(repo_path), model_choice)
+                
+                if result.get('success'):
+                    # Construir una respuesta contextual según la acción realizada
+                    action = result.get('action', '')
+                    response_message = f"✅ He procesado tu instrucción para explorar el repositorio '{repo_name}'.\n\n"
+                    
+                    if action == 'explore':
+                        # Formatear la lista de archivos/directorios para mostrarlos
+                        items = result.get('items', [])
+                        response_message += f"📂 Contenido del directorio '{result.get('path', '.')}' en el repositorio:\n\n"
+                        
+                        for item in items:
+                            if item['type'] == 'directory':
+                                response_message += f"📁 {item['name']}/\n"
+                            else:
+                                response_message += f"📄 {item['name']} ({item.get('file_type', '')})\n"
+                                
+                    elif action == 'read':
+                        # Mostrar el contenido del archivo con formato
+                        content = result.get('content', '')
+                        file_type = result.get('file_type', '')
+                        response_message += f"📄 Contenido del archivo '{result.get('path', '')}':\n\n"
+                        response_message += f"```{file_type}\n{content}\n```\n"
+                        
+                    elif action == 'modify':
+                        # Mostrar resumen de cambios realizados
+                        response_message += f"✏️ {result.get('message', '')}\n\n"
+                        if 'changes_summary' in result:
+                            response_message += "Cambios realizados:\n"
+                            response_message += f"```diff\n{result['changes_summary']}\n```\n"
+                        
+                    elif action == 'create':
+                        # Mostrar información sobre el archivo creado
+                        response_message += f"✨ {result.get('message', '')}\n\n"
+                        if 'content' in result:
+                            file_extension = os.path.splitext(result.get('path', ''))[1].lstrip('.')
+                            preview = result.get('content', '')
+                            response_message += f"Vista previa del contenido:\n```{file_extension}\n{preview}\n```\n"
+                    
+                    elif action == 'search':
+                        # Mostrar resultados de búsqueda
+                        results = result.get('results', [])
+                        query = result.get('query', '')
+                        search_type = result.get('type', '')
+                        
+                        response_message += f"🔍 Búsqueda de '{query}' (tipo: {search_type}):\n\n"
+                        if results:
+                            for i, item in enumerate(results, 1):
+                                response_message += f"{i}. {item}\n"
+                        else:
+                            response_message += "No se encontraron resultados para esta búsqueda.\n"
+                    
+                    return jsonify({
+                        'response': response_message
+                    })
+                else:
+                    # Si hubo algún error en la exploración
+                    error_message = result.get('error', 'Error desconocido al explorar el repositorio')
+                    response_message = f"❌ No pude completar la exploración: {error_message}\n\n"
+                    
+                    # Sugerir acciones alternativas según el tipo de error
+                    if 'no existe' in error_message.lower():
+                        response_message += "Posibles soluciones:\n"
+                        response_message += "- Verifica el nombre del repositorio\n"
+                        response_message += "- Asegúrate de haber clonado el repositorio primero\n"
+                        response_message += "- Prueba a especificar la ruta correcta dentro del repositorio\n"
+                    
+                    return jsonify({
+                        'response': response_message
+                    })
+                    
+            except Exception as e:
+                logging.error(f"Error al procesar exploración de repositorio: {str(e)}")
+                return jsonify({
+                    'response': f"❌ Error al explorar el repositorio: {str(e)}"
+                })
+                
         # Si es una solicitud de generación de archivo complejo
         if is_complex_file_request and not is_file_operation:
             try:
