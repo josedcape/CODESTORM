@@ -164,13 +164,19 @@ function initCreationCommandDetection() {
   };
   
   // Almacenar información de conversación contextual
-  window.app.conversationContext = {
+  window.app.conversationState = {
     hasColorPreference: false,
     colorPreference: '',
     hasStyleInfo: false,
     styleInfo: '',
     hasContentInfo: false,
-    contentInfo: ''
+    contentInfo: '',
+    creationMode: false,
+    creationStep: 0,
+    lastInstructionType: '',
+    pendingActions: [],
+    creationInProgress: false,
+    messageHistory: []
   };
 }
 
@@ -296,6 +302,35 @@ function sendMessage(message) {
     collaborative_mode: collaborativeMode
   });
   
+  // Actualizar el estado de la conversación
+  const lowerMsg = message.toLowerCase();
+  if (lowerMsg.includes('página') || lowerMsg.includes('pagina') || lowerMsg.includes('web')) {
+    window.app.conversationState.creationMode = true;
+    window.app.conversationState.lastInstructionType = 'page';
+    
+    // Detectar preferencias de estilo y color
+    if (lowerMsg.includes('color') || lowerMsg.includes('estilo') || lowerMsg.includes('diseño')) {
+      window.app.conversationState.hasStyleInfo = true;
+      
+      if (lowerMsg.includes('pastel')) {
+        window.app.conversationState.hasColorPreference = true;
+        window.app.conversationState.colorPreference = 'pastel';
+      } else if (lowerMsg.includes('moderna') || lowerMsg.includes('moderno')) {
+        window.app.conversationState.hasStyleInfo = true;
+        window.app.conversationState.styleInfo = 'moderna';
+      }
+    }
+  }
+  
+  console.log("Estado de la conversación:", window.app.conversationState);
+  
+  // Guardar historial de mensajes
+  window.app.conversationState.messageHistory.push({
+    role: 'user',
+    content: message,
+    timestamp: new Date().toISOString()
+  });
+  
   fetch('/api/chat', {
     method: 'POST',
     headers: {
@@ -306,7 +341,8 @@ function sendMessage(message) {
       agent_id: agentId,
       context: conversationContext,
       model: selectedModel,
-      collaborative_mode: collaborativeMode
+      collaborative_mode: collaborativeMode,
+      conversation_state: window.app.conversationState
     }),
   })
   .then(response => response.json())
@@ -318,6 +354,24 @@ function sendMessage(message) {
       addSystemMessage(`Error: ${data.error}`);
       return;
     }
+    
+    // Actualizar estado de la conversación si se creó un archivo o se realizó alguna acción especial
+    if (data.response && data.response.includes('He creado el archivo que solicitaste')) {
+      window.app.conversationState.creationMode = false;
+      window.app.conversationState.creationInProgress = false;
+      window.app.conversationState.creationStep = 0;
+      window.app.conversationState.hasColorPreference = false;
+      window.app.conversationState.hasStyleInfo = false;
+      window.app.conversationState.hasContentInfo = false;
+      console.log("¡Archivo creado! Restableciendo estado de conversación", window.app.conversationState);
+    }
+    
+    // Guardar respuesta en el historial
+    window.app.conversationState.messageHistory.push({
+      role: 'assistant',
+      content: data.response,
+      timestamp: new Date().toISOString()
+    });
     
     // Mostrar la respuesta del agente
     addAgentMessage(data.response, activeAgent);

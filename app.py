@@ -675,8 +675,13 @@ def handle_chat():
         context = data.get('context', [])
         model_choice = data.get('model', 'openai')
         collaborative_mode = data.get('collaborative_mode', True)  # Modo colaborativo activado por defecto
+        chat_mode = data.get('chat_mode', 'normal')  # Modo de chat: normal, creation, code_edit, etc.
+        
+        # Estado de la conversación para seguimiento de tareas complejas
+        conversation_state = data.get('conversation_state', {})
         
         logging.info(f"Procesando mensaje: '{user_message}' con agente: {agent_id}, modelo: {model_choice}")
+        logging.info(f"Estado de conversación: {conversation_state}")
         
         if not user_message:
             logging.warning("Error: No se proporcionó mensaje")
