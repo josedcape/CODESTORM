@@ -353,14 +353,15 @@ def generate_with_anthropic(prompt, system_prompt, temperature=0.7, use_json=Fal
         logger.error(f"Error inesperado en generate_with_anthropic: {str(e)}")
         raise ValueError(f"Error inesperado al generar contenido con Anthropic: {str(e)}")
 
-def generate_with_gemini(prompt, system_prompt, temperature=0.7):
+def generate_with_gemini(prompt, system_prompt, temperature=0.7, use_json=False):
     """
-    Genera contenido utilizando la API de Google Gemini.
+    Genera contenido utilizando la API de Google Gemini con manejo mejorado de errores.
     
     Args:
         prompt: Prompt para generar contenido
         system_prompt: Prompt de sistema para establecer el rol
         temperature: Temperatura para la generación (0.0 - 1.0)
+        use_json: Si es True, se incluirá instrucción para responder en formato JSON
         
     Returns:
         str: Contenido generado
@@ -369,63 +370,180 @@ def generate_with_gemini(prompt, system_prompt, temperature=0.7):
         raise ValueError("Google Gemini no configurado. Verifica la clave API.")
     
     try:
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-pro",
-            generation_config={"temperature": temperature}
-        )
-        
-        # Combinar system prompt y user prompt para Gemini
+        # Preparar el prompt con instrucciones especiales
         combined_prompt = f"{system_prompt}\n\n{prompt}"
+        if use_json:
+            combined_prompt += "\n\nIMPORTANTE: Responde ÚNICAMENTE con un objeto JSON válido, sin explicaciones adicionales ni texto fuera del JSON."
+            
+        # Configuración del modelo con safety settings y temperatura
+        generation_config = {
+            "temperature": temperature,
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": 4000,
+        }
         
-        response = model.generate_content(combined_prompt)
+        safety_settings = [
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            }
+        ]
         
-        return response.text
+        # Realizar la solicitud con reintentos
+        for attempt in range(3):  # 3 intentos máximo
+            try:
+                model = genai.GenerativeModel(
+                    model_name="gemini-1.5-pro",
+                    generation_config=generation_config,
+                    safety_settings=safety_settings
+                )
+                
+                response = model.generate_content(combined_prompt)
+                content = response.text.strip()
+                
+                # Si se solicitó JSON, validar la respuesta
+                if use_json:
+                    try:
+                        json.loads(content)  # Verificar que es JSON válido
+                    except json.JSONDecodeError:
+                        logger.warning(f"Gemini devolvió un JSON inválido en el intento {attempt+1}, reintentando...")
+                        if attempt == 2:  # Último intento
+                            logger.error("Todos los intentos de obtener JSON válido fallaron")
+                            raise ValueError("La respuesta no es un JSON válido después de múltiples intentos")
+                        continue  # Reintentar
+                
+                return content
+                
+            except Exception as e:
+                if attempt < 2:  # Todavía hay más intentos disponibles
+                    wait_time = 2 ** attempt  # Backoff exponencial: 1s, 2s, 4s
+                    logger.warning(f"Error de Gemini (intento {attempt+1}/3): {str(e)}. Reintentando en {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Error persistente de Gemini después de 3 intentos: {str(e)}")
+                    raise
+                    
     except Exception as e:
-        logger.error(f"Error en generate_with_gemini: {str(e)}")
-        raise
+        error_message = str(e)
+        
+        if "API key not valid" in error_message or "invalid API key" in error_message.lower():
+            logger.error(f"Error de autenticación con Gemini: {error_message}")
+            raise ValueError(f"Error de autenticación con Gemini. Verifica tu clave API: {error_message}")
+        elif "quota exceeded" in error_message.lower() or "rate limit" in error_message.lower():
+            logger.error(f"Límite de cuota excedido en Gemini: {error_message}")
+            raise ValueError(f"Se ha excedido el límite de solicitudes a Gemini. Intenta más tarde: {error_message}")
+        elif "network" in error_message.lower() or "timeout" in error_message.lower() or "connection" in error_message.lower():
+            logger.error(f"Error de conexión con Gemini: {error_message}")
+            raise ValueError(f"Error de conexión con Gemini. Verifica tu conexión a internet: {error_message}")
+        else:
+            logger.error(f"Error inesperado en generate_with_gemini: {error_message}")
+            raise ValueError(f"Error inesperado al generar contenido con Gemini: {error_message}")
 
-def generate_content(prompt, system_prompt, model="openai", temperature=0.7):
+def generate_content(prompt, system_prompt, model="openai", temperature=0.7, use_json=False, display_provider=False):
     """
-    Genera contenido utilizando el modelo especificado.
+    Genera contenido utilizando el modelo especificado con manejo mejorado de errores.
     
     Args:
         prompt: Prompt para generar contenido
         system_prompt: Prompt de sistema para establecer el rol
         model: Modelo a utilizar (openai, anthropic, gemini)
         temperature: Temperatura para la generación (0.0 - 1.0)
+        use_json: Si es True, solicita respuesta en formato JSON
+        display_provider: Si es True, añade información sobre el proveedor de AI usado
         
     Returns:
         str: Contenido generado
     """
+    # Determinar los modelos disponibles y ordenarlos
+    available_models = []
+    if openai_client:
+        available_models.append("openai")
+    if anthropic_client:
+        available_models.append("anthropic")
+    if genai_configured:
+        available_models.append("gemini")
+    
+    # Si no hay modelos configurados, lanzar error
+    if not available_models:
+        raise ValueError("No hay modelos de IA configurados. Verifica las claves API en las variables de entorno.")
+    
+    # Si el modelo solicitado no está disponible, usar el primero disponible
+    model_to_use = model
+    if model not in available_models and available_models:
+        model_to_use = available_models[0]
+        logger.warning(f"Modelo {model} no disponible, usando {model_to_use} en su lugar")
+    
+    # Generar respuesta con manejo de errores
+    error_messages = []
+    response_content = None
+    
     try:
-        if model == "openai":
-            return generate_with_openai(prompt, system_prompt, temperature)
-        elif model == "anthropic":
-            return generate_with_anthropic(prompt, system_prompt, temperature)
-        elif model == "gemini":
-            return generate_with_gemini(prompt, system_prompt, temperature)
-        else:
-            # Por defecto, usar OpenAI
-            return generate_with_openai(prompt, system_prompt, temperature)
-    except Exception as e:
-        logger.error(f"Error en generate_content con modelo {model}: {str(e)}")
+        # Intentar con el modelo principal
+        if model_to_use == "openai":
+            response_content = generate_with_openai(prompt, system_prompt, temperature, use_json)
+        elif model_to_use == "anthropic":
+            response_content = generate_with_anthropic(prompt, system_prompt, temperature, use_json)
+        elif model_to_use == "gemini":
+            response_content = generate_with_gemini(prompt, system_prompt, temperature, use_json)
         
-        # Intentar con modelo alternativo si falla el primero
-        try:
-            if model != "openai" and openai_client:
-                logger.info(f"Intentando con OpenAI como alternativa")
-                return generate_with_openai(prompt, system_prompt, temperature)
-            elif model != "anthropic" and anthropic_client:
-                logger.info(f"Intentando con Anthropic como alternativa")
-                return generate_with_anthropic(prompt, system_prompt, temperature)
-            elif model != "gemini" and genai_configured:
-                logger.info(f"Intentando con Gemini como alternativa")
-                return generate_with_gemini(prompt, system_prompt, temperature)
-            else:
-                raise ValueError(f"No se pudo generar contenido con ningún modelo disponible")
-        except Exception as fallback_error:
-            logger.error(f"Error en fallback: {str(fallback_error)}")
-            raise
+        # Si se obtuvo contenido y se solicita mostrar el proveedor, añadir la información
+        if response_content and display_provider:
+            provider_note = {
+                "openai": "🤖 *Generado por OpenAI*",
+                "anthropic": "🤖 *Generado por Anthropic Claude*",
+                "gemini": "🤖 *Generado por Google Gemini*"
+            }
+            response_content += f"\n\n{provider_note.get(model_to_use, '')}"
+        
+        return response_content
+    except Exception as primary_error:
+        error_messages.append(f"Error con {model_to_use}: {str(primary_error)}")
+        logger.error(f"Error en generate_content con modelo {model_to_use}: {str(primary_error)}")
+        
+        # Intentar con modelos alternativos
+        fallback_models = [m for m in available_models if m != model_to_use]
+        for fallback_model in fallback_models:
+            try:
+                logger.info(f"Intentando con {fallback_model} como alternativa")
+                
+                if fallback_model == "openai":
+                    response_content = generate_with_openai(prompt, system_prompt, temperature, use_json)
+                elif fallback_model == "anthropic":
+                    response_content = generate_with_anthropic(prompt, system_prompt, temperature, use_json)
+                elif fallback_model == "gemini":
+                    response_content = generate_with_gemini(prompt, system_prompt, temperature, use_json)
+                
+                # Si se obtuvo contenido y se solicita mostrar el proveedor, añadir la información
+                if response_content and display_provider:
+                    provider_note = {
+                        "openai": "🤖 *Generado por OpenAI (proveedor alternativo)*",
+                        "anthropic": "🤖 *Generado por Anthropic Claude (proveedor alternativo)*",
+                        "gemini": "🤖 *Generado por Google Gemini (proveedor alternativo)*"
+                    }
+                    response_content += f"\n\n{provider_note.get(fallback_model, '')}"
+                
+                return response_content
+            except Exception as fallback_error:
+                error_messages.append(f"Error con {fallback_model}: {str(fallback_error)}")
+                logger.error(f"Error en generate_content con modelo de fallback {fallback_model}: {str(fallback_error)}")
+                continue
+        
+        # Si todos los modelos fallan, generar un mensaje de error detallado
+        error_summary = "\n".join(error_messages)
+        raise ValueError(f"No se pudo generar contenido con ningún modelo disponible:\n{error_summary}")
 
 def create_file_with_agent(description, file_type, filename, agent_id, workspace_path, model="openai"):
     """
@@ -774,28 +892,47 @@ def explore_repository_files(instruction, repo_path, model="openai"):
         {{"action": "search", "target": "", "details": "Buscar todos los archivos que contengan 'function login'"}}
         """
         
-        # Analizamos la instrucción
-        analysis_result = generate_content(analysis_prompt, system_prompt, model, temperature=0.2)
+        # Analizamos la instrucción solicitando explícitamente formato JSON
+        analysis_result = generate_content(analysis_prompt, system_prompt, model, temperature=0.2, use_json=True)
         
         # Intentamos extraer el JSON de la respuesta
         analysis_json = None
         try:
-            # Buscar patrón JSON en la respuesta
-            json_pattern = r'\{.*\}'
-            json_match = re.search(json_pattern, analysis_result, re.DOTALL)
+            # Intentar cargar la respuesta directamente como JSON
+            analysis_json = json.loads(analysis_result)
+        except json.JSONDecodeError as json_error:
+            logger.error(f"Error al parsear JSON de la respuesta: {str(json_error)}")
             
-            if json_match:
-                analysis_json = json.loads(json_match.group())
-            else:
-                # Intentar cargar la respuesta completa como JSON
-                analysis_json = json.loads(analysis_result)
-        except Exception as e:
-            logger.error(f"Error al extraer JSON de la respuesta: {str(e)}")
-            return {
-                'success': False,
-                'error': f"No se pudo procesar la instrucción: {str(e)}",
-                'analysis_result': analysis_result
-            }
+            # Si falla, intentar buscar un objeto JSON en la respuesta
+            try:
+                json_pattern = r'\{.*\}'
+                json_match = re.search(json_pattern, analysis_result, re.DOTALL)
+                
+                if json_match:
+                    analysis_json = json.loads(json_match.group())
+                else:
+                    # Si no encontramos un JSON válido, intentar extraer información clave
+                    action_pattern = r'(?:action|acción)["\']?\s*[:=]\s*["\']?([^"\',}]+)["\']?'
+                    target_pattern = r'(?:target|objetivo|ruta)["\']?\s*[:=]\s*["\']?([^"\',}]+)["\']?'
+                    
+                    action_match = re.search(action_pattern, analysis_result, re.IGNORECASE)
+                    target_match = re.search(target_pattern, analysis_result, re.IGNORECASE)
+                    
+                    if action_match:
+                        analysis_json = {
+                            "action": action_match.group(1).strip(),
+                            "target": target_match.group(1).strip() if target_match else "",
+                            "details": "Extraído de respuesta no JSON"
+                        }
+                    else:
+                        raise ValueError("No se pudo extraer información clave de la respuesta")
+            except Exception as extract_error:
+                logger.error(f"Error al extraer información de la respuesta: {str(extract_error)}")
+                return {
+                    'success': False,
+                    'error': f"No se pudo procesar la instrucción. Por favor, sé más específico con lo que deseas hacer en el repositorio.",
+                    'analysis_result': analysis_result
+                }
         
         if not analysis_json or 'action' not in analysis_json:
             return {
@@ -896,8 +1033,8 @@ def explore_repository_files(instruction, repo_path, model="openai"):
             """
             
             try:
-                # Generamos la versión modificada
-                modified_content = generate_content(modification_prompt, modification_system_prompt, model)
+                # Generamos la versión modificada del archivo
+                modified_content = generate_content(modification_prompt, modification_system_prompt, model, temperature=0.3)
                 
                 # Limpiamos el contenido para eliminar posibles marcadores de código
                 cleaned_content = modified_content
@@ -971,8 +1108,8 @@ def explore_repository_files(instruction, repo_path, model="openai"):
             """
             
             try:
-                # Generamos el contenido
-                new_content = generate_content(creation_prompt, creation_system_prompt, model)
+                # Generamos el contenido para el nuevo archivo
+                new_content = generate_content(creation_prompt, creation_system_prompt, model, temperature=0.3)
                 
                 # Limpiamos el contenido para eliminar posibles marcadores de código
                 cleaned_content = new_content
