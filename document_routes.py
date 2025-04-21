@@ -311,6 +311,8 @@ def get_document_content(filename):
 def chat_with_context():
     """
     Procesa un mensaje de chat utilizando un documento como contexto.
+    Si el documento no es extenso, devolverá el contenido directamente para
+    que el cliente lo incorpore en el chat.
     
     Espera:
     - message: Mensaje del usuario
@@ -320,6 +322,7 @@ def chat_with_context():
     
     Retorna:
     - Respuesta del asistente considerando el contexto del documento
+      o el contenido del documento para su inclusión en el chat
     """
     try:
         data = request.json
@@ -359,11 +362,31 @@ def chat_with_context():
                 'error': f'Error al cargar el documento como contexto: {context_result["error"]}'
             }), 500
             
-        # Importar la función para generar respuestas con agentes
-        import agents_utils
-        
-        # Construir el contexto del documento para enviarlo al agente
+        # Construir el contexto del documento 
         document_context = context_result['context']
+        word_count = document_context['word_count']
+        
+        # Determinar si el documento es lo suficientemente pequeño para mostrarlo directamente
+        # (menos de 1000 palabras se considera pequeño)
+        MAX_WORDS_FOR_DIRECT_DISPLAY = 1000
+        
+        if word_count <= MAX_WORDS_FOR_DIRECT_DISPLAY:
+            # Para documentos pequeños, devolver el contenido para mostrarlo directamente
+            return jsonify({
+                'success': True,
+                'message': message,
+                'use_direct_content': True,
+                'document_content': document_context['content'],
+                'document': {
+                    'filename': document_filename,
+                    'word_count': word_count
+                },
+                'agent_id': agent_id,
+                'response': f"He extraído el contenido del documento '{document_filename}' (contiene {word_count} palabras). Aquí está el contenido completo:\n\n{document_context['content']}\n\nPuedes hacerme preguntas específicas sobre este documento."
+            })
+        
+        # Para documentos más grandes, seguir usando el modelo IA
+        import agents_utils
         
         # Generar respuesta usando el agente con el contexto del documento
         response_result = agents_utils.generate_response(
@@ -374,10 +397,23 @@ def chat_with_context():
         )
         
         if not response_result['success']:
+            # En caso de error con la API, también mostrar el contenido directamente
+            # pero con un mensaje de error al inicio
+            error_msg = response_result.get('error', 'Error al generar respuesta con el documento como contexto')
+            logger.warning(f"Error en generate_response: {error_msg}. Mostrando contenido directo como alternativa.")
+            
             return jsonify({
-                'success': False,
-                'error': response_result.get('error', 'Error al generar respuesta con el documento como contexto')
-            }), 500
+                'success': True,
+                'message': message,
+                'use_direct_content': True,
+                'document_content': document_context['content'],
+                'document': {
+                    'filename': document_filename,
+                    'word_count': word_count
+                },
+                'agent_id': agent_id,
+                'response': f"Hubo un problema al procesar este documento con el asistente IA ({error_msg}), pero he extraído el contenido del documento '{document_filename}' (contiene {word_count} palabras). Aquí está el contenido completo:\n\n{document_context['content']}\n\nPuedes hacerme preguntas específicas sobre este documento."
+            })
             
         response = response_result['response']
         
@@ -387,7 +423,7 @@ def chat_with_context():
             'response': response,
             'document': {
                 'filename': document_filename,
-                'word_count': context_result['context']['word_count']
+                'word_count': word_count
             },
             'agent_id': agent_id
         })

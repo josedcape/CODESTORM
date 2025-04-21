@@ -256,20 +256,55 @@ function initCreationCommandDetection() {
 
 // Enviar mensaje al backend - Versión mejorada con sistema multi-agente
 function sendMessage(message) {
-  // Verificar si es un comando de creación
-  if (handleCreationCommand(message)) {
-    return; // Si se manejó como comando de creación, no enviamos al backend
+  // Añadir clase al botón de envío para mostrar animación
+  const sendButton = document.getElementById('send-button');
+  if (sendButton) {
+    sendButton.classList.add('btn-ripple');
+    sendButton.disabled = true;
+    
+    // Mostrar spinner en el botón
+    if (typeof AnimationUtils !== 'undefined') {
+      AnimationUtils.showSpinner(sendButton, 'sm');
+    } else {
+      // Fallback si AnimationUtils no está disponible
+      const originalText = sendButton.innerHTML;
+      sendButton.innerHTML = '<div class="spinner spinner-sm"></div> Enviando...';
+      
+      // Restaurar después de 1.5 segundos
+      setTimeout(() => {
+        sendButton.innerHTML = originalText;
+        sendButton.disabled = false;
+        sendButton.classList.remove('btn-ripple');
+      }, 1500);
+    }
   }
   
-  // Añadir mensaje del usuario al chat
-  addUserMessage(message);
+  // Verificar si es un comando de creación
+  if (handleCreationCommand(message)) {
+    // Si se manejó como comando de creación, no enviamos al backend
+    // Restaurar el botón de envío
+    if (sendButton) {
+      sendButton.disabled = false;
+      sendButton.classList.remove('btn-ripple');
+      if (typeof AnimationUtils !== 'undefined') {
+        AnimationUtils.hideSpinner(sendButton);
+      }
+    }
+    return;
+  }
+  
+  // Añadir mensaje del usuario al chat con animación
+  const userMessageElement = addUserMessage(message);
+  if (userMessageElement) {
+    userMessageElement.classList.add('slide-in-up');
+  }
   
   // Verificar si es un comando para modificar archivos o ejecutar comandos en lenguaje natural
   if (window.naturalCommandProcessor) {
     const parsedRequest = window.naturalCommandProcessor.processRequest(message);
     if (parsedRequest.success) {
       // Es un comando para manipular archivos o ejecutar comandos
-      // Mostrar indicador de carga
+      // Mostrar indicador de carga con animación
       addLoadingMessage();
       
       // Procesar la solicitud mediante el API de lenguaje natural en el backend
@@ -464,26 +499,71 @@ function sendMessage(message) {
       return;
     }
     
-    // Actualizar estado de la conversación si se creó un archivo o se realizó alguna acción especial
-    if (data.response && data.response.includes('He creado el archivo que solicitaste')) {
-      window.app.conversationState.creationMode = false;
-      window.app.conversationState.creationInProgress = false;
-      window.app.conversationState.creationStep = 0;
-      window.app.conversationState.hasColorPreference = false;
-      window.app.conversationState.hasStyleInfo = false;
-      window.app.conversationState.hasContentInfo = false;
-      console.log("¡Archivo creado! Restableciendo estado de conversación", window.app.conversationState);
+    // Verificar si es respuesta directa de un documento (nueva funcionalidad)
+    if (data.use_direct_content && data.document_content) {
+      console.log("Documento detectado como no extenso. Mostrando contenido directamente:", {
+        filename: data.document.filename,
+        word_count: data.document.word_count
+      });
+      
+      // Agregar mensaje del sistema indicando que se está mostrando el contenido directamente
+      addSystemMessage(`ℹ️ Documento no extenso (${data.document.word_count} palabras) - Mostrando contenido directamente.`);
+      
+      // Agregar animación de carga para el procesamiento del documento
+      const chatMessages = document.getElementById('chat-messages');
+      if (chatMessages) {
+        const processingElement = document.createElement('div');
+        processingElement.className = 'chat-message system-message fade-in';
+        processingElement.innerHTML = `
+          <div class="message-content">
+            <div class="d-flex align-items-center">
+              <div class="spinner spinner-sm me-2"></div>
+              <span>Procesando contenido del documento...</span>
+            </div>
+          </div>
+        `;
+        chatMessages.appendChild(processingElement);
+        scrollToBottom(chatMessages);
+        
+        // Remover después de un breve retraso
+        setTimeout(() => {
+          processingElement.remove();
+          
+          // Guardar respuesta en el historial
+          window.app.conversationState.messageHistory.push({
+            role: 'assistant',
+            content: data.response,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Mostrar la respuesta del agente con el contenido del documento
+          addAgentMessage(data.response, activeAgent);
+        }, 1500);
+      }
+    } else {
+      // Comportamiento normal para respuestas regulares
+      
+      // Actualizar estado de la conversación si se creó un archivo o se realizó alguna acción especial
+      if (data.response && data.response.includes('He creado el archivo que solicitaste')) {
+        window.app.conversationState.creationMode = false;
+        window.app.conversationState.creationInProgress = false;
+        window.app.conversationState.creationStep = 0;
+        window.app.conversationState.hasColorPreference = false;
+        window.app.conversationState.hasStyleInfo = false;
+        window.app.conversationState.hasContentInfo = false;
+        console.log("¡Archivo creado! Restableciendo estado de conversación", window.app.conversationState);
+      }
+      
+      // Guardar respuesta en el historial
+      window.app.conversationState.messageHistory.push({
+        role: 'assistant',
+        content: data.response,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Mostrar la respuesta del agente
+      addAgentMessage(data.response, activeAgent);
     }
-    
-    // Guardar respuesta en el historial
-    window.app.conversationState.messageHistory.push({
-      role: 'assistant',
-      content: data.response,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Mostrar la respuesta del agente
-    addAgentMessage(data.response, activeAgent);
     
     // Procesar recomendaciones de agentes si las hay
     if (data.response.includes('**Nota:** Para esta consulta, también podrías consultar a:')) {
