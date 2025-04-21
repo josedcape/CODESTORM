@@ -7,7 +7,7 @@ from pathlib import Path
 from flask import Flask, render_template, jsonify, request, send_from_directory, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 import requests  # Usamos requests en lugar de aiohttp
-
+import project_analyzer  # Importar el analizador de proyectos
 # Configurar logging
 logging.basicConfig(level=logging.INFO,
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
