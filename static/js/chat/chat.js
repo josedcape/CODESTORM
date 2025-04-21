@@ -4,9 +4,11 @@
 function initializeChat() {
   const chatContainer = document.getElementById('chat-container');
   const chatMessages = document.getElementById('chat-messages');
-  const chatForm = document.getElementById('chat-form');
   const chatInput = document.getElementById('chat-input');
+  const sendButton = document.getElementById('send-button');
   const agentSelector = document.getElementById('agent-selector');
+  
+  console.log("Inicializando chat con nueva configuración");
   
   // Cargar los agentes en el selector
   loadAgentSelector();
@@ -14,15 +16,46 @@ function initializeChat() {
   // Verificar si hay un mensaje en la URL (enviado desde el corrector de código)
   checkMessageFromUrl(chatInput);
   
-  // Evento para enviar mensaje y autoajustar altura
-  chatForm.addEventListener('submit', function(e) {
+  // Crear un formulario virtual o usar el existente
+  let chatForm = document.getElementById('chat-form');
+  if (!chatForm) {
+    console.log("Creando formulario virtual para el chat");
+    chatForm = document.createElement('form');
+    chatForm.id = 'chat-form';
+    // No es necesario agregar el formulario al DOM
+  }
+  
+  // Evento para enviar mensaje al hacer clic en el botón
+  sendButton.addEventListener('click', function(e) {
     e.preventDefault();
     const message = chatInput.value.trim();
     if (message) {
+      console.log("Enviando mensaje desde botón:", message);
       sendMessage(message);
       chatInput.value = '';
       // Restablecer altura después de enviar
       chatInput.style.height = 'auto';
+    }
+  });
+  
+  // También manejar el evento submit del formulario (si existe en el DOM)
+  chatForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const message = chatInput.value.trim();
+    if (message) {
+      console.log("Enviando mensaje desde formulario:", message);
+      sendMessage(message);
+      chatInput.value = '';
+      // Restablecer altura después de enviar
+      chatInput.style.height = 'auto';
+    }
+  });
+  
+  // Permitir enviar con Enter (excepto con Shift+Enter para nueva línea)
+  chatInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendButton.click();
     }
   });
   

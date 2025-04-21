@@ -705,24 +705,8 @@ pre code {
             });
         }
         
-        // Funcionalidad para enviar mensaje (además de la existente en chat.js)
-        const sendButton = document.getElementById('send-button');
-        const chatForm = document.createElement('form');
-        chatForm.id = 'chat-form';
-        
-        sendButton.addEventListener('click', function() {
-            const message = chatInput.value.trim();
-            if (message) {
-                // Crear un evento de submit en un form virtual para aprovechar la lógica existente
-                const event = new CustomEvent('submit');
-                chatForm.message = message;
-                chatForm.dispatchEvent(event);
-                
-                // Limpiar y resetear el input
-                chatInput.value = '';
-                chatInput.style.height = '50px';
-            }
-        });
+        // La funcionalidad de envío ya está implementada en chat.js
+        console.log("Inicialización adicional completada.");
         
         // Permitir enviar con Enter (excepto con Shift+Enter para nueva línea)
         chatInput.addEventListener('keydown', function(e) {

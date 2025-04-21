@@ -2,6 +2,9 @@
 import os
 import json
 import logging
+# Configurar logging con mayor detalle 
+logging.basicConfig(level=logging.DEBUG, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 import subprocess
 import shutil
 import time
@@ -32,8 +35,7 @@ from agents_utils import get_agent_system_prompt, get_agent_name, generate_conte
 # Load environment variables from .env file
 load_dotenv(override=True)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Logging ya está configurado con nivel DEBUG
 
 # Configurar APIs de IA
 try:
