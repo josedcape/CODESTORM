@@ -110,33 +110,83 @@ openai_api_key = os.environ.get("OPENAI_API_KEY", "")
 anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
 
-# Initialize API clients but handle exceptions appropriately
+logging.info("=== Inicializando clientes de IA ===")
+logging.info(f"OpenAI API key: {'Configurada' if openai_api_key else 'No configurada'}")
+logging.info(f"Anthropic API key: {'Configurada' if anthropic_api_key else 'No configurada'}")
+logging.info(f"Gemini API key: {'Configurada' if gemini_api_key else 'No configurada'}")
+
+# Inicializar cliente de OpenAI
 openai_client = None
 if openai_api_key:
     try:
-        # Usar el token directamente en vez de a través del cliente
+        # Configurar el token globalmente para mantener retrocompatibilidad
         openai.api_key = openai_api_key 
+        # Crear el cliente usando la API moderna
         openai_client = openai.OpenAI(api_key=openai_api_key)
-        # Skip validation for now to avoid errors
-        # Simply log that we attempted to configure
-        logging.info(f"OpenAI API key configurada: {openai_api_key[:5]}...{openai_api_key[-5:]}")
+        logging.info(f"Cliente OpenAI inicializado correctamente. Key: {openai_api_key[:5]}...{openai_api_key[-5:]}")
+        
+        # Probar cliente con una solicitud sencilla para verificar
+        try:
+            test_response = openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": "test"}],
+                max_tokens=5
+            )
+            logging.info(f"Test de OpenAI exitoso: {test_response.model}")
+        except Exception as test_error:
+            logging.error(f"Error en test de OpenAI: {str(test_error)}")
     except Exception as e:
-        logging.error(f"Error initializing OpenAI client: {str(e)}")
+        logging.error(f"Error al inicializar cliente OpenAI: {str(e)}")
         openai_client = None
 else:
-    logging.warning("OPENAI_API_KEY not found. OpenAI features will not work.")
+    logging.warning("OPENAI_API_KEY no encontrada. Las funciones de OpenAI no estarán disponibles.")
 
-# Initialize Anthropic client if key exists
+# Inicializar cliente de Anthropic
 anthropic_client = None
 if anthropic_api_key:
     try:
         anthropic_client = anthropic.Anthropic(api_key=anthropic_api_key)
-        logging.info("Anthropic API key configured successfully.")
+        logging.info(f"Cliente Anthropic inicializado correctamente. Key: {anthropic_api_key[:5]}...{anthropic_api_key[-5:]}")
+        
+        # Probar cliente con una solicitud sencilla para verificar
+        try:
+            test_response = anthropic_client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=5,
+                messages=[
+                    {"role": "user", "content": "test"}
+                ],
+                system="test"
+            )
+            logging.info(f"Test de Anthropic exitoso: {test_response.model}")
+        except Exception as test_error:
+            logging.error(f"Error en test de Anthropic: {str(test_error)}")
     except Exception as e:
-        logging.error(f"Error initializing Anthropic client: {str(e)}")
+        logging.error(f"Error al inicializar cliente Anthropic: {str(e)}")
         anthropic_client = None
 else:
-    logging.warning("ANTHROPIC_API_KEY not found. Anthropic features will not work.")
+    logging.warning("ANTHROPIC_API_KEY no encontrada. Las funciones de Anthropic no estarán disponibles.")
+
+# Inicializar cliente de Google Gemini
+genai_configured = False
+if gemini_api_key:
+    try:
+        genai.configure(api_key=gemini_api_key)
+        genai_configured = True
+        logging.info(f"Google Gemini API configurada correctamente. Key: {gemini_api_key[:5]}...{gemini_api_key[-5:]}")
+        
+        # Probar cliente con una solicitud sencilla para verificar
+        try:
+            model = genai.GenerativeModel('gemini-1.5-pro')
+            test_response = model.generate_content("Responde con una palabra")
+            logging.info(f"Test de Gemini exitoso: {test_response.text[:20]}")
+        except Exception as test_error:
+            logging.error(f"Error en test de Gemini: {str(test_error)}")
+    except Exception as e:
+        logging.error(f"Error al configurar Google Gemini: {str(e)}")
+        genai_configured = False
+else:
+    logging.warning("GEMINI_API_KEY no encontrada. Las funciones de Google Gemini no estarán disponibles.")
 
 # This is defined above, removing duplicate definition
 # WORKSPACE_ROOT is already defined and created above
