@@ -1,5 +1,6 @@
 """
 Utilidades para la gestión de agentes especializados en Codestorm Assistant.
+Incluye funciones para generar respuestas, procesar comandos y usar contexto de documentos.
 """
 import os
 import re
@@ -422,7 +423,7 @@ def create_file_with_agent(description, file_type, filename, agent_id, workspace
             'error': f'Error generando contenido del archivo: {str(e)}'
         }
 
-def generate_response(user_message, agent_id="general", context=None, model="openai"):
+def generate_response(user_message, agent_id="general", context=None, model="openai", document_context=None):
     """
     Genera una respuesta utilizando un agente especializado.
     
@@ -431,6 +432,7 @@ def generate_response(user_message, agent_id="general", context=None, model="ope
         agent_id: ID del agente especializado
         context: Contexto de la conversación (opcional)
         model: Modelo de IA a utilizar (openai, anthropic, gemini)
+        document_context: Contexto extraído de un documento (opcional)
         
     Returns:
         dict: Resultado de la operación con claves success y response
@@ -439,20 +441,53 @@ def generate_response(user_message, agent_id="general", context=None, model="ope
         system_prompt = get_agent_system_prompt(agent_id)
         agent_name = get_agent_name(agent_id)
         
-        if context:
-            # Formatear contexto para el prompt
-            context_str = "\n".join([f"{'Usuario' if msg['role'] == 'user' else agent_name}: {msg['content']}" for msg in context])
-            prompt = f"""Historial de conversación:
-            {context_str}
-            
-            Usuario: {user_message}
-            
-            Como {agent_name}, responde al último mensaje del usuario de manera útil, clara y precisa."""
-        else:
-            prompt = f"""Usuario: {user_message}
-            
-            Como {agent_name}, responde al mensaje del usuario de manera útil, clara y precisa."""
+        # Construir el prompt basado en el contexto disponible
+        prompt_parts = []
         
+        # Añadir contexto de documento si está disponible
+        if document_context and 'content' in document_context:
+            # Truncar el contenido del documento si es muy largo
+            max_context_length = 6000  # Ajustar según necesidad
+            doc_content = document_context['content']
+            if len(doc_content) > max_context_length:
+                doc_content = doc_content[:max_context_length] + "... [Contenido truncado]"
+            
+            prompt_parts.append(f"""CONTEXTO DEL DOCUMENTO:
+            Fuente: {document_context.get('source', 'documento')}
+            Tipo: {document_context.get('type', 'texto')}
+            
+            Contenido:
+            {doc_content}
+            
+            FIN DEL CONTEXTO DEL DOCUMENTO
+            """)
+            
+            # Ajustar el system prompt para incluir instrucciones sobre el documento
+            document_instructions = """
+            INSTRUCCIONES ADICIONALES PARA CONTEXTO DE DOCUMENTO:
+            1. Utiliza la información del documento proporcionado para responder a la consulta del usuario
+            2. Si el documento no contiene información relevante, indícalo claramente
+            3. Asegúrate de no inventar información que no esté en el documento
+            4. Cita o haz referencia al documento cuando sea apropiado
+            """
+            system_prompt = system_prompt + document_instructions
+        
+        # Añadir historial de conversación si está disponible
+        if context:
+            context_str = "\n".join([f"{'Usuario' if msg['role'] == 'user' else agent_name}: {msg['content']}" for msg in context])
+            prompt_parts.append(f"""Historial de conversación:
+            {context_str}
+            """)
+        
+        # Añadir el mensaje actual del usuario
+        prompt_parts.append(f"""Usuario: {user_message}
+        
+        Como {agent_name}, responde al mensaje del usuario de manera útil, clara y precisa.""")
+        
+        # Combinar todas las partes del prompt
+        prompt = "\n\n".join(prompt_parts)
+        
+        # Generar la respuesta
         response_content = generate_content(prompt, system_prompt, model)
         
         return {

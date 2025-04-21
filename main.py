@@ -6,13 +6,24 @@ Este archivo configura la aplicación Flask y registra todas las rutas.
 import os
 import logging
 from routes_analyzer import register_analyzer_routes
+from document_routes import register_document_routes
 from simple_test import app, get_user_workspace
 
 # Configurar logging para este módulo
 logger = logging.getLogger(__name__)
 
+# Crear carpetas necesarias para la aplicación
+os.makedirs('user_workspaces/context_documents', exist_ok=True)
+
 # Registrar las rutas del analizador de proyectos
 register_analyzer_routes(app, get_user_workspace)
+
+# Registrar las rutas para manejo de documentos
+try:
+    register_document_routes(app)
+    logger.info("Rutas de documentos registradas correctamente")
+except Exception as e:
+    logger.error(f"Error al registrar rutas de documentos: {str(e)}")
 
 # Solo ejecutar la aplicación si este archivo es el punto de entrada
 if __name__ == '__main__':
