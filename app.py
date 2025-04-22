@@ -283,10 +283,11 @@ def files():
 @app.route('/explorer')
 def new_files():
     """File explorer view with new enhanced UI."""
-    return render_template('files_new.html')
+    return render_template('explorer_simple.html')
     
-@app.route('/edit/<path:file_path>')
-def edit_file(file_path):
+@app.route('/edit_file')
+def edit_file():
+    file_path = request.args.get('path', '')
     """Edit a file."""
     try:
         # Get the user workspace
