@@ -35,8 +35,13 @@ class Project(Base):
     current_agent = Column(String(32), default='architect')  # Agente actual (architect, developer, testing, fixing)
     structure = Column(JSON)  # Estructura de archivos planificada
     total_files = Column(Integer, default=0)  # Total de archivos a crear
-    model = Column(String(32), default='openai')  # Modelo de IA utilizado
+    model = Column(String(32), default='openai')  # Modelo de IA utilizado (openai, anthropic, gemini)
     error_count = Column(Integer, default=0)  # Contador de errores
+    
+    # Configuración avanzada
+    ai_config = Column(JSON)  # Configuración completa del proceso (modelo, agentes, velocidad, etc.)
+    active_agents = Column(JSON)  # Diccionario con los agentes activos en el proyecto
+    development_speed = Column(String(32), default='balanced')  # Velocidad de desarrollo (fast, balanced, thorough)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
@@ -85,13 +90,45 @@ class Project(Base):
             'total_files': self.total_files,
             'model': self.model,
             'error_count': self.error_count,
+            # Nuevos campos para configuración avanzada
+            'ai_config': self.ai_config,
+            'active_agents': self.active_agents,
+            'development_speed': self.development_speed,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
     
     @classmethod
-    def create_project(cls, name, description, project_type=None, user_id='default', model='openai'):
-        """Crea un nuevo proyecto."""
+    def create_project(cls, name, description, project_type=None, user_id='default', model='openai', 
+                       active_agents=None, development_speed='balanced', ai_config=None):
+        """
+        Crea un nuevo proyecto.
+        
+        Args:
+            name: Nombre del proyecto
+            description: Descripción del proyecto
+            project_type: Tipo de proyecto (web, api, mobile, etc.)
+            user_id: ID del usuario que crea el proyecto
+            model: Modelo de IA a utilizar (openai, anthropic, gemini)
+            active_agents: Diccionario con los agentes activos en el proyecto
+            development_speed: Velocidad de desarrollo (fast, balanced, thorough)
+            ai_config: Configuración completa del proceso
+        """
+        if active_agents is None:
+            active_agents = {
+                'architect': True,
+                'developer': True,
+                'testing': True,
+                'fixing': True
+            }
+            
+        if ai_config is None:
+            ai_config = {
+                'model': model,
+                'agents': active_agents,
+                'development_speed': development_speed
+            }
+            
         project = cls(
             name=name,
             description=description,
@@ -107,7 +144,11 @@ class Project(Base):
             structure=None,
             total_files=0,
             model=model,
-            error_count=0
+            error_count=0,
+            # Nuevos campos
+            ai_config=ai_config,
+            active_agents=active_agents,
+            development_speed=development_speed
         )
         return project
     

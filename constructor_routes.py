@@ -55,20 +55,64 @@ class AutonomousBuilder:
         pause_flags[project_id] = self.pause_flag
         project_locks[project_id] = self.lock
     
-    def start_building(self, project_description):
-        """Inicia el proceso de construcción en un hilo separado."""
+    def start_building(self, project_description, config=None):
+        """
+        Inicia el proceso de construcción en un hilo separado.
+        
+        Args:
+            project_description: Descripción del proyecto a construir
+            config: Diccionario de configuración con opciones como:
+                   - model: Modelo de IA a utilizar (openai, anthropic, gemini)
+                   - agents: Diccionario con agentes a utilizar {architect: bool, developer: bool, ...}
+                   - development_speed: Velocidad de desarrollo (fast, balanced, thorough)
+        """
+        if config is None:
+            config = {
+                'model': 'openai',
+                'agents': {
+                    'architect': True,
+                    'developer': True,
+                    'testing': True,
+                    'fixing': True
+                },
+                'development_speed': 'balanced'
+            }
+            
         thread = threading.Thread(
             target=self._build_process,
-            args=(project_description,),
+            args=(project_description, config),
             daemon=True
         )
         thread.start()
         return thread
     
-    def _build_process(self, project_description):
-        """Proceso principal de construcción (ejecutado en segundo plano)."""
+    def _build_process(self, project_description, config):
+        """
+        Proceso principal de construcción (ejecutado en segundo plano).
+        
+        Args:
+            project_description: Descripción del proyecto a construir
+            config: Configuración del proceso de construcción
+        """
         try:
-            logger.info(f"Iniciando construcción del proyecto {self.project_id}")
+            logger.info(f"Iniciando construcción del proyecto {self.project_id} con config: {config}")
+            
+            # Guardar la configuración para uso en todo el proceso
+            self.config = config
+            self.model = config.get('model', 'openai')
+            self.agents = config.get('agents', {})
+            self.development_speed = config.get('development_speed', 'balanced')
+            
+            # Ajustar intervalos según la velocidad de desarrollo
+            if self.development_speed == 'fast':
+                self.notification_interval = 5  # Notificaciones más frecuentes
+                self.wait_factor = 0.5         # Tiempos de espera más cortos
+            elif self.development_speed == 'thorough':
+                self.notification_interval = 15  # Notificaciones menos frecuentes
+                self.wait_factor = 1.5          # Tiempos de espera más largos
+            else:  # balanced
+                self.notification_interval = 10
+                self.wait_factor = 1.0
             
             # Obtener o crear el proyecto en la base de datos
             db = get_db_session()
@@ -77,13 +121,23 @@ class AutonomousBuilder:
             if not project:
                 # Extraer un nombre para el proyecto a partir de la descripción
                 project_name = self._extract_project_name(project_description)
+                
+                # Crear el proyecto con la configuración recibida
                 project = Project.create_project(
                     name=project_name,
                     description=project_description,
-                    user_id=self.user_id
+                    user_id=self.user_id,
+                    model=self.model,
+                    active_agents=self.agents,
+                    development_speed=self.development_speed,
+                    ai_config=self.config
                 )
                 db.add(project)
                 db.commit()
+                
+                # Registrar configuración
+                logger.info(f"Proyecto creado con configuración: modelo={self.model}, velocidad={self.development_speed}")
+                logger.info(f"Agentes activos: {self.agents}")
             
             # Obtener o crear la sesión de conversación
             session = db.query(ProjectSession).filter_by(project_id=self.project_id).first()
@@ -99,7 +153,8 @@ class AutonomousBuilder:
             self.error_count = 0
             self.error_log = []
             self.last_notification_time = time.time()
-            self.notification_interval = 10  # Segundos entre notificaciones de avance
+            
+            # Nota: notification_interval ya fue configurado basado en development_speed
             
             # Agregar el mensaje inicial del usuario
             session.add_message('user', project_description)
@@ -907,8 +962,14 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
         return self._execute_command_with_progress(command, project, session)
     
     def _wait_with_pause_check(self, seconds):
-        """Espera un tiempo determinado, verificando si hay que pausar."""
-        end_time = time.time() + seconds
+        """
+        Espera un tiempo determinado, verificando si hay que pausar.
+        Ajusta el tiempo de espera según el factor de velocidad configurado.
+        """
+        # Aplicar factor de velocidad al tiempo de espera
+        adjusted_seconds = seconds * self.wait_factor if hasattr(self, 'wait_factor') else seconds
+        
+        end_time = time.time() + adjusted_seconds
         while time.time() < end_time:
             if not self.pause_flag.is_set():
                 # Si está pausado, esperar hasta que se reanude
