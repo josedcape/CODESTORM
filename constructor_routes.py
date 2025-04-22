@@ -1226,7 +1226,7 @@ Basado en tu descripción, he determinado que estás buscando construir una **{p
                 db.commit()
             
             # Enviar notificación sobre el cambio de agente
-            session = db.query(ProjectSession).filter_by(project_id=self.project_id).first()
+            session = db.query(ProjectSession).filter_by(project_id=project.project_id).first()
             if session:
                 self._send_notification(
                     project, 
@@ -1235,8 +1235,10 @@ Basado en tu descripción, he determinado que estás buscando construir una **{p
                     f"Ahora el agente '{agent_id}' está trabajando en el proyecto", 
                     "info"
                 )
+            else:
+                logger.warning(f"No se encontró sesión para el proyecto {project.project_id} al cambiar agente")
             
-            logger.info(f"Cambiado agente a: {agent_id} para el proyecto {self.project_id}")
+            logger.info(f"Cambiado agente a: {agent_id} para el proyecto {project.project_id}")
             return True
         
         return False
