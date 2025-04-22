@@ -361,9 +361,9 @@ def process_code():
         else:
             logging.info(f"Procesando {code_lines} líneas de código en {language} usando modelo {model}")
         
-        # Importar la función mejorada de process_code
-        from code_processor import process_code_improved
-        logging.info("Módulo code_processor importado correctamente")
+        # Importar la función mejorada de process_code desde el nuevo módulo
+        from code_processor_new import process_code_improved
+        logging.info("Módulo code_processor_new importado correctamente")
         
         # Obtener la respuesta usando la función mejorada
         result = process_code_improved(data)
