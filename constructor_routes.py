@@ -139,22 +139,28 @@ class AutonomousBuilder:
                     development_speed=self.development_speed,
                     ai_config=self.config
                 )
+                # Asignar explícitamente el project_id
+                project.project_id = self.project_id
+                
                 db.add(project)
                 db.commit()
+                db.refresh(project)  # Recargar para obtener los valores generados
                 
                 # Registrar configuración
                 logger.info(f"Proyecto creado con configuración: modelo={self.model}, velocidad={self.development_speed}")
                 logger.info(f"Agentes activos: {self.agents}")
+                logger.info(f"Project ID: {project.project_id}")
             
             # Obtener o crear la sesión de conversación
-            session = db.query(ProjectSession).filter_by(project_id=self.project_id).first()
+            session = db.query(ProjectSession).filter_by(project_id=project.project_id).first()
             if not session:
                 session = ProjectSession.get_or_create(
-                    project_id=self.project_id,
+                    project_id=project.project_id,
                     user_id=self.user_id
                 )
                 db.add(session)
                 db.commit()
+                db.refresh(session)  # Recargar para obtener los valores generados
             
             # Inicializar el seguimiento de errores para este proyecto
             self.error_count = 0
@@ -322,16 +328,20 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
                 # Intentar registrar el error
                 db = get_db_session()
                 project = db.query(Project).filter_by(project_id=self.project_id).first()
-                session = db.query(ProjectSession).filter_by(project_id=self.project_id).first()
                 
                 if project:
                     project.status = 'error'
                     project.current_step = f"Error: {str(e)}"
                     db.commit()
-                
-                if session:
-                    session.add_message('assistant', f"❌ Lo siento, ha ocurrido un error durante la construcción: {str(e)}\n\nPor favor, intenta de nuevo o contacta al soporte si el problema persiste.")
-                    db.commit()
+                    
+                    # Buscar sesión usando el project_id del proyecto (no self.project_id)
+                    session = db.query(ProjectSession).filter_by(project_id=project.project_id).first()
+                    
+                    if session:
+                        session.add_message('assistant', f"❌ Lo siento, ha ocurrido un error durante la construcción: {str(e)}\n\nPor favor, intenta de nuevo o contacta al soporte si el problema persiste.")
+                        db.commit()
+                else:
+                    logger.error(f"No se encontró el proyecto con ID {self.project_id} para registrar el error")
             except:
                 pass
             
@@ -342,7 +352,7 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
         with self.lock:
             db = get_db_session()
             # Recargar el proyecto para evitar problemas de concurrencia
-            db_project = db.query(Project).filter_by(project_id=self.project_id).first()
+            db_project = db.query(Project).filter_by(project_id=project.project_id).first()
             if db_project:
                 db_project.status = status
                 db_project.phase = phase
@@ -350,6 +360,8 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
                 db_project.current_step = current_step
                 db_project.updated_at = datetime.datetime.utcnow()
                 db.commit()
+            else:
+                logger.warning(f"No se pudo actualizar el estado del proyecto con ID {project.project_id}")
     
     def _send_notification(self, project, session, title, message, notification_type="info"):
         """
