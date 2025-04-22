@@ -520,6 +520,9 @@ class AutonomousProjectBuilder {
         // Si hay un agente activo, mostrarlo en el estado
         if (project.current_agent && agentNames[project.current_agent]) {
             this.projectStatus.textContent = `Estado: ${statusText} (${project.progress}%) - Agente: ${agentNames[project.current_agent]}`;
+            
+            // Resaltar visualmente el agente activo en la interfaz
+            this.updateActiveAgentVisual(project.current_agent);
         } else {
             this.projectStatus.textContent = `Estado: ${statusText} (${project.progress}%)`;
         }
@@ -546,13 +549,16 @@ class AutonomousProjectBuilder {
             const prevAgent = this.currentAgent;
             this.currentAgent = project.current_agent;
             
-            // Enviar notificación de cambio de agente
-            this.addNotification({
-                title: `Cambio de Agente`,
-                message: `${agentNames[prevAgent] || prevAgent} → ${agentNames[this.currentAgent] || this.currentAgent}: El control ha sido transferido para continuar con la fase actual.`,
-                type: 'info',
-                timestamp: new Date().toISOString()
-            });
+            // Solo notificar si no es la primera vez (prevAgent existe)
+            if (prevAgent) {
+                // Enviar notificación de cambio de agente
+                this.addNotification({
+                    title: `Cambio de Agente`,
+                    message: `${agentNames[prevAgent] || prevAgent} → ${agentNames[this.currentAgent] || this.currentAgent}: El control ha sido transferido para continuar con la fase actual.`,
+                    type: 'info',
+                    timestamp: new Date().toISOString()
+                });
+            }
             
             // Actualizar visualmente qué agente está activo en la configuración
             this.updateActiveAgentVisual(this.currentAgent);
@@ -615,32 +621,7 @@ class AutonomousProjectBuilder {
             this.setCurrentTask(project.currentTaskIndex);
         }
         
-        // Actualizar agente actual si ha cambiado
-        if (project.currentAgent && project.currentAgent !== this.currentAgent) {
-            const prevAgent = this.currentAgent;
-            this.currentAgent = project.currentAgent;
-            
-            // Solo notificar si no es la primera vez (prevAgent existe)
-            if (prevAgent) {
-                // Mapeo de nombres de agentes
-                const agentNames = {
-                    'architect': 'Arquitecto',
-                    'developer': 'Desarrollador',
-                    'testing': 'QA Tester',
-                    'fixing': 'Corrector',
-                    'general': 'General'
-                };
-                
-                const displayName = agentNames[this.currentAgent] || this.currentAgent;
-                
-                this.addNotification({
-                    title: `Cambio de agente`,
-                    message: `Ahora el agente "${displayName}" está trabajando en el proyecto`,
-                    type: 'info',
-                    timestamp: new Date().toISOString()
-                });
-            }
-        }
+        // Esta sección ya está manejada arriba, eliminada para evitar duplicación
         
         // Actualizar mensajes si hay nuevos
         if (project.messages) {
