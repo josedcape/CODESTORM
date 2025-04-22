@@ -113,29 +113,67 @@ def process_code_improved(data):
                 
                 # Usar Anthropic Claude con configuración optimizada
                 client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-                completion = client.messages.create(
-                    model="claude-3-5-sonnet-20241022",  # Modelo más avanzado para código extenso
-                    max_tokens=is_large_file and 12000 or 4000,
-                    temperature=0.2,
-                    system="Eres un experto en programación y tu tarea es corregir y mejorar código. Responde siempre en JSON. Asegúrate de incluir el código completo en tu respuesta.",
-                    messages=[{"role": "user", "content": prompt}]
-                )
                 
                 try:
-                    # Extraer contenido JSON
-                    json_content = completion.content[0].text if completion.content else ""
-                    parsed_response = json.loads(json_content)
+                    completion = client.messages.create(
+                        model="claude-3-5-sonnet-20241022",  # Modelo más avanzado para código extenso
+                        max_tokens=is_large_file and 12000 or 4000,
+                        temperature=0.2,
+                        system="Eres un experto en programación y tu tarea es corregir y mejorar código. Responde siempre en JSON. Asegúrate de incluir el código completo en tu respuesta.",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
                     
-                    # Validar campos requeridos
-                    if "corrected_code" in parsed_response:
-                        response = parsed_response
-                    else:
-                        logging.warning(f"Respuesta de Anthropic no contiene campo 'corrected_code': {json_content[:100]}...")
-                        response["explanation"] = json_content
+                    try:
+                        # Extraer contenido JSON
+                        json_content = completion.content[0].text if completion.content else ""
+                        parsed_response = json.loads(json_content)
                         
-                except (json.JSONDecodeError, IndexError) as json_err:
-                    logging.warning(f"Error al decodificar JSON de Anthropic: {str(json_err)}")
-                    response["explanation"] = completion.content[0].text if completion.content else "No se pudo generar explicación"
+                        # Validar campos requeridos
+                        if "corrected_code" in parsed_response:
+                            response = parsed_response
+                        else:
+                            logging.warning(f"Respuesta de Anthropic no contiene campo 'corrected_code': {json_content[:100]}...")
+                            response["explanation"] = json_content
+                            
+                    except (json.JSONDecodeError, IndexError) as json_err:
+                        logging.warning(f"Error al decodificar JSON de Anthropic: {str(json_err)}")
+                        response["explanation"] = completion.content[0].text if completion.content else "No se pudo generar explicación"
+                
+                except Exception as api_error:
+                    logging.error(f"Error en la llamada a la API de Anthropic: {str(api_error)}")
+                    logging.info("Fallback a OpenAI debido a error en Anthropic API")
+                    
+                    # Si falla Anthropic, usamos OpenAI como respaldo
+                    if os.environ.get("OPENAI_API_KEY"):
+                        import openai
+                        
+                        openai_client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+                        
+                        completion = openai_client.chat.completions.create(
+                            model="gpt-4o",
+                            response_format={"type": "json_object"},
+                            temperature=0.2,
+                            max_tokens=is_large_file and 4096 or 2048,
+                            messages=[
+                                {"role": "system", "content": "Eres un experto en programación y tu tarea es corregir y mejorar código. Responde siempre en JSON."},
+                                {"role": "user", "content": prompt}
+                            ]
+                        )
+                        
+                        try:
+                            parsed_response = json.loads(completion.choices[0].message.content)
+                            if "corrected_code" in parsed_response:
+                                response = parsed_response
+                                response["model_used"] = "openai (fallback from anthropic)"
+                            else:
+                                logging.warning(f"Respuesta de OpenAI (fallback) no contiene código corregido")
+                                response["explanation"] = completion.choices[0].message.content
+                        except json.JSONDecodeError as json_err:
+                            logging.warning(f"Error al decodificar JSON de OpenAI (fallback): {str(json_err)}")
+                            response["explanation"] = completion.choices[0].message.content
+                    else:
+                        response["summary"] = ["Error al usar Anthropic API y no hay API key de OpenAI para fallback"]
+                        response["explanation"] = "No se pudo procesar con Anthropic y no hay configuración de respaldo."
                     
             except Exception as e:
                 logging.error(f"Error usando Anthropic: {str(e)}")
