@@ -344,18 +344,22 @@ def process_code():
                 'status': 'error'
             }), 400
         
-        logging.info(f"Procesando código en {language}")
+        # Obtener el modelo seleccionado
+        model = data.get('model', 'openai')
+        logging.info(f"Procesando código en {language} usando modelo {model}")
         
-        # Usar nuestro corrector simplificado
-        from simple_code_corrector import correct_code
+        # Usar nuestro corrector multimodelo
+        from simple_code_corrector import correct_code_with_multimodel
         
-        corrected_code = correct_code(code, language, instructions)
+        # Llamar al corrector con el modelo seleccionado
+        corrected_code = correct_code_with_multimodel(code, language, instructions, model)
         
         # Crear un formato de respuesta similar al anterior para mantener compatibilidad con la interfaz
         result = {
             "corrected_code": corrected_code,
             "summary": ["Código mejorado según tus instrucciones"],
-            "explanation": "El código ha sido mejorado siguiendo las instrucciones proporcionadas."
+            "explanation": "El código ha sido mejorado siguiendo las instrucciones proporcionadas.",
+            "model_used": model
         }
         
         logging.info("Código procesado correctamente")
