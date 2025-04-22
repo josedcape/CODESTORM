@@ -7,6 +7,10 @@ dentro de una estructura de directorios.
 import os
 import logging
 import json
+import zipfile
+import rarfile
+import shutil
+import tempfile
 from typing import Dict, List, Tuple, Optional, Union
 
 logger = logging.getLogger(__name__)
@@ -308,3 +312,128 @@ def analyze_project_structure(workspace_path: str, max_depth: int = 3) -> Dict:
             'success': False,
             'error': f"Error al analizar el proyecto: {str(e)}"
         }
+        
+        
+def extract_compressed_file(file_path: str, extract_dir: str = None) -> Tuple[bool, str, List[Dict]]:
+    """
+    Extrae el contenido de un archivo comprimido (ZIP, RAR) a un directorio.
+    
+    Args:
+        file_path: Ruta al archivo comprimido
+        extract_dir: Directorio donde extraer el contenido (si es None, se crea un directorio junto al archivo)
+        
+    Returns:
+        Tuple[bool, str, List[Dict]]: (éxito, mensaje, lista de archivos extraídos)
+    """
+    try:
+        # Verificar si el archivo existe
+        if not os.path.exists(file_path):
+            return False, f"El archivo {file_path} no existe", []
+            
+        # Determinar el tipo de archivo por su extensión
+        file_ext = os.path.splitext(file_path)[1].lower()
+        
+        # Si no se especificó directorio de extracción, usar uno junto al archivo
+        if extract_dir is None:
+            base_dir = os.path.dirname(file_path)
+            file_name = os.path.splitext(os.path.basename(file_path))[0]
+            extract_dir = os.path.join(base_dir, file_name)
+            
+        # Crear directorio de extracción si no existe
+        os.makedirs(extract_dir, exist_ok=True)
+        
+        extracted_files = []
+        
+        # Extraer archivo ZIP
+        if file_ext == '.zip':
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                # Listar archivos antes de extraer
+                for file_info in zip_ref.infolist():
+                    extracted_files.append({
+                        'name': file_info.filename,
+                        'size': file_info.file_size,
+                        'date': f"{file_info.date_time[0]}-{file_info.date_time[1]}-{file_info.date_time[2]}",
+                        'is_dir': file_info.filename.endswith('/')
+                    })
+                # Extraer todos los archivos
+                zip_ref.extractall(extract_dir)
+                
+        # Extraer archivo RAR
+        elif file_ext == '.rar':
+            with rarfile.RarFile(file_path, 'r') as rar_ref:
+                # Listar archivos antes de extraer
+                for file_info in rar_ref.infolist():
+                    extracted_files.append({
+                        'name': file_info.filename,
+                        'size': file_info.file_size,
+                        'date': str(file_info.date_time),
+                        'is_dir': file_info.is_dir()
+                    })
+                # Extraer todos los archivos
+                rar_ref.extractall(extract_dir)
+        else:
+            return False, f"Formato de archivo no soportado: {file_ext}. Solo se admiten .zip y .rar", []
+            
+        return True, f"Archivo extraído correctamente en: {extract_dir}", extracted_files
+    except Exception as e:
+        logger.error(f"Error al extraer archivo comprimido {file_path}: {str(e)}")
+        return False, f"Error al extraer el archivo: {str(e)}", []
+
+
+def create_zip_archive(source_path: str, output_zip_path: str = None, include_root: bool = True) -> Tuple[bool, str]:
+    """
+    Crea un archivo ZIP a partir de un directorio o archivo.
+    
+    Args:
+        source_path: Ruta al directorio o archivo a comprimir
+        output_zip_path: Ruta donde guardar el archivo ZIP (si es None, se guarda junto a source_path)
+        include_root: Si es True, incluye el directorio raíz en el archivo ZIP
+        
+    Returns:
+        Tuple[bool, str]: (éxito, mensaje)
+    """
+    try:
+        # Verificar si la ruta existe
+        if not os.path.exists(source_path):
+            return False, f"La ruta {source_path} no existe"
+            
+        # Determinar el nombre del archivo ZIP si no se especificó
+        if output_zip_path is None:
+            if os.path.isdir(source_path):
+                output_zip_path = source_path.rstrip(os.path.sep) + '.zip'
+            else:
+                output_zip_path = source_path + '.zip'
+                
+        # Crear archivo ZIP
+        with zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            if os.path.isdir(source_path):
+                # Es un directorio, añadir todos sus contenidos
+                base_dir = os.path.basename(source_path.rstrip(os.path.sep)) if include_root else ''
+                
+                for root, dirs, files in os.walk(source_path):
+                    # Calcular la ruta relativa desde source_path
+                    if include_root:
+                        rel_dir = os.path.relpath(root, os.path.dirname(source_path))
+                    else:
+                        rel_dir = os.path.relpath(root, source_path)
+                        
+                    # Añadir el directorio vacío (si se debe incluir)
+                    if include_root or rel_dir != '.':
+                        zipf.write(root, rel_dir)
+                        
+                    # Añadir archivos
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        if include_root:
+                            arc_name = os.path.relpath(file_path, os.path.dirname(source_path))
+                        else:
+                            arc_name = os.path.relpath(file_path, source_path)
+                        zipf.write(file_path, arc_name)
+            else:
+                # Es un archivo, añadirlo directamente
+                zipf.write(source_path, os.path.basename(source_path))
+                
+        return True, f"Archivo ZIP creado correctamente: {output_zip_path}"
+    except Exception as e:
+        logger.error(f"Error al crear archivo ZIP desde {source_path}: {str(e)}")
+        return False, f"Error al crear el archivo ZIP: {str(e)}"

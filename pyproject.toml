@@ -30,4 +30,5 @@ dependencies = [
     "pypdf>=5.4.0",
     "docx>=0.2.4",
     "twilio>=9.5.2",
+    "rarfile>=4.2",
 ]

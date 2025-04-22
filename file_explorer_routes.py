@@ -7,9 +7,10 @@ dentro de una estructura de directorios.
 import os
 import logging
 import json
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
 from werkzeug.utils import secure_filename
 import file_explorer
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -363,6 +364,335 @@ def analyze_project():
         return jsonify({
             'success': False,
             'error': f'Error al analizar el proyecto: {str(e)}'
+        }), 500
+
+
+@file_explorer_bp.route('/api/explorer/compress', methods=['POST'])
+def compress_to_zip():
+    """
+    Comprime un archivo o directorio en formato ZIP.
+    
+    Espera:
+    - path: Ruta relativa al archivo o directorio a comprimir
+    - output_path: (Opcional) Ruta relativa donde guardar el archivo ZIP
+    - include_root: (Opcional) Si se debe incluir el directorio raíz en el ZIP (predeterminado: True)
+    - workspace_id: ID del espacio de trabajo (predeterminado: 'default')
+    
+    Retorna:
+    - Confirmación de compresión y ruta del archivo ZIP generado
+    """
+    try:
+        data = request.json
+        relative_path = data.get('path')
+        relative_output_path = data.get('output_path')
+        include_root = data.get('include_root', True)
+        workspace_id = data.get('workspace_id', 'default')
+        
+        if not relative_path:
+            return jsonify({
+                'success': False,
+                'error': 'Debe especificar una ruta a comprimir'
+            }), 400
+        
+        # Construir rutas completas
+        workspace_path = os.path.join('user_workspaces', workspace_id)
+        source_path = os.path.join(workspace_path, relative_path)
+        
+        # Si se especificó una ruta de salida, construirla
+        output_zip_path = None
+        if relative_output_path:
+            output_zip_path = os.path.join(workspace_path, relative_output_path)
+            
+        # Asegurar que no se salga del directorio del usuario
+        if not os.path.abspath(source_path).startswith(os.path.abspath(workspace_path)):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: la ruta se sale del espacio de trabajo'
+            }), 403
+        
+        # Comprimir en ZIP
+        success, message = file_explorer.create_zip_archive(source_path, output_zip_path, include_root)
+        
+        if success:
+            # Obtener la ruta relativa del archivo ZIP generado
+            if output_zip_path:
+                result_path = os.path.relpath(output_zip_path, workspace_path)
+            else:
+                if os.path.isdir(source_path):
+                    result_path = os.path.relpath(source_path + '.zip', workspace_path)
+                else:
+                    result_path = os.path.relpath(source_path + '.zip', workspace_path)
+                    
+            return jsonify({
+                'success': True,
+                'message': message,
+                'zip_path': result_path
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 500
+    except Exception as e:
+        logger.error(f"Error al comprimir en ZIP: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al comprimir en ZIP: {str(e)}'
+        }), 500
+
+
+@file_explorer_bp.route('/api/explorer/extract', methods=['POST'])
+def extract_compressed():
+    """
+    Extrae un archivo comprimido (ZIP o RAR).
+    
+    Espera:
+    - path: Ruta relativa al archivo comprimido
+    - extract_dir: (Opcional) Ruta relativa donde extraer el contenido
+    - workspace_id: ID del espacio de trabajo (predeterminado: 'default')
+    
+    Retorna:
+    - Confirmación de extracción y lista de archivos extraídos
+    """
+    try:
+        data = request.json
+        relative_path = data.get('path')
+        relative_extract_dir = data.get('extract_dir')
+        workspace_id = data.get('workspace_id', 'default')
+        
+        if not relative_path:
+            return jsonify({
+                'success': False,
+                'error': 'Debe especificar una ruta de archivo comprimido'
+            }), 400
+        
+        # Construir rutas completas
+        workspace_path = os.path.join('user_workspaces', workspace_id)
+        file_path = os.path.join(workspace_path, relative_path)
+        
+        # Si se especificó un directorio de extracción, construirlo
+        extract_dir = None
+        if relative_extract_dir:
+            extract_dir = os.path.join(workspace_path, relative_extract_dir)
+            
+        # Asegurar que no se salga del directorio del usuario
+        if not os.path.abspath(file_path).startswith(os.path.abspath(workspace_path)):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: la ruta se sale del espacio de trabajo'
+            }), 403
+        
+        # Extraer archivo comprimido
+        success, message, extracted_files = file_explorer.extract_compressed_file(file_path, extract_dir)
+        
+        if success:
+            # Obtener la ruta relativa del directorio de extracción
+            if extract_dir:
+                extract_rel_path = os.path.relpath(extract_dir, workspace_path)
+            else:
+                # Si no se especificó, se creó uno junto al archivo
+                file_name = os.path.splitext(os.path.basename(file_path))[0]
+                extract_rel_path = os.path.join(os.path.dirname(relative_path), file_name)
+                
+            return jsonify({
+                'success': True,
+                'message': message,
+                'extract_path': extract_rel_path,
+                'files': extracted_files
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 500
+    except Exception as e:
+        logger.error(f"Error al extraer archivo comprimido: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al extraer archivo comprimido: {str(e)}'
+        }), 500
+
+
+@file_explorer_bp.route('/api/explorer/download', methods=['GET'])
+def download_file_or_dir():
+    """
+    Descarga un archivo o directorio (comprimido en ZIP).
+    
+    Parámetros de consulta:
+    - path: Ruta relativa al archivo o directorio
+    - workspace_id: ID del espacio de trabajo (predeterminado: 'default')
+    
+    Retorna:
+    - El archivo para descarga, o un archivo ZIP para directorios
+    """
+    try:
+        relative_path = request.args.get('path')
+        workspace_id = request.args.get('workspace_id', 'default')
+        
+        if not relative_path:
+            return jsonify({
+                'success': False,
+                'error': 'Debe especificar una ruta para descargar'
+            }), 400
+        
+        # Construir ruta completa
+        workspace_path = os.path.join('user_workspaces', workspace_id)
+        file_path = os.path.join(workspace_path, relative_path)
+        
+        # Asegurar que no se salga del directorio del usuario
+        if not os.path.abspath(file_path).startswith(os.path.abspath(workspace_path)):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: la ruta se sale del espacio de trabajo'
+            }), 403
+        
+        # Verificar si existe
+        if not os.path.exists(file_path):
+            return jsonify({
+                'success': False,
+                'error': f'La ruta {relative_path} no existe'
+            }), 404
+        
+        # Si es un archivo, simplemente descargarlo
+        if os.path.isfile(file_path):
+            return send_file(file_path, as_attachment=True, download_name=os.path.basename(file_path))
+        
+        # Si es un directorio, comprimirlo primero
+        if os.path.isdir(file_path):
+            # Crear un archivo ZIP temporal
+            with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as temp_file:
+                temp_zip_path = temp_file.name
+            
+            # Comprimir el directorio
+            success, message = file_explorer.create_zip_archive(file_path, temp_zip_path, True)
+            
+            if success:
+                # Establecer nombre de descarga para el ZIP
+                dir_name = os.path.basename(file_path.rstrip(os.path.sep))
+                download_name = f"{dir_name}.zip"
+                
+                # Enviar el archivo y programar su eliminación después
+                return send_file(
+                    temp_zip_path,
+                    as_attachment=True,
+                    download_name=download_name,
+                    # Eliminar archivo temporal después de enviarlo
+                    # Este parámetro no funciona en Flask antiguo, pero sí en versiones recientes
+                    max_age=0
+                )
+            else:
+                # Limpiar si hubo error
+                if os.path.exists(temp_zip_path):
+                    os.unlink(temp_zip_path)
+                    
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al comprimir el directorio: {message}'
+                }), 500
+        
+        # Ni archivo ni directorio (no debería llegar aquí)
+        return jsonify({
+            'success': False,
+            'error': f'La ruta {relative_path} no es un archivo ni directorio válido'
+        }), 400
+    except Exception as e:
+        logger.error(f"Error al descargar: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al descargar: {str(e)}'
+        }), 500
+
+
+@file_explorer_bp.route('/api/explorer/upload', methods=['POST'])
+def upload_file():
+    """
+    Sube un archivo al espacio de trabajo.
+    
+    Form data:
+    - file: Archivo a subir
+    - path: Ruta relativa donde guardar el archivo (predeterminado: '.')
+    - workspace_id: ID del espacio de trabajo (predeterminado: 'default')
+    - extract: Si es True y el archivo es ZIP o RAR, extraerlo automáticamente
+    
+    Retorna:
+    - Confirmación de carga y ruta del archivo
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No se ha enviado ningún archivo'
+            }), 400
+            
+        uploaded_file = request.files['file']
+        if uploaded_file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'Nombre de archivo vacío'
+            }), 400
+            
+        relative_path = request.form.get('path', '.')
+        workspace_id = request.form.get('workspace_id', 'default')
+        extract = request.form.get('extract', 'false').lower() == 'true'
+        
+        # Construir ruta completa
+        workspace_path = os.path.join('user_workspaces', workspace_id)
+        target_dir = os.path.join(workspace_path, relative_path)
+        
+        # Asegurar que no se salga del directorio del usuario
+        if not os.path.abspath(target_dir).startswith(os.path.abspath(workspace_path)):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: la ruta se sale del espacio de trabajo'
+            }), 403
+            
+        # Asegurar que el directorio exista
+        os.makedirs(target_dir, exist_ok=True)
+        
+        # Guardar el archivo
+        filename = secure_filename(uploaded_file.filename)
+        file_path = os.path.join(target_dir, filename)
+        uploaded_file.save(file_path)
+        
+        # Si es archivo comprimido y se solicitó extracción
+        file_ext = os.path.splitext(filename)[1].lower()
+        if extract and file_ext in ['.zip', '.rar']:
+            # Extraer archivo
+            success, message, extracted_files = file_explorer.extract_compressed_file(file_path)
+            
+            if success:
+                # Obtener la ruta relativa del directorio de extracción
+                file_name = os.path.splitext(filename)[0]
+                extract_rel_path = os.path.join(relative_path, file_name)
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Archivo subido y extraído: {filename}',
+                    'file_path': os.path.join(relative_path, filename),
+                    'extract_path': extract_rel_path,
+                    'extracted': True,
+                    'files': extracted_files
+                })
+            else:
+                return jsonify({
+                    'success': True,
+                    'message': f'Archivo subido pero no se pudo extraer: {message}',
+                    'file_path': os.path.join(relative_path, filename),
+                    'extracted': False
+                })
+        
+        # Archivo normal (no comprimido o sin extracción)
+        return jsonify({
+            'success': True,
+            'message': f'Archivo subido: {filename}',
+            'file_path': os.path.join(relative_path, filename),
+            'extracted': False
+        })
+    except Exception as e:
+        logger.error(f"Error al subir archivo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al subir archivo: {str(e)}'
         }), 500
 
 
