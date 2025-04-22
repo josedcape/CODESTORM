@@ -2267,20 +2267,97 @@ def init_constructor_routes(app):
             session.add_message('user', message)
             db.commit()
             
-            # Aquí se podría implementar la lógica para procesar el mensaje
-            # y generar una respuesta del constructor autónomo
+            # Procesar mensaje según su contenido
+            response_message = ""
+            special_actions = []
             
-            # Por ahora, simplemente devolvemos una respuesta simulada
-            response = "Gracias por tu mensaje. Lo tendré en cuenta durante la construcción del proyecto."
+            # Si el mensaje es sobre iniciar construcción y está pendiente de aprobación
+            if project.status == 'pending_approval' and any(keyword in message.lower() for keyword in ['iniciar', 'comenzar', 'construir', 'aprobar']):
+                # Cambiar estado del proyecto a activo
+                project.status = 'active'
+                project.phase = 'implementation'
+                project.progress = 25
+                project.current_step = 'Implementando estructura básica del proyecto'
+                db.commit()
+                
+                response_message = "¡Perfecto! Comenzando la construcción del proyecto según el plan aprobado."
+                
+            # Si es un mensaje de consulta de plan o archivos
+            elif any(keyword in message.lower() for keyword in ['mostrar plan', 'ver plan', 'chequeo', 'verificación']):
+                # Recuperar el plan del proyecto
+                if project.plan:
+                    plan = project.plan
+                else:
+                    plan = "No hay un plan detallado disponible todavía para este proyecto."
+                
+                response_message = f"Aquí tienes el plan de desarrollo actual:\n\n{plan}"
+                
+                # Añadir acción especial para mostrar el plan
+                special_actions.append({
+                    'type': 'show_development_plan',
+                    'plan': plan
+                })
+                
+            # Si es consulta sobre archivos
+            elif any(keyword in message.lower() for keyword in ['archivos', 'mostrar archivos', 'ver archivos']):
+                if project.generated_files and len(project.generated_files) > 0:
+                    file_list = "\n".join([f"- {file}" for file in project.generated_files])
+                    response_message = f"Archivos generados hasta ahora:\n\n{file_list}"
+                    
+                    # Añadir acción para mostrar archivos
+                    for file_info in project.generated_files:
+                        if isinstance(file_info, dict) and 'path' in file_info and 'content' in file_info:
+                            special_actions.append({
+                                'type': 'create_file',
+                                'path': file_info['path'],
+                                'content': file_info['content']
+                            })
+                else:
+                    response_message = "Aún no se han generado archivos para este proyecto."
             
-            # Agregar la respuesta del asistente
-            session.add_message('assistant', response)
+            # Respuesta por defecto
+            else:
+                response_message = "Gracias por tu mensaje. Lo tendré en cuenta durante la construcción del proyecto."
+            
+            # Agregar la respuesta del asistente con las acciones especiales
+            assistant_message = session.add_message('assistant', response_message)
+            
+            # Añadir acciones especiales si hay
+            if special_actions:
+                session.add_special_actions(special_actions)
+                
+            # Si estamos en fase de planificación y hay plan, siempre añadir la acción de plan
+            if project.phase == 'planning' and project.plan:
+                show_plan_action = {
+                    'type': 'show_development_plan',
+                    'plan': project.plan
+                }
+                if not any(action['type'] == 'show_development_plan' for action in special_actions):
+                    special_actions.append(show_plan_action)
+                    session.add_special_actions([show_plan_action])
+            
             db.commit()
             
-            return jsonify({
+            # Devolver respuesta con acciones especiales si existen
+            response_data = {
                 'success': True,
-                'response': response
-            })
+                'response': response_message
+            }
+            
+            # Si hay acciones especiales, incluirlas en la respuesta
+            if special_actions:
+                response_data['special_actions'] = special_actions
+                
+            # Si hay mensajes recientes con acciones especiales, incluirlos
+            if session.message_history:
+                for msg in reversed(session.message_history[-5:]):  # Revisar últimos 5 mensajes
+                    if msg.get('role') == 'assistant' and msg.get('special_actions'):
+                        if 'special_actions' not in response_data:
+                            response_data['special_actions'] = []
+                        response_data['special_actions'].extend(msg['special_actions'])
+                        break
+            
+            return jsonify(response_data)
         except Exception as e:
             logger.error(f"Error al enviar mensaje: {str(e)}")
             return jsonify({
