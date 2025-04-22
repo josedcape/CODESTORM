@@ -478,6 +478,11 @@ class AutonomousProjectBuilder {
                         this.startButton.disabled = false;
                         this.pauseButton.disabled = true;
                         this.resumeButton.disabled = true;
+                        
+                        // Mostrar resultados finales si está completado
+                        if (project.status === 'completed') {
+                            this.showResults(project);
+                        }
                     }
                 } else {
                     console.error('Error al obtener estado del proyecto:', data.error);
@@ -982,6 +987,86 @@ class AutonomousProjectBuilder {
             return `${hours}h ${mins}m`;
         } else {
             return `${mins}m`;
+        }
+    }
+    
+    /**
+     * Muestra los resultados finales del proyecto.
+     * Esta función se llama cuando el proyecto ha terminado al 100%.
+     */
+    showResults(project) {
+        // Crear un mensaje tipo sistema para informar
+        this.showSystemMessage('✅ Proyecto completado exitosamente');
+        
+        // Obtener los archivos creados (si existen)
+        const createdFiles = project.created_files || [];
+        const actions = project.actions || [];
+        
+        // Generar un mensaje de resumen
+        let resultMessage = '## 🏆 Resultado Final\n\n';
+        resultMessage += `El proyecto **${project.name || 'Proyecto'}** ha sido completado exitosamente.\n\n`;
+        
+        // Añadir tiempo de construcción
+        if (project.start_time && project.updated_at) {
+            const startTime = new Date(project.start_time);
+            const endTime = new Date(project.updated_at);
+            const timeElapsedMs = endTime - startTime;
+            const minutes = Math.floor(timeElapsedMs / 60000);
+            
+            resultMessage += `⏱️ **Tiempo de construcción:** ${this.formatTimeEstimate(minutes)}\n\n`;
+        }
+        
+        // Mostrar archivos creados
+        if (createdFiles.length > 0) {
+            resultMessage += '### 📂 Archivos Creados\n\n';
+            resultMessage += '```\n';
+            createdFiles.forEach(file => {
+                resultMessage += `${file}\n`;
+            });
+            resultMessage += '```\n\n';
+            
+            // Añadir enlace para ver los archivos
+            resultMessage += '[Ver archivos en el explorador](/files)\n\n';
+        }
+        
+        // Mostrar acciones ejecutadas
+        if (actions.length > 0) {
+            resultMessage += '### 🔄 Acciones Ejecutadas\n\n';
+            
+            // Filtrar por tipo y mostrar un resumen
+            const commandActions = actions.filter(a => a.type === 'command');
+            const fileActions = actions.filter(a => a.type === 'file');
+            const otherActions = actions.filter(a => !['command', 'file'].includes(a.type));
+            
+            resultMessage += `- **Comandos ejecutados:** ${commandActions.length}\n`;
+            resultMessage += `- **Operaciones de archivos:** ${fileActions.length}\n`;
+            if (otherActions.length > 0) {
+                resultMessage += `- **Otras acciones:** ${otherActions.length}\n`;
+            }
+        }
+        
+        // Agregar resumen de ejecución
+        resultMessage += '\n### 📝 Resumen\n\n';
+        resultMessage += `El Constructor ha finalizado la creación de tu aplicación. Puedes revisar los archivos generados en el explorador de archivos.\n\n`;
+        resultMessage += `Para ejecutar o modificar tu aplicación, puedes usar el chat principal o el explorador de archivos.`;
+        
+        // Mostrar el mensaje en el chat
+        this.addMessage(resultMessage, 'assistant');
+        
+        // Redirigir al explorador de archivos después de 5 segundos si hay archivos
+        if (createdFiles.length > 0) {
+            setTimeout(() => {
+                const goToFilesBtn = document.createElement('button');
+                goToFilesBtn.className = 'btn btn-primary btn-sm mt-3';
+                goToFilesBtn.innerHTML = '<i data-feather="folder"></i> Ir al explorador de archivos';
+                goToFilesBtn.onclick = () => window.location.href = '/files';
+                
+                // Añadir al contenedor de mensajes
+                if (this.chatMessages) {
+                    this.chatMessages.appendChild(goToFilesBtn);
+                    feather.replace();
+                }
+            }, 2000);
         }
     }
     
