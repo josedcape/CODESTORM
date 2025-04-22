@@ -324,6 +324,11 @@ def edit_file(file_path):
 def code_corrector():
     """Render the code corrector page."""
     return render_template('code_corrector.html')
+
+@app.route('/constructor')
+def constructor():
+    """Render the constructor page for autonomous project building."""
+    return render_template('constructor.html')
     
 @app.route('/api/process_code', methods=['POST'])
 def process_code():
