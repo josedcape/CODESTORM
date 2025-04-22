@@ -399,16 +399,23 @@ def compress_to_zip():
         source_path = os.path.join(workspace_path, relative_path)
         
         # Si se especificó una ruta de salida, construirla
-        output_zip_path = None
         if relative_output_path:
             output_zip_path = os.path.join(workspace_path, relative_output_path)
+        else:
+            # Si no se especificó una ruta de salida, usar una por defecto
+            if os.path.isdir(source_path):
+                output_zip_path = source_path.rstrip(os.path.sep) + '.zip'
+            else:
+                output_zip_path = source_path + '.zip'
             
         # Asegurar que no se salga del directorio del usuario
         if not os.path.abspath(source_path).startswith(os.path.abspath(workspace_path)):
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'Acceso denegado: la ruta se sale del espacio de trabajo'
-            }), 403
+            })
+            response.headers['Content-Type'] = 'application/json'
+            return response, 403
         
         # Comprimir en ZIP
         success, message = file_explorer.create_zip_archive(source_path, output_zip_path, include_root)
@@ -471,19 +478,21 @@ def extract_compressed():
         file_path = os.path.join(workspace_path, relative_path)
         
         # Si se especificó un directorio de extracción, construirlo
-        extract_dir = None
+        extract_dir = ""
         if relative_extract_dir:
             extract_dir = os.path.join(workspace_path, relative_extract_dir)
             
         # Asegurar que no se salga del directorio del usuario
         if not os.path.abspath(file_path).startswith(os.path.abspath(workspace_path)):
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'Acceso denegado: la ruta se sale del espacio de trabajo'
-            }), 403
+            })
+            response.headers['Content-Type'] = 'application/json'
+            return response, 403
         
         # Extraer archivo comprimido
-        success, message, extracted_files = file_explorer.extract_compressed_file(file_path, extract_dir)
+        success, message, extracted_files = file_explorer.extract_compressed_file(file_path, extract_dir if extract_dir else None)
         
         if success:
             # Obtener la ruta relativa del directorio de extracción
