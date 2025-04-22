@@ -39,23 +39,18 @@
                         </a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if '/files_ultra' in request.path or '/files' in request.path or '/explorer' in request.path %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle {% if '/files' in request.path or '/explorer' in request.path %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa-solid fa-folder-open"></i> Explorador
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark">
                             <li>
-                                <a class="dropdown-item {% if '/files_ultra' in request.path %}active{% endif %}" href="/files_ultra">
-                                    <i class="fa-solid fa-bolt"></i> Explorador Ultra Simple
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {% if '/explorer_simple' in request.path %}active{% endif %}" href="/explorer_simple">
-                                    <i class="fa-solid fa-file-circle-check"></i> Explorador Simple
-                                </a>
-                            </li>
-                            <li>
                                 <a class="dropdown-item {% if '/explorer' in request.path %}active{% endif %}" href="/explorer">
-                                    <i class="fa-solid fa-layer-group"></i> Explorador Normal
+                                    <i class="fa-solid fa-layer-group"></i> Nuevo Explorador
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if '/files' in request.path %}active{% endif %}" href="/files">
+                                    <i class="fa-solid fa-folder"></i> Explorador Clásico
                                 </a>
                             </li>
                         </ul>
