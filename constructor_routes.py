@@ -121,7 +121,7 @@ class AutonomousBuilder:
     def update_project(self, project, status, phase, progress, current_step):
         """
         Método auxiliar para actualizar el estado de un proyecto.
-        Invoca la función decorada _update_project_status con los parámetros adecuados.
+        Crea una sesión de BD y llama a _update_project_status de forma segura.
         
         Args:
             project: Objeto del proyecto a actualizar
@@ -131,7 +131,14 @@ class AutonomousBuilder:
             current_step: Descripción del paso actual
         """
         try:
-            return self._update_project_status(project, status, phase, progress, current_step)
+            # Obtener una sesión de BD directamente en lugar de usar el decorador
+            db = get_db_session()
+            try:
+                result = self._update_project_status(db, project, status, phase, progress, current_step)
+                return result
+            finally:
+                # Asegurar que la sesión se cierre apropiadamente
+                db.close()
         except Exception as e:
             logger.error(f"Error al actualizar estado de proyecto: {str(e)}")
             return False
@@ -139,13 +146,20 @@ class AutonomousBuilder:
     def update_agent(self, agent_id):
         """
         Método auxiliar para cambiar el agente activo.
-        Invoca la función decorada _switch_agent con los parámetros adecuados.
+        Crea una sesión de BD y llama a _switch_agent de forma segura.
         
         Args:
             agent_id: ID del agente al que cambiar (architect, developer, testing, fixing)
         """
         try:
-            return self._switch_agent(agent_id)
+            # Obtener una sesión de BD directamente en lugar de usar el decorador
+            db = get_db_session()
+            try:
+                result = self._switch_agent(db, agent_id)
+                return result
+            finally:
+                # Asegurar que la sesión se cierre apropiadamente
+                db.close()
         except Exception as e:
             logger.error(f"Error al cambiar agente a {agent_id}: {str(e)}")
             return False
