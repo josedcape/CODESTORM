@@ -101,6 +101,13 @@ class AutonomousBuilder:
             self.config = config
             self.model = config.get('model', 'openai')
             self.agents = config.get('agents', {})
+            # Convertir a estructura para referencia más fácil
+            self.active_agents = {
+                'architect': self.agents.get('useArchitectAgent', True),
+                'developer': self.agents.get('useDeveloperAgent', True),
+                'testing': self.agents.get('useTestingAgent', False),
+                'fixing': self.agents.get('useFixingAgent', False)
+            }
             self.development_speed = config.get('development_speed', 'balanced')
             
             # Ajustar intervalos según la velocidad de desarrollo
@@ -210,6 +217,9 @@ class AutonomousBuilder:
             # Actualizar estado
             self._update_project_status(project, 'active', 'implementation', 25, 
                                       'Implementando archivos base')
+            
+            # Cambiar a agente de desarrollo para la implementación
+            self._switch_agent('developer')
             
             # Comenzar implementación
             workspace_path = self._get_workspace_path()
@@ -1046,6 +1056,9 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
         Analiza la descripción del proyecto para extraer tipo y stack tecnológico.
         En un entorno real, esto utilizaría una llamada a la IA.
         """
+        # Cambiar a agente arquitecto para análisis inicial
+        self._switch_agent('architect')
+        
         # Patrones para detección de tipo de proyecto
         web_patterns = ['web', 'página', 'sitio', 'aplicación web', 'frontend', 'backend']
         api_patterns = ['api', 'rest', 'graphql', 'endpoint', 'servicio web']
@@ -1165,6 +1178,48 @@ Basado en tu descripción, he determinado que estás buscando construir una **{p
 ¿Estás de acuerdo con este análisis? ¿Quieres que realice algún ajuste en las tecnologías seleccionadas?
 """
         return response
+    
+    def _switch_agent(self, agent_id):
+        """
+        Cambia el agente activo y actualiza el proyecto en la base de datos.
+        
+        Args:
+            agent_id: ID del agente al que cambiar (architect, developer, testing, fixing)
+        """
+        # Verificar si el método se llama antes de crear el proyecto
+        if not hasattr(self, 'project_id') or not self.project_id:
+            logger.warning("Intento de cambio de agente antes de inicializar el proyecto")
+            return False
+            
+        # Verificar que el agente está disponible en la configuración
+        if not hasattr(self, 'active_agents') or not self.active_agents.get(agent_id, False):
+            logger.warning(f"Agente {agent_id} no está habilitado en la configuración")
+            return False
+        
+        # Actualizar el agente actual
+        db = get_db_session()
+        project = db.query(Project).filter_by(project_id=self.project_id).first()
+        
+        if project:
+            with self.lock:
+                project.current_agent = agent_id
+                db.commit()
+            
+            # Enviar notificación sobre el cambio de agente
+            session = db.query(ProjectSession).filter_by(project_id=self.project_id).first()
+            if session:
+                self._send_notification(
+                    project, 
+                    session, 
+                    f"Agente Cambiado", 
+                    f"Ahora el agente '{agent_id}' está trabajando en el proyecto", 
+                    "info"
+                )
+            
+            logger.info(f"Cambiado agente a: {agent_id} para el proyecto {self.project_id}")
+            return True
+        
+        return False
     
     def _plan_project_structure(self, project_type, tech_stack):
         """

@@ -315,8 +315,28 @@
     background-color: rgba(255, 255, 255, 0.05);
 }
 
+/* Agente activo */
+.agent-selection .form-check.active-agent {
+    background-color: rgba(13, 110, 253, 0.2);
+    border-left: 3px solid var(--bs-primary);
+    box-shadow: 0 0 5px rgba(13, 110, 253, 0.3);
+    animation: pulse-agent 2s infinite;
+}
+
 .agent-selection .form-check-input {
     margin-top: 0.25rem;
+}
+
+@keyframes pulse-agent {
+    0% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 5px rgba(13, 110, 253, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+    }
 }
 
 /* Icono pequeño */
