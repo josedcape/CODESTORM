@@ -181,8 +181,129 @@ document.addEventListener('DOMContentLoaded', function() {
                 case 'suggest_next_step':
                     highlightNextStep(action.step);
                     break;
+                case 'show_development_plan':
+                    showDevelopmentPlan(action.plan);
+                    break;
+                case 'project_approval_required':
+                    showApprovalRequest(action.plan);
+                    break;
             }
         });
+    }
+    
+    // Función para mostrar el plan de desarrollo recibido del servidor
+    function showDevelopmentPlan(plan) {
+        // Mostrar el panel del plan de desarrollo
+        const developmentPlanPanel = document.getElementById('developmentPlan');
+        if (developmentPlanPanel) {
+            developmentPlanPanel.classList.remove('d-none');
+            
+            // Obtener la lista de tareas
+            const taskChecklist = document.getElementById('taskChecklist');
+            if (taskChecklist) {
+                taskChecklist.innerHTML = ''; // Limpiar contenido anterior
+                
+                // Si plan es un objeto con estructura definida
+                if (typeof plan === 'object' && plan.tasks) {
+                    // Formatear tareas desde el objeto
+                    plan.tasks.forEach((task, index) => {
+                        const taskItem = createTaskItem(task, index);
+                        taskChecklist.appendChild(taskItem);
+                    });
+                } 
+                // Si plan es texto (probablemente Markdown)
+                else if (typeof plan === 'string') {
+                    // Crear un elemento para mostrar el plan en formato Markdown
+                    const planContent = document.createElement('div');
+                    planContent.className = 'plan-content p-3';
+                    planContent.innerHTML = processMarkdown(plan);
+                    taskChecklist.appendChild(planContent);
+                }
+            }
+        }
+    }
+    
+    // Función para mostrar la solicitud de aprobación del plan
+    function showApprovalRequest(plan) {
+        // Mostrar un modal o notificación solicitando aprobación
+        const approvalModal = new bootstrap.Modal(document.getElementById('approvalModal'));
+        
+        // Si no existe el modal, crearlo dinámicamente
+        if (!approvalModal) {
+            const modalHtml = `
+            <div class="modal fade" id="approvalModal" tabindex="-1" aria-labelledby="approvalModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="approvalModalLabel">
+                                <i data-feather="clipboard-check"></i> Plan de Desarrollo - Solicitud de Aprobación
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="planContent" class="plan-content"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Revisar más tarde</button>
+                            <button type="button" id="approvePlanBtn" class="btn btn-success">Aprobar e Iniciar Construcción</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            
+            // Añadir el modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Inicializar el modal
+            const approvalModal = new bootstrap.Modal(document.getElementById('approvalModal'));
+            
+            // Configurar el botón de aprobación
+            document.getElementById('approvePlanBtn').addEventListener('click', function() {
+                // Enviar mensaje de aprobación
+                userMessageInput.value = "Iniciar construcción";
+                chatForm.dispatchEvent(new Event('submit'));
+                
+                // Cerrar el modal
+                approvalModal.hide();
+            });
+        }
+        
+        // Actualizar el contenido del plan en el modal
+        const planContent = document.getElementById('planContent');
+        if (planContent) {
+            planContent.innerHTML = typeof plan === 'string' ? 
+                processMarkdown(plan) : 
+                JSON.stringify(plan, null, 2);
+        }
+        
+        // Mostrar el modal
+        approvalModal.show();
+        
+        // Actualizar íconos
+        feather.replace();
+    }
+    
+    // Función para crear un elemento de tarea para el plan de desarrollo
+    function createTaskItem(task, index) {
+        const taskItem = document.createElement('li');
+        taskItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+        taskItem.innerHTML = `
+            <div>
+                <div class="d-flex align-items-center">
+                    <span class="task-number me-2">${index + 1}.</span>
+                    <span class="task-title fw-bold">${task.title || 'Tarea sin título'}</span>
+                </div>
+                <div class="task-description text-muted small">${task.description || ''}</div>
+                <div class="task-time small">
+                    <i data-feather="clock" class="feather-sm"></i>
+                    ${task.estimated_time || 'Tiempo no especificado'}
+                </div>
+            </div>
+            <div class="task-status">
+                <span class="badge bg-secondary rounded-pill">Pendiente</span>
+            </div>
+        `;
+        return taskItem;
     }
     
     // Función para notificar la creación de archivos

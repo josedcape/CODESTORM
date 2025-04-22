@@ -4,8 +4,8 @@ Este proyecto fue creado automáticamente por el Constructor de Tareas de CODEST
 
 ## Tecnologías utilizadas
 
-- Lenguaje: python
-- Framework: flask
+- Lenguaje: javascript
+- Framework: react
 - Base de datos: No especificada
 
 ## Instalación
