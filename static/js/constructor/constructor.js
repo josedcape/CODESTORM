@@ -394,9 +394,111 @@ document.addEventListener('DOMContentLoaded', function() {
             progressElement.style.width = `${progress}%`;
             progressElement.setAttribute('aria-valuenow', progress);
             progressElement.textContent = `${progress}%`;
+            
+            // Si el progreso llegó al 100%, mostrar resultados
+            if (progress >= 100) {
+                showResults();
+            }
         }
     }
     
+    // Función para mostrar los resultados finales del proyecto
+    function showResults() {
+        console.log("Mostrando resultados finales del proyecto");
+        
+        // Crear un contenedor para los resultados
+        const resultsContainer = document.createElement('div');
+        resultsContainer.className = 'results-container';
+        
+        // Contenido del resultado final
+        resultsContainer.innerHTML = `
+            <div class="results-header">
+                <div class="d-flex align-items-center mb-2">
+                    <i data-feather="award" class="text-warning me-2" style="width: 28px; height: 28px;"></i>
+                    <h3 class="m-0">Resultado Final</h3>
+                </div>
+                <p class="text-success fw-bold">✓ Proyecto completado exitosamente</p>
+            </div>
+            <div class="results-content">
+                <p>El Constructor ha finalizado la creación de tu aplicación. Puedes revisar los archivos generados en el explorador de archivos.</p>
+                <p>Para ejecutar o modificar tu aplicación, puedes usar el chat principal o el explorador de archivos.</p>
+            </div>
+            <div class="mt-3 text-center">
+                <a href="/files" class="btn btn-primary">
+                    <i data-feather="folder" class="feather-sm me-1"></i>
+                    Ver Archivos
+                </a>
+            </div>
+        `;
+        
+        // Añadir al chat
+        chatMessages.appendChild(resultsContainer);
+        
+        // Inicializar iconos
+        feather.replace();
+        
+        // Scroll al final del chat
+        scrollToBottom();
+        
+        // Notificar al usuario sobre la finalización
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Proyecto Completado', {
+                body: 'La construcción de tu aplicación ha finalizado exitosamente.',
+                icon: '/static/img/logo.png'
+            });
+        }
+    }
+    }
+    
+    // Función para resaltar el siguiente paso
+    function highlightNextStep(step) {
+        const nextStepNotification = document.createElement('div');
+        nextStepNotification.className = 'next-step-notification';
+        nextStepNotification.innerHTML = `
+            <div class="next-step-header">
+                <i data-feather="arrow-right-circle"></i>
+                <span>Siguiente paso:</span>
+            </div>
+            <div class="next-step-content">${step}</div>
+        `;
+        
+        chatMessages.appendChild(nextStepNotification);
+        feather.replace();
+        
+        // Añadir a la lista de acciones pendientes
+        conversationState.pendingActions.push({
+            description: step,
+            timestamp: new Date().toISOString()
+        });
+    }
+    
+    // Función para añadir mensajes a la interfaz
+    function addMessage(content, role) {
+        const messageElement = document.createElement('div');
+        messageElement.className = `chat-message ${role}-message`;
+        
+        // Configurar avatar e información de remitente
+        const senderInfo = (role === 'user') 
+            ? 'Tú'
+            : 'Constructor de Tareas';
+        
+        // Crear contenido HTML del mensaje
+        messageElement.innerHTML = `
+            <div class="message-header">
+                <span class="sender-name">${senderInfo}</span>
+                <span class="message-time">${formatTime(new Date())}</span>
+            </div>
+            <div class="message-content"></div>
+            ${role === 'assistant' ? '<div class="message-actions"><button class="copy-btn" title="Copiar al portapapeles"><i data-feather="copy"></i></button></div>' : ''}
+        `;
+        
+        // Procesar el contenido Markdown
+        if (role === 'assistant') {
+            const processedContent = processMarkdown(content);
+            messageElement.querySelector('.message-content').innerHTML = processedContent;
+        } else {
+            messageElement.querySelector('.message-content').textContent = content;
+    // Función para resaltar el siguiente paso
     // Función para resaltar el siguiente paso
     function highlightNextStep(step) {
         const nextStepNotification = document.createElement('div');
