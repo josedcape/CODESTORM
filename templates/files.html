@@ -512,6 +512,93 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal Subir Archivo -->
+    <div class="modal fade modal-futuristic" id="uploadFileModal" tabindex="-1" aria-labelledby="uploadFileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadFileModalLabel">
+                        <i class="bi bi-upload me-2"></i>Subir Archivo
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="upload-file-form" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="upload-file" class="form-label">Seleccionar archivo:</label>
+                            <input type="file" class="form-control" id="upload-file" name="file">
+                            <div class="form-text">Puedes subir cualquier tipo de archivo, incluidos archivos ZIP y RAR.</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="extract-compressed" name="extract">
+                            <label class="form-check-label" for="extract-compressed">Extraer automáticamente si es un archivo comprimido (ZIP, RAR)</label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-futuristic" id="upload-file-submit-btn">
+                        <i class="bi bi-upload me-1"></i>Subir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Comprimir a ZIP -->
+    <div class="modal fade modal-futuristic" id="compressToZipModal" tabindex="-1" aria-labelledby="compressToZipModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="compressToZipModalLabel">
+                        <i class="bi bi-file-earmark-zip me-2"></i>Comprimir en ZIP
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas comprimir '<span id="compress-item-name"></span>' en un archivo ZIP?</p>
+                    <div class="mb-3">
+                        <label for="zip-filename" class="form-label">Nombre del archivo ZIP:</label>
+                        <input type="text" class="form-control" id="zip-filename">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-futuristic" id="confirm-compress-btn">
+                        <i class="bi bi-file-earmark-zip me-1"></i>Comprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Extraer Archivo -->
+    <div class="modal fade modal-futuristic" id="extractFileModal" tabindex="-1" aria-labelledby="extractFileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="extractFileModalLabel">
+                        <i class="bi bi-file-earmark-zip me-2"></i>Extraer Archivo Comprimido
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas extraer el archivo '<span id="extract-file-name"></span>'?</p>
+                    <div class="mb-3">
+                        <label for="extract-dir" class="form-label">Directorio de destino (opcional):</label>
+                        <input type="text" class="form-control" id="extract-dir" placeholder="Dejar en blanco para extraer en el mismo directorio">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-futuristic" id="confirm-extract-btn">
+                        <i class="bi bi-file-earmark-zip me-1"></i>Extraer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Notificaciones -->
     <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 5000;"></div>
@@ -551,6 +638,9 @@
             const createFolderModal = new bootstrap.Modal(document.getElementById('createFolderModal'));
             const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
             const cloneGithubModal = new bootstrap.Modal(document.getElementById('cloneGithubModal'));
+            const uploadFileModal = new bootstrap.Modal(document.getElementById('uploadFileModal'));
+            const compressToZipModal = new bootstrap.Modal(document.getElementById('compressToZipModal'));
+            const extractFileModal = new bootstrap.Modal(document.getElementById('extractFileModal'));
             
             // Cargar archivos iniciales
             loadFiles(currentPath);
@@ -657,6 +747,23 @@
                     window.location.href = `/edit_file?path=${encodeURIComponent(currentFileSelected)}`;
                 }
             });
+            
+            // Eventos para subir archivos y manejar archivos comprimidos
+            const uploadFileBtn = document.getElementById('upload-file-btn');
+            const uploadFileSubmitBtn = document.getElementById('upload-file-submit-btn');
+            const confirmCompressBtn = document.getElementById('confirm-compress-btn');
+            const confirmExtractBtn = document.getElementById('confirm-extract-btn');
+            
+            uploadFileBtn.addEventListener('click', () => {
+                document.getElementById('upload-file').value = '';
+                document.getElementById('extract-compressed').checked = true;
+                uploadFileModal.show();
+            });
+            
+            uploadFileSubmitBtn.addEventListener('click', uploadFile);
+            
+            confirmCompressBtn.addEventListener('click', compressToZip);
+            confirmExtractBtn.addEventListener('click', extractCompressedFile);
             
             // Funciones de manipulación de archivos
             function loadFiles(path) {
