@@ -450,7 +450,6 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             
             self._cleanup()
     
-    @db_operation
     def _update_project_status(self, db, project, status, phase, progress, current_step):
         """
         Actualiza el estado del proyecto de forma segura.
@@ -1307,7 +1306,6 @@ Basado en tu descripción, he determinado que estás buscando construir una **{p
 """
         return response
     
-    @db_operation
     def _switch_agent(self, db, agent_id):
         """
         Cambia el agente activo y actualiza el proyecto en la base de datos.
