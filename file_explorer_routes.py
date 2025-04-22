@@ -619,17 +619,21 @@ def upload_file():
     """
     try:
         if 'file' not in request.files:
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'No se ha enviado ningún archivo'
-            }), 400
+            })
+            response.headers['Content-Type'] = 'application/json'
+            return response, 400
             
         uploaded_file = request.files['file']
         if uploaded_file.filename == '':
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'Nombre de archivo vacío'
-            }), 400
+            })
+            response.headers['Content-Type'] = 'application/json'
+            return response, 400
             
         relative_path = request.form.get('path', '.')
         workspace_id = request.form.get('workspace_id', 'default')
@@ -641,10 +645,12 @@ def upload_file():
         
         # Asegurar que no se salga del directorio del usuario
         if not os.path.abspath(target_dir).startswith(os.path.abspath(workspace_path)):
-            return jsonify({
+            response = jsonify({
                 'success': False,
                 'error': 'Acceso denegado: la ruta se sale del espacio de trabajo'
-            }), 403
+            })
+            response.headers['Content-Type'] = 'application/json'
+            return response, 403
             
         # Asegurar que el directorio exista
         os.makedirs(target_dir, exist_ok=True)
@@ -665,7 +671,7 @@ def upload_file():
                 file_name = os.path.splitext(filename)[0]
                 extract_rel_path = os.path.join(relative_path, file_name)
                 
-                return jsonify({
+                response = jsonify({
                     'success': True,
                     'message': f'Archivo subido y extraído: {filename}',
                     'file_path': os.path.join(relative_path, filename),
@@ -673,27 +679,35 @@ def upload_file():
                     'extracted': True,
                     'files': extracted_files
                 })
+                response.headers['Content-Type'] = 'application/json'
+                return response
             else:
-                return jsonify({
+                response = jsonify({
                     'success': True,
                     'message': f'Archivo subido pero no se pudo extraer: {message}',
                     'file_path': os.path.join(relative_path, filename),
                     'extracted': False
                 })
+                response.headers['Content-Type'] = 'application/json'
+                return response
         
         # Archivo normal (no comprimido o sin extracción)
-        return jsonify({
+        response = jsonify({
             'success': True,
             'message': f'Archivo subido: {filename}',
             'file_path': os.path.join(relative_path, filename),
             'extracted': False
         })
+        response.headers['Content-Type'] = 'application/json'
+        return response
     except Exception as e:
         logger.error(f"Error al subir archivo: {str(e)}")
-        return jsonify({
+        response = jsonify({
             'success': False,
             'error': f'Error al subir archivo: {str(e)}'
-        }), 500
+        })
+        response.headers['Content-Type'] = 'application/json'
+        return response, 500
 
 
 def register_file_explorer_routes(app):

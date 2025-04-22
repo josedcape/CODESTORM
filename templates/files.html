@@ -524,16 +524,17 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="upload-file-form" enctype="multipart/form-data">
+                    <form id="upload-file-form" enctype="multipart/form-data" method="post" action="/api/explorer/upload">
                         <div class="mb-3">
                             <label for="upload-file" class="form-label">Seleccionar archivo:</label>
                             <input type="file" class="form-control" id="upload-file" name="file">
                             <div class="form-text">Puedes subir cualquier tipo de archivo, incluidos archivos ZIP y RAR.</div>
                         </div>
                         <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="extract-compressed" name="extract">
+                            <input type="checkbox" class="form-check-input" id="extract-compressed" name="extract" checked>
                             <label class="form-check-label" for="extract-compressed">Extraer automáticamente si es un archivo comprimido (ZIP, RAR)</label>
                         </div>
+                        <input type="hidden" id="upload-current-path" name="path" value=".">
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -1299,46 +1300,62 @@
             function uploadFile() {
                 const fileInput = document.getElementById('upload-file');
                 const extractCheckbox = document.getElementById('extract-compressed');
+                const uploadPathInput = document.getElementById('upload-current-path');
                 
                 if (!fileInput.files || fileInput.files.length === 0) {
                     showNotification('Por favor, selecciona un archivo para subir', 'warning');
                     return;
                 }
                 
-                const file = fileInput.files[0];
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('path', currentPath);
-                formData.append('extract', extractCheckbox.checked ? 'true' : 'false');
+                // Actualizar el valor del path en el formulario
+                uploadPathInput.value = currentPath;
                 
                 // Deshabilitar botón mientras se sube
                 const uploadBtn = document.getElementById('upload-file-submit-btn');
                 uploadBtn.disabled = true;
                 uploadBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Subiendo...';
                 
-                fetch('/api/explorer/upload', {
-                    method: 'POST',
-                    body: formData,
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showNotification(data.message || 'Archivo subido correctamente', 'success');
-                        uploadFileModal.hide();
-                        loadFiles(currentPath); // Recargar archivos
-                    } else {
-                        showNotification('Error al subir archivo: ' + (data.error || 'Error desconocido'), 'danger');
+                // Usar el formulario directamente en lugar de FormData
+                const form = document.getElementById('upload-file-form');
+                
+                // Crear un iframe oculto para manejar la subida sin recargar la página
+                const iframe = document.createElement('iframe');
+                iframe.name = 'upload-frame';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+                
+                // Configurar callback cuando el iframe se carga (subida completa)
+                iframe.onload = function() {
+                    try {
+                        // Intentar obtener el resultado JSON del iframe
+                        const iframeContent = iframe.contentWindow.document.body.textContent;
+                        const data = JSON.parse(iframeContent);
+                        
+                        if (data.success) {
+                            showNotification(data.message || 'Archivo subido correctamente', 'success');
+                            uploadFileModal.hide();
+                            loadFiles(currentPath); // Recargar archivos
+                        } else {
+                            showNotification('Error al subir archivo: ' + (data.error || 'Error desconocido'), 'danger');
+                        }
+                    } catch (error) {
+                        console.error('Error al procesar respuesta:', error);
+                        showNotification('Error al subir archivo', 'danger');
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showNotification('Error al subir archivo', 'danger');
-                })
-                .finally(() => {
+                    
+                    // Limpiar
+                    document.body.removeChild(iframe);
+                    
                     // Rehabilitar botón
                     uploadBtn.disabled = false;
                     uploadBtn.innerHTML = '<i class="bi bi-upload me-1"></i>Subir';
-                });
+                };
+                
+                // Configurar el formulario para usar el iframe
+                form.target = 'upload-frame';
+                
+                // Enviar el formulario
+                form.submit();
             }
             
             function compressToZip() {
