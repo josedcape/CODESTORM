@@ -530,10 +530,8 @@
                             <input type="file" class="form-control" id="upload-file" name="file">
                             <div class="form-text">Puedes subir cualquier tipo de archivo, incluidos archivos ZIP y RAR.</div>
                         </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="extract-compressed" name="extract" checked>
-                            <label class="form-check-label" for="extract-compressed">Extraer automáticamente si es un archivo comprimido (ZIP, RAR)</label>
-                        </div>
+                        <!-- Eliminada opción de extraer automáticamente -->
+                        <input type="hidden" name="extract" value="false">
                         <input type="hidden" id="upload-current-path" name="path" value=".">
                     </form>
                 </div>
@@ -757,7 +755,7 @@
             
             uploadFileBtn.addEventListener('click', () => {
                 document.getElementById('upload-file').value = '';
-                document.getElementById('extract-compressed').checked = true;
+                // Ya no utilizamos el checkbox de extracción automática
                 uploadFileModal.show();
             });
             
@@ -1299,7 +1297,6 @@
             // Funciones para manejar archivos comprimidos
             function uploadFile() {
                 const fileInput = document.getElementById('upload-file');
-                const extractCheckbox = document.getElementById('extract-compressed');
                 const uploadPathInput = document.getElementById('upload-current-path');
                 
                 if (!fileInput.files || fileInput.files.length === 0) {
