@@ -1508,11 +1508,25 @@
             }
             
             function deleteItem(path) {
+                console.log(`[Explorer] Intentando eliminar: ${path}`);
+                
                 // Deshabilitar temporalmente la interfaz durante la operación
                 const btnConfirmDelete = document.getElementById('btn-confirm-delete');
                 if (btnConfirmDelete) {
                     btnConfirmDelete.disabled = true;
                     btnConfirmDelete.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Eliminando...';
+                }
+                
+                // Mostrar notificación de eliminación en progreso
+                const notifyId = showNotification('Eliminando elemento...', 'info', false);
+                
+                // 1. Crear una variable para almacenar el elemento DOM que se está eliminando
+                // Esto permitirá ocultar el elemento inmediatamente para mejor UX
+                const elementToDelete = findFileElementByPath(path);
+                if (elementToDelete) {
+                    // Ocultar visualmente el elemento inmediatamente para mejor UX
+                    elementToDelete.style.opacity = '0.5';
+                    elementToDelete.style.pointerEvents = 'none';
                 }
                 
                 fetch('/api/explorer/delete', {
@@ -1524,7 +1538,7 @@
                 })
                 .then(response => {
                     if (!response.ok) {
-                        console.error('Error de servidor:', response.status);
+                        console.error(`[Explorer] Error de servidor al eliminar ${path}:`, response.status);
                         throw new Error('Error del servidor: ' + response.status);
                     }
                     return response.json();
@@ -1537,8 +1551,22 @@
                     }
                     
                     if (data.success) {
+                        console.log(`[Explorer] Eliminación exitosa de ${path}`);
+                        
+                        // Cerrar notificación previa y mostrar éxito
+                        closeNotification(notifyId);
                         showNotification('Elemento eliminado correctamente', 'success');
-                        loadFiles(currentPath);
+                        
+                        // Si el elemento ya fue ocultado visualmente, podemos eliminarlo del DOM
+                        if (elementToDelete) {
+                            elementToDelete.remove();
+                        }
+                        
+                        // Actualizamos la lista completa
+                        setTimeout(() => {
+                            loadFiles(currentPath);
+                            console.log(`[Explorer] Recargando lista de archivos después de eliminación`);
+                        }, 500); // Pequeño retraso para evitar problemas
                         
                         // Cerrar el modal si está abierto
                         if (deleteModal) {
@@ -1558,12 +1586,27 @@
                             currentFileSelected = null;
                         }
                     } else {
+                        console.error(`[Explorer] Error al eliminar ${path}:`, data.error);
+                        closeNotification(notifyId);
                         showNotification('Error al eliminar: ' + data.error, 'danger');
+                        
+                        // Restaurar visual del elemento si no se pudo eliminar
+                        if (elementToDelete) {
+                            elementToDelete.style.opacity = '1';
+                            elementToDelete.style.pointerEvents = 'auto';
+                        }
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
+                    console.error(`[Explorer] Error en petición para eliminar ${path}:`, error);
+                    closeNotification(notifyId);
                     showNotification('Error al eliminar: ' + error.message, 'danger');
+                    
+                    // Restaurar visual del elemento si no se pudo eliminar
+                    if (elementToDelete) {
+                        elementToDelete.style.opacity = '1';
+                        elementToDelete.style.pointerEvents = 'auto';
+                    }
                     
                     // Restaurar botón si sigue existiendo
                     if (btnConfirmDelete) {
@@ -1571,6 +1614,76 @@
                         btnConfirmDelete.innerHTML = 'Eliminar';
                     }
                 });
+            }
+            
+            // Función auxiliar para encontrar un elemento por su ruta
+            function findFileElementByPath(path) {
+                // Buscar en todos los elementos del explorador
+                const items = document.querySelectorAll('.file-explorer-item');
+                
+                for (const item of items) {
+                    // Verificar si este elemento representa un archivo o carpeta que incluye la ruta buscada
+                    const fileNameElement = item.querySelector('.file-name');
+                    if (fileNameElement) {
+                        const fileName = fileNameElement.textContent.trim();
+                        
+                        // Extraer nombre del archivo o carpeta de la ruta completa
+                        const pathParts = path.split('/');
+                        const targetName = pathParts[pathParts.length - 1];
+                        
+                        // Si coincide el nombre y encontramos el botón de eliminar, es probable que sea el elemento
+                        if (fileName === targetName && item.querySelector('.delete-btn')) {
+                            return item;
+                        }
+                    }
+                }
+                
+                // Si no lo encontramos, intentamos ocultar todos los que tengan el mismo nombre
+                return null;
+            }
+            
+            // Función para mostrar notificaciones con ID opcional
+            let notificationCounter = 0;
+            function showNotification(message, type = 'success', autoClose = true) {
+                const notificationId = 'notification-' + (++notificationCounter);
+                const notificationsContainer = document.getElementById('notifications-container');
+                
+                if (!notificationsContainer) {
+                    console.error('Contenedor de notificaciones no encontrado');
+                    return notificationId;
+                }
+                
+                const notification = document.createElement('div');
+                notification.className = `alert alert-${type} alert-dismissible fade show`;
+                notification.id = notificationId;
+                notification.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                
+                notificationsContainer.appendChild(notification);
+                
+                if (autoClose) {
+                    setTimeout(() => {
+                        notification.classList.remove('show');
+                        setTimeout(() => {
+                            notification.remove();
+                        }, 300);
+                    }, 5000);
+                }
+                
+                return notificationId;
+            }
+            
+            // Función para cerrar una notificación específica
+            function closeNotification(id) {
+                const notification = document.getElementById(id);
+                if (notification) {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 300);
+                }
             }
             
             function showDeleteConfirmation(path, type, name) {
@@ -1797,24 +1910,9 @@
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             }
             
-            function showNotification(message, type = 'info') {
-                const container = document.getElementById('notifications');
-                
-                const notification = document.createElement('div');
-                notification.className = `alert alert-${type} alert-dismissible fade show`;
-                notification.innerHTML = `
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                `;
-                
-                container.appendChild(notification);
-                
-                // Auto-quitar después de 5 segundos
-                setTimeout(() => {
-                    notification.classList.remove('show');
-                    setTimeout(() => notification.remove(), 300);
-                }, 5000);
-            }
+            // La implementación principal de la función de notificación está arriba 
+            // Esta es una implementación antigua, usaremos solo la versión mejorada
+            // function showNotification ya está definida anteriormente
             
             // Funciones para manejar archivos comprimidos
             function uploadFile() {
