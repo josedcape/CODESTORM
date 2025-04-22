@@ -1,348 +1,186 @@
 {% extends "base.html" %}
 
-{% block title %}CODESTORM - Previsualización Web{% endblock %}
+{% block title %}CODESTORM - Previsualización Web Simplificada{% endblock %}
 
 {% block extra_css %}
-<!-- CodeMirror para editor de código -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/monokai.min.css">
 <style>
+    .container-fluid {
+        padding: 20px;
+    }
+    
     .preview-container {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 180px);
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 20px;
+        height: calc(100vh - 140px);
+    }
+    
+    .editor-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        height: 100%;
+    }
+    
+    .code-panel {
+        background-color: #1e1e1e;
         border-radius: 8px;
         overflow: hidden;
-    }
-    
-    .editor-container {
-        display: flex;
-        flex: 1;
-        height: 60%;
-        border-bottom: 1px solid var(--accent-primary);
-        background-color: var(--bg-tertiary);
-    }
-    
-    .editor-panel {
-        flex: 1;
         display: flex;
         flex-direction: column;
         height: 100%;
-        border-right: 1px solid var(--accent-primary);
-    }
-    
-    .editor-panel:last-child {
-        border-right: none;
     }
     
     .panel-header {
-        padding: 10px;
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
+        background-color: #0A2149;
+        color: white;
+        padding: 10px 15px;
         font-weight: 500;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid var(--accent-primary);
+        border-bottom: 1px solid #FFB400;
     }
     
     .panel-content {
         flex: 1;
-        position: relative;
-        overflow: hidden;
+        overflow: auto;
+        padding: 0;
     }
     
-    .CodeMirror {
-        height: 100%;
-        font-size: 14px;
-    }
-    
-    .result-container {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        background-color: var(--bg-tertiary);
-    }
-    
-    .result-header {
-        padding: 10px;
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
-        font-weight: 500;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--accent-primary);
-    }
-    
-    .result-content {
-        flex: 1;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .result-iframe {
+    textarea.code-editor {
         width: 100%;
         height: 100%;
         border: none;
+        background-color: #1e1e1e;
+        color: #f8f8f8;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        padding: 10px;
+        resize: none;
+    }
+    
+    .preview-panel {
+        background-color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .preview-content {
+        flex: 1;
+        overflow: auto;
         background-color: white;
     }
     
+    iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+    
     .toolbar {
+        margin-bottom: 15px;
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        padding: 10px 0;
-    }
-    
-    .toolbar-left, .toolbar-right {
-        display: flex;
+        flex-wrap: wrap;
         gap: 10px;
-    }
-    
-    .btn-icon {
-        cursor: pointer;
-        color: var(--text-secondary);
-        transition: color 0.2s;
-    }
-    
-    .btn-icon:hover {
-        color: var(--accent-primary);
-    }
-    
-    .device-selector {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-    
-    .device-option {
-        cursor: pointer;
-        padding: 4px 8px;
-        border-radius: 4px;
-        color: var(--text-secondary);
-        transition: all 0.2s;
-    }
-    
-    .device-option.active {
-        background-color: var(--accent-primary);
-        color: white;
-    }
-    
-    .device-option:hover:not(.active) {
-        background-color: var(--bg-quaternary);
-    }
-    
-    /* Modal para plantillas */
-    .templates-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 1000;
-        padding: 20px;
-    }
-    
-    .modal-content {
-        background-color: var(--bg-secondary);
-        border-radius: 8px;
-        max-width: 800px;
-        max-height: 80vh;
-        margin: 50px auto;
-        padding: 20px;
-        overflow-y: auto;
-    }
-    
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-    
-    .modal-title {
-        font-size: 1.5rem;
-        color: var(--accent-primary);
-    }
-    
-    .template-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 20px;
-    }
-    
-    .template-card {
-        background-color: var(--bg-tertiary);
-        border-radius: 8px;
-        overflow: hidden;
-        transition: transform 0.2s;
-        border: 1px solid var(--accent-primary);
-        cursor: pointer;
-    }
-    
-    .template-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-    }
-    
-    .template-preview {
-        height: 120px;
-        overflow: hidden;
-        background-color: var(--bg-quaternary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .template-preview img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-    
-    .template-info {
-        padding: 12px;
-    }
-    
-    .template-name {
-        font-weight: 500;
-        margin-bottom: 5px;
-        color: var(--text-primary);
-    }
-    
-    .template-description {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-    }
-    
-    .combined-code-container {
-        height: 500px;
-        padding: 0;
-    }
-
-    #combined-code-editor, #paste-complete-editor {
-        width: 100%;
-        height: 100%;
-    }
-
-    .CodeMirror.cm-s-combined {
-        height: 100%;
-        font-size: 14px;
-    }
-    
-    /* Animaciones */
-    .slideIn {
-        animation: slideInAnim 0.3s forwards;
-    }
-    
-    @keyframes slideInAnim {
-        from {
-            transform: translateY(50px);
-            opacity: 0;
-        }
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
-    }
-    
-    /* Estilos responsive */
-    @media (max-width: 991px) {
-        .editor-container {
-            flex-direction: column;
-            height: auto;
-        }
-        
-        .editor-panel {
-            height: 250px;
-            border-right: none;
-            border-bottom: 1px solid var(--accent-primary);
-        }
-        
-        .editor-panel:last-child {
-            border-bottom: none;
-        }
-        
-        .preview-container {
-            height: auto;
-            min-height: calc(100vh - 250px);
-        }
-        
-        .result-container {
-            height: 300px;
-        }
-    }
-    
-    @media (max-width: 768px) {
-        .modal-content {
-            margin: 20px auto;
-            max-height: 90vh;
-        }
-        
-        .template-grid {
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        }
-        
-        .toolbar-left, .toolbar-right {
-            flex-wrap: wrap;
-        }
     }
     
     .notification {
         position: fixed;
         bottom: 20px;
         right: 20px;
-        padding: 12px 20px;
-        border-radius: 4px;
+        padding: 10px 20px;
+        background-color: #4caf50;
         color: white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 4px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        display: none;
+    }
+    
+    #paste-complete-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0,0,0,0.7);
         z-index: 1000;
-        opacity: 1;
-        transition: opacity 0.3s ease;
     }
     
-    .success-notification {
-        background-color: #4CAF50;
+    .modal-dialog {
+        width: 90%;
+        max-width: 800px;
+        margin: 50px auto;
+        background-color: #282c34;
+        border-radius: 8px;
+        overflow: hidden;
     }
     
-    .error-notification {
-        background-color: #F44336;
+    .modal-header {
+        background-color: #0A2149;
+        color: white;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #FFB400;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-footer {
+        padding: 15px;
+        display: flex;
+        justify-content: flex-end;
+        background-color: #1e1e1e;
+        border-top: 1px solid #444;
+    }
+    
+    #full-html-editor {
+        width: 100%;
+        height: 400px;
+        background-color: #1e1e1e;
+        color: #f8f8f8;
+        font-family: 'Courier New', monospace;
+        border: 1px solid #444;
+        padding: 10px;
+    }
+    
+    @media (max-width: 768px) {
+        .editor-layout {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="section-header mt-4">
-        <h2 class="mb-1"><i class="fas fa-tv me-2"></i>Previsualización Web</h2>
-        <p class="text-muted">Escribe HTML, CSS y JavaScript y visualiza el resultado en tiempo real. Una herramienta esencial para desarrolladores frontend.</p>
+<div class="container-fluid">
+    <div class="section-header my-3">
+        <h2><i class="fas fa-tv me-2"></i>Previsualización Web</h2>
+        <p class="text-muted">Editor simple para visualizar código HTML, CSS y JavaScript.</p>
     </div>
     
-    <!-- Toolbar principal -->
-    <div class="toolbar mb-3">
-        <div class="toolbar-left">
+    <div class="toolbar">
+        <div>
             <button id="run-btn" class="btn btn-primary">
                 <i class="fas fa-play me-1"></i> Ejecutar
-            </button>
-            <button id="save-btn" class="btn btn-outline-secondary">
-                <i class="fas fa-save me-1"></i> Guardar
             </button>
             <button id="download-btn" class="btn btn-outline-secondary">
                 <i class="fas fa-download me-1"></i> Descargar
             </button>
-            <button id="view-combined-btn" class="btn btn-success">
-                <i class="fas fa-code me-1"></i> Ver Código Completo
-            </button>
         </div>
-        <div class="toolbar-right">
-            <button id="paste-complete-btn" class="btn btn-warning">
+        <div>
+            <button id="paste-html-btn" class="btn btn-warning">
                 <i class="fas fa-paste me-1"></i> Pegar HTML Completo
-            </button>
-            <button id="templates-btn" class="btn btn-accent">
-                <i class="fas fa-layer-group me-1"></i> Plantillas
             </button>
             <button id="clear-btn" class="btn btn-outline-danger">
                 <i class="fas fa-trash me-1"></i> Limpiar
@@ -350,2160 +188,226 @@
         </div>
     </div>
     
-    <!-- Contenedor principal -->
     <div class="preview-container">
-        <!-- Paneles de edición -->
-        <div class="editor-container">
-            <!-- Panel HTML -->
-            <div class="editor-panel">
+        <div class="editor-layout">
+            <div class="code-panel">
                 <div class="panel-header">
-                    <span><i class="fab fa-html5 me-1" style="color: #E44D26;"></i> HTML</span>
-                    <div class="editor-actions">
-                        <i class="fas fa-expand-arrows-alt btn-icon" title="Expandir"></i>
-                    </div>
+                    <span><i class="fas fa-code me-1"></i> Código HTML/CSS/JS</span>
                 </div>
                 <div class="panel-content">
-                    <textarea id="html-editor"></textarea>
-                </div>
-            </div>
-            
-            <!-- Panel CSS -->
-            <div class="editor-panel">
-                <div class="panel-header">
-                    <span><i class="fab fa-css3-alt me-1" style="color: #264DE4;"></i> CSS</span>
-                    <div class="editor-actions">
-                        <i class="fas fa-expand-arrows-alt btn-icon" title="Expandir"></i>
-                    </div>
-                </div>
-                <div class="panel-content">
-                    <textarea id="css-editor"></textarea>
-                </div>
-            </div>
-            
-            <!-- Panel JavaScript -->
-            <div class="editor-panel">
-                <div class="panel-header">
-                    <span><i class="fab fa-js me-1" style="color: #F7DF1E;"></i> JavaScript</span>
-                    <div class="editor-actions">
-                        <i class="fas fa-expand-arrows-alt btn-icon" title="Expandir"></i>
-                    </div>
-                </div>
-                <div class="panel-content">
-                    <textarea id="js-editor"></textarea>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Panel de resultado -->
-        <div class="result-container">
-            <div class="result-header">
-                <span><i class="fas fa-tv me-1"></i> Resultado</span>
-                <div class="device-selector">
-                    <div class="device-option active" data-device="desktop">
-                        <i class="fas fa-desktop"></i>
-                    </div>
-                    <div class="device-option" data-device="tablet">
-                        <i class="fas fa-tablet-alt"></i>
-                    </div>
-                    <div class="device-option" data-device="mobile">
-                        <i class="fas fa-mobile-alt"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="result-content">
-                <iframe id="result-iframe" sandbox="allow-scripts allow-same-origin" class="result-iframe"></iframe>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal para ver código completo -->
-<div id="combined-code-modal" class="templates-modal">
-    <div class="modal-content slideIn" style="max-width: 900px;">
-        <div class="modal-header">
-            <h3 class="modal-title">Código Completo</h3>
-            <div>
-                <button id="copy-code-btn" class="btn btn-sm btn-outline-primary me-2">
-                    <i class="fas fa-copy"></i> Copiar
-                </button>
-                <button id="close-combined-modal" class="btn btn-sm btn-outline-secondary">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="combined-code-container">
-            <textarea id="combined-code-editor"></textarea>
-        </div>
-    </div>
-</div>
-
-<!-- Modal para pegar HTML completo -->
-<div id="paste-complete-modal" class="templates-modal">
-    <div class="modal-content slideIn" style="max-width: 900px;">
-        <div class="modal-header">
-            <h3 class="modal-title">Pegar HTML Completo</h3>
-            <button id="close-paste-modal" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="combined-code-container">
-            <p class="mb-3">Pega tu código HTML completo aquí para visualizarlo directamente:</p>
-            <textarea id="paste-complete-editor"></textarea>
-            <div class="mt-3 text-end">
-                <button id="render-pasted-code-btn" class="btn btn-primary">
-                    <i class="fas fa-play me-1"></i> Renderizar
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de plantillas -->
-<div id="templates-modal" class="templates-modal">
-    <div class="modal-content slideIn">
-        <div class="modal-header">
-            <h3 class="modal-title">Plantillas Web</h3>
-            <button id="close-modal" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="template-grid">
-            <!-- Plantilla: Landing page simple -->
-            <div class="template-card" data-template="landing">
-                <div class="template-preview">
-                    <img src="{{ url_for('static', filename='img/templates/landing.jpg') }}" alt="Landing Page">
-                </div>
-                <div class="template-info">
-                    <div class="template-name">Landing Page</div>
-                    <div class="template-description">Página de aterrizaje moderna con secciones Hero, Características y CTA.</div>
-                </div>
-            </div>
-            
-            <!-- Plantilla: Portfolio -->
-            <div class="template-card" data-template="portfolio">
-                <div class="template-preview">
-                    <img src="{{ url_for('static', filename='img/templates/portfolio.jpg') }}" alt="Portfolio">
-                </div>
-                <div class="template-info">
-                    <div class="template-name">Portfolio</div>
-                    <div class="template-description">Página de portfolio con galería de trabajos y sección about.</div>
-                </div>
-            </div>
-            
-            <!-- Plantilla: Dashboard -->
-            <div class="template-card" data-template="dashboard">
-                <div class="template-preview">
-                    <img src="{{ url_for('static', filename='img/templates/dashboard.jpg') }}" alt="Dashboard">
-                </div>
-                <div class="template-info">
-                    <div class="template-name">Dashboard</div>
-                    <div class="template-description">Panel de administración con estadísticas y gráficos.</div>
-                </div>
-            </div>
-            
-            <!-- Plantilla: Blog -->
-            <div class="template-card" data-template="blog">
-                <div class="template-preview">
-                    <img src="{{ url_for('static', filename='img/templates/blog.jpg') }}" alt="Blog">
-                </div>
-                <div class="template-info">
-                    <div class="template-name">Blog</div>
-                    <div class="template-description">Diseño de blog moderno con artículos destacados.</div>
-                </div>
-            </div>
-            
-            <!-- Plantilla: Tienda -->
-            <div class="template-card" data-template="ecommerce">
-                <div class="template-preview">
-                    <img src="{{ url_for('static', filename='img/templates/ecommerce.jpg') }}" alt="E-commerce">
-                </div>
-                <div class="template-info">
-                    <div class="template-name">E-commerce</div>
-                    <div class="template-description">Página de productos con carrito de compra.</div>
-                </div>
-            </div>
-            
-            <!-- Plantilla: Formulario de contacto -->
-            <div class="template-card" data-template="contact">
-                <div class="template-preview">
-                    <img src="{{ url_for('static', filename='img/templates/contact.jpg') }}" alt="Formulario de Contacto">
-                </div>
-                <div class="template-info">
-                    <div class="template-name">Formulario de Contacto</div>
-                    <div class="template-description">Formulario de contacto moderno con validación.</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<!-- CodeMirror and plugins -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/htmlmixed/htmlmixed.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/xml/xml.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/edit/closetag.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/edit/closebrackets.min.js"></script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar los editores CodeMirror
-    const htmlEditor = CodeMirror.fromTextArea(document.getElementById('html-editor'), {
-        mode: 'htmlmixed',
-        theme: 'monokai',
-        lineNumbers: true,
-        autoCloseTags: true,
-        autoCloseBrackets: true,
-        lineWrapping: true,
-        tabSize: 2,
-        indentWithTabs: false
-    });
-    
-    const cssEditor = CodeMirror.fromTextArea(document.getElementById('css-editor'), {
-        mode: 'css',
-        theme: 'monokai',
-        lineNumbers: true,
-        autoCloseBrackets: true,
-        lineWrapping: true,
-        tabSize: 2,
-        indentWithTabs: false
-    });
-    
-    const jsEditor = CodeMirror.fromTextArea(document.getElementById('js-editor'), {
-        mode: 'javascript',
-        theme: 'monokai',
-        lineNumbers: true,
-        autoCloseBrackets: true,
-        lineWrapping: true,
-        tabSize: 2,
-        indentWithTabs: false
-    });
-    
-    // Establecer valores iniciales con ejemplo simple
-    htmlEditor.setValue(`<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Página Web</title>
-</head>
-<body>
-  <header>
-    <h1>Bienvenido a CODESTORM</h1>
-  </header>
-  
-  <main>
-    <section class="hero">
-      <h2>Desarrollo Web en Tiempo Real</h2>
-      <p>Edita HTML, CSS y JavaScript y visualiza los cambios instantáneamente.</p>
-      <button id="miBoton">Haz clic aquí</button>
-    </section>
-  </main>
-  
-  <footer>
-    <p>Creado con el Previsualizador Web de CODESTORM</p>
-  </footer>
-</body>
-</html>`);
-    
-    cssEditor.setValue(`/* Estilos generales */
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  line-height: 1.6;
-  margin: 0;
-  padding: 0;
-  color: #333;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  min-height: 100vh;
-}
-
-/* Encabezado */
-header {
-  background-color: #0A2149;
-  color: white;
-  padding: 1rem;
-  text-align: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-/* Contenido principal */
-main {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-.hero {
-  background-color: white;
-  border-radius: 8px;
-  padding: 2rem;
-  margin-top: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-h2 {
-  color: #0A2149;
-  margin-top: 0;
-}
-
-button {
-  background-color: #FFB400;
-  color: #0A2149;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  font-weight: bold;
-  margin-top: 1rem;
-  transition: all 0.3s ease;
-}
-
-button:hover {
-  background-color: #E5A200;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Pie de página */
-footer {
-  text-align: center;
-  padding: 1rem;
-  color: #666;
-  font-size: 0.9rem;
-  margin-top: 2rem;
-}`);
-    
-    jsEditor.setValue(`// Esperar a que el DOM esté completamente cargado
-document.addEventListener('DOMContentLoaded', function() {
-  // Obtener referencia al botón
-  const miBoton = document.getElementById('miBoton');
-  
-  // Añadir event listener para el click
-  miBoton.addEventListener('click', function() {
-    // Cambiar el texto del botón
-    this.textContent = '¡Gracias por hacer clic!';
-    
-    // Añadir una clase para estilizar
-    this.classList.add('clicked');
-    
-    // Mostrar una alerta
-    setTimeout(() => {
-      alert('¡Bienvenido al Previsualizador Web de CODESTORM!');
-    }, 300);
-  });
-  
-  // Estilos adicionales añadidos dinámicamente
-  const style = document.createElement('style');
-  style.textContent = \`
-    .clicked {
-      background-color: #4CAF50 !important;
-      color: white !important;
-    }
-  \`;
-  document.head.appendChild(style);
-  
-  // Añadir animación al título
-  const titulo = document.querySelector('h1');
-  titulo.style.transition = 'all 0.5s ease';
-  
-  titulo.addEventListener('mouseover', function() {
-    this.style.color = '#FFB400';
-    this.style.transform = 'scale(1.05)';
-  });
-  
-  titulo.addEventListener('mouseout', function() {
-    this.style.color = 'white';
-    this.style.transform = 'scale(1)';
-  });
-});`);
-    
-    // Función para actualizar la vista previa
-    function updatePreview() {
-        const html = htmlEditor.getValue();
-        const css = cssEditor.getValue();
-        const js = jsEditor.getValue();
-        
-        const iframe = document.getElementById('result-iframe');
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-        
-        iframeDoc.open();
-        iframeDoc.write(`
-            ${html}
-            <style>${css}</style>
-            <script>${js}<\/script>
-        `);
-        iframeDoc.close();
-    }
-    
-    // Actualizar la vista previa al cargar
-    setTimeout(updatePreview, 500);
-    
-    // Event Listeners
-    document.getElementById('run-btn').addEventListener('click', updatePreview);
-    
-    // Auto-actualización después de un tiempo
-    let autoUpdateTimer;
-    function setupAutoUpdate() {
-        const editors = [htmlEditor, cssEditor, jsEditor];
-        
-        editors.forEach(editor => {
-            editor.on('change', function() {
-                clearTimeout(autoUpdateTimer);
-                autoUpdateTimer = setTimeout(updatePreview, 1000);
-            });
-        });
-    }
-    
-    setupAutoUpdate();
-    
-    // Manejo del visor de dispositivos
-    document.querySelectorAll('.device-option').forEach(option => {
-        option.addEventListener('click', function() {
-            // Eliminar clase activa de todas las opciones
-            document.querySelectorAll('.device-option').forEach(opt => {
-                opt.classList.remove('active');
-            });
-            
-            // Añadir clase activa a la opción seleccionada
-            this.classList.add('active');
-            
-            // Cambiar dimensiones del iframe
-            const iframe = document.getElementById('result-iframe');
-            const deviceType = this.getAttribute('data-device');
-            
-            if (deviceType === 'desktop') {
-                iframe.style.width = '100%';
-                iframe.style.height = '100%';
-            } else if (deviceType === 'tablet') {
-                iframe.style.width = '768px';
-                iframe.style.height = '1024px';
-                iframe.style.margin = '0 auto';
-            } else if (deviceType === 'mobile') {
-                iframe.style.width = '375px';
-                iframe.style.height = '667px';
-                iframe.style.margin = '0 auto';
-            }
-        });
-    });
-    
-    // Abrir modal de plantillas
-    document.getElementById('templates-btn').addEventListener('click', function() {
-        document.getElementById('templates-modal').style.display = 'block';
-    });
-    
-    // Cerrar modal de plantillas
-    document.getElementById('close-modal').addEventListener('click', function() {
-        document.getElementById('templates-modal').style.display = 'none';
-    });
-    
-    // Database de plantillas
-    const templates = {
-        landing: {
-            html: `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Landing Page</title>
-</head>
-<body>
-  <header class="header">
-    <div class="container">
-      <div class="logo">
-        <h1>Brand<span>Name</span></h1>
-      </div>
-      <nav class="nav">
-        <ul>
-          <li><a href="#" class="active">Inicio</a></li>
-          <li><a href="#">Características</a></li>
-          <li><a href="#">Precios</a></li>
-          <li><a href="#">Contacto</a></li>
-        </ul>
-      </nav>
-      <div class="cta-button">
-        <a href="#" class="btn primary">Empezar Ahora</a>
-      </div>
-    </div>
-  </header>
-
-  <section class="hero">
-    <div class="container">
-      <div class="hero-content">
-        <h1>Soluciones Innovadoras para Tu Negocio</h1>
-        <p>Diseñamos soluciones a medida que impulsan el crecimiento de tu empresa y mejoran la experiencia de tus clientes.</p>
-        <div class="hero-buttons">
-          <a href="#" class="btn primary">Solicitar Demo</a>
-          <a href="#" class="btn secondary">Saber Más</a>
-        </div>
-      </div>
-      <div class="hero-image">
-        <div class="placeholder">
-          <div class="shape"></div>
-          <div class="shape-small"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="features">
-    <div class="container">
-      <div class="section-header">
-        <h2>Características Principales</h2>
-        <p>Descubre por qué nuestras soluciones son las preferidas por miles de empresas</p>
-      </div>
-      <div class="feature-grid">
-        <div class="feature-card">
-          <div class="feature-icon">
-            <div class="icon-placeholder"></div>
-          </div>
-          <h3>Diseño Intuitivo</h3>
-          <p>Interfaz fácil de usar que no requiere conocimientos técnicos avanzados.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <div class="icon-placeholder"></div>
-          </div>
-          <h3>Escalabilidad Total</h3>
-          <p>Crece con tu empresa sin problemas, desde startups hasta grandes corporaciones.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <div class="icon-placeholder"></div>
-          </div>
-          <h3>Soporte 24/7</h3>
-          <p>Equipo de expertos disponible para ayudarte en cualquier momento del día.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="cta">
-    <div class="container">
-      <div class="cta-content">
-        <h2>¿Listo para transformar tu negocio?</h2>
-        <p>Únete a más de 10,000 empresas que ya están aprovechando nuestras soluciones.</p>
-        <a href="#" class="btn primary">Comenzar Ahora</a>
-      </div>
-    </div>
-  </section>
-
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-content">
-        <div class="footer-logo">
-          <h2>Brand<span>Name</span></h2>
-          <p>Soluciones innovadoras desde 2010</p>
-        </div>
-        <div class="footer-links">
-          <div class="link-group">
-            <h3>Empresa</h3>
-            <ul>
-              <li><a href="#">Sobre Nosotros</a></li>
-              <li><a href="#">Carreras</a></li>
-              <li><a href="#">Blog</a></li>
-            </ul>
-          </div>
-          <div class="link-group">
-            <h3>Recursos</h3>
-            <ul>
-              <li><a href="#">Guías</a></li>
-              <li><a href="#">Documentación</a></li>
-              <li><a href="#">Tutoriales</a></li>
-            </ul>
-          </div>
-          <div class="link-group">
-            <h3>Legal</h3>
-            <ul>
-              <li><a href="#">Términos</a></li>
-              <li><a href="#">Privacidad</a></li>
-              <li><a href="#">Cookies</a></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <p>&copy; 2025 BrandName. Todos los derechos reservados.</p>
-      </div>
-    </div>
-  </footer>
-</body>
-</html>`,
-            css: `/* Variables y reset */
-:root {
-  --primary-color: #4361EE;
-  --secondary-color: #4CC9F0;
-  --accent-color: #F72585;
-  --text-primary: #333333;
-  --text-secondary: #777777;
-  --background-light: #ffffff;
-  --background-gray: #f7f9fc;
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 2rem;
-  --spacing-xl: 4rem;
-  --border-radius: 8px;
-  --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  --transition: all 0.3s ease;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  line-height: 1.6;
-  color: var(--text-primary);
-}
-
-/* Utilidades */
-.container {
-  width: 90%;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-ul {
-  list-style: none;
-}
-
-.btn {
-  display: inline-block;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--border-radius);
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  text-align: center;
-}
-
-.btn.primary {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.btn.primary:hover {
-  background-color: #3050D9;
-  transform: translateY(-2px);
-}
-
-.btn.secondary {
-  background-color: transparent;
-  color: var(--primary-color);
-  border: 2px solid var(--primary-color);
-}
-
-.btn.secondary:hover {
-  background-color: rgba(67, 97, 238, 0.1);
-  transform: translateY(-2px);
-}
-
-/* Header */
-.header {
-  padding: var(--spacing-md) 0;
-  position: sticky;
-  top: 0;
-  background-color: var(--background-light);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  z-index: 100;
-}
-
-.header .container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.logo h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.logo span {
-  color: var(--primary-color);
-}
-
-.nav ul {
-  display: flex;
-  gap: var(--spacing-lg);
-}
-
-.nav a {
-  font-weight: 500;
-  transition: var(--transition);
-}
-
-.nav a:hover, .nav a.active {
-  color: var(--primary-color);
-}
-
-/* Hero Section */
-.hero {
-  padding: var(--spacing-xl) 0;
-  background-color: var(--background-light);
-}
-
-.hero .container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  gap: var(--spacing-xl);
-}
-
-.hero-content h1 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: var(--spacing-md);
-  line-height: 1.2;
-}
-
-.hero-content p {
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-lg);
-  font-size: 1.1rem;
-}
-
-.hero-buttons {
-  display: flex;
-  gap: var(--spacing-md);
-}
-
-.hero-image .placeholder {
-  width: 100%;
-  aspect-ratio: 16/9;
-  background-color: var(--background-gray);
-  border-radius: var(--border-radius);
-  position: relative;
-  overflow: hidden;
-}
-
-.shape {
-  width: 80%;
-  height: 70%;
-  background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: morph 8s ease-in-out infinite;
-}
-
-.shape-small {
-  width: 35%;
-  height: 35%;
-  background: linear-gradient(45deg, var(--accent-color), var(--primary-color));
-  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-  position: absolute;
-  bottom: 15%;
-  right: 10%;
-  animation: morph 8s ease-in-out infinite 2s;
-}
-
-@keyframes morph {
-  0% {
-    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-  }
-  50% {
-    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-  }
-  100% {
-    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-  }
-}
-
-/* Features Section */
-.features {
-  padding: var(--spacing-xl) 0;
-  background-color: var(--background-gray);
-}
-
-.section-header {
-  text-align: center;
-  max-width: 800px;
-  margin: 0 auto var(--spacing-xl);
-}
-
-.section-header h2 {
-  font-size: 2rem;
-  margin-bottom: var(--spacing-sm);
-  color: var(--text-primary);
-}
-
-.section-header p {
-  color: var(--text-secondary);
-}
-
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-lg);
-}
-
-.feature-card {
-  background-color: var(--background-light);
-  padding: var(--spacing-lg);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  transition: var(--transition);
-}
-
-.feature-card:hover {
-  transform: translateY(-5px);
-}
-
-.feature-icon {
-  margin-bottom: var(--spacing-md);
-}
-
-.icon-placeholder {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-}
-
-.feature-card h3 {
-  margin-bottom: var(--spacing-sm);
-  font-size: 1.2rem;
-}
-
-.feature-card p {
-  color: var(--text-secondary);
-}
-
-/* CTA Section */
-.cta {
-  padding: var(--spacing-xl) 0;
-  background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-  color: white;
-}
-
-.cta-content {
-  text-align: center;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.cta-content h2 {
-  font-size: 2rem;
-  margin-bottom: var(--spacing-sm);
-}
-
-.cta-content p {
-  margin-bottom: var(--spacing-lg);
-  opacity: 0.9;
-}
-
-.cta .btn.primary {
-  background-color: white;
-  color: var(--primary-color);
-}
-
-.cta .btn.primary:hover {
-  background-color: rgba(255, 255, 255, 0.9);
-}
-
-/* Footer */
-.footer {
-  padding: var(--spacing-xl) 0 var(--spacing-md);
-  background-color: #1A1A2E;
-  color: white;
-}
-
-.footer-content {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: var(--spacing-xl);
-  margin-bottom: var(--spacing-xl);
-}
-
-.footer-logo h2 {
-  font-size: 1.5rem;
-  margin-bottom: var(--spacing-sm);
-}
-
-.footer-logo p {
-  opacity: 0.8;
-}
-
-.footer-links {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-lg);
-}
-
-.link-group h3 {
-  font-size: 1.1rem;
-  margin-bottom: var(--spacing-md);
-  color: var(--secondary-color);
-}
-
-.link-group ul li {
-  margin-bottom: var(--spacing-sm);
-}
-
-.link-group a {
-  opacity: 0.8;
-  transition: var(--transition);
-}
-
-.link-group a:hover {
-  opacity: 1;
-  color: var(--secondary-color);
-}
-
-.footer-bottom {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: var(--spacing-md);
-  text-align: center;
-}
-
-.footer-bottom p {
-  opacity: 0.6;
-  font-size: 0.9rem;
-}
-
-/* Media Queries */
-@media (max-width: 991px) {
-  .hero .container {
-    grid-template-columns: 1fr;
-  }
-  
-  .hero-content {
-    text-align: center;
-  }
-  
-  .hero-buttons {
-    justify-content: center;
-  }
-  
-  .footer-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .footer-links {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .header .container {
-    flex-direction: column;
-    gap: var(--spacing-md);
-  }
-  
-  .nav ul {
-    gap: var(--spacing-md);
-  }
-  
-  .feature-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .footer-links {
-    grid-template-columns: 1fr;
-  }
-}`,
-            js: `document.addEventListener('DOMContentLoaded', function() {
-  // Animación suave al hacer scroll
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-      e.preventDefault();
-      
-      document.querySelector(this.getAttribute('href')).scrollIntoView({
-        behavior: 'smooth'
-      });
-    });
-  });
-  
-  // Efecto de aparecer al hacer scroll
-  const observerOptions = {
-    root: null,
-    rootMargin: '0px',
-    threshold: 0.1
-  };
-  
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-      }
-    });
-  }, observerOptions);
-  
-  // Agregar clase para los elementos que queremos animar
-  const style = document.createElement('style');
-  style.textContent = \`
-    .feature-card, .cta-content, .section-header {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
-    }
-    
-    .feature-card.visible, .cta-content.visible, .section-header.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    
-    .feature-card:nth-child(2) {
-      transition-delay: 0.2s;
-    }
-    
-    .feature-card:nth-child(3) {
-      transition-delay: 0.4s;
-    }
-  \`;
-  document.head.appendChild(style);
-  
-  // Observar elementos
-  document.querySelectorAll('.feature-card, .cta-content, .section-header').forEach(el => {
-    observer.observe(el);
-  });
-  
-  // Navegación activa según la sección
-  window.addEventListener('scroll', () => {
-    const scrollPosition = window.scrollY;
-    
-    document.querySelectorAll('section').forEach(section => {
-      const sectionTop = section.offsetTop - 100;
-      const sectionBottom = sectionTop + section.offsetHeight;
-      const sectionId = section.getAttribute('id');
-      
-      if (scrollPosition >= sectionTop && scrollPosition < sectionBottom && sectionId) {
-        document.querySelectorAll('.nav a').forEach(link => {
-          link.classList.remove('active');
-          if (link.getAttribute('href') === '#' + sectionId) {
-            link.classList.add('active');
-          }
-        });
-      }
-    });
-  });
-});`
-        },
-        
-        // Otras plantillas... (se definirían aquí)
-        
-        contact: {
-            html: `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Formulario de Contacto</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-  <div class="contact-page">
-    <header class="contact-header">
-      <div class="header-content">
-        <div class="logo">
-          <h1>Contact<span>Pro</span></h1>
-        </div>
-        <p class="tagline">Estamos aquí para ayudarte</p>
-      </div>
-    </header>
-    
-    <div class="contact-container">
-      <div class="contact-form-container">
-        <div class="form-header">
-          <h2>Envía tu mensaje</h2>
-          <p>Completa el formulario y nos pondremos en contacto contigo lo antes posible.</p>
-        </div>
-        
-        <form id="contactForm" class="contact-form">
-          <div class="form-group">
-            <div class="input-group">
-              <label for="name">Nombre completo *</label>
-              <input type="text" id="name" name="name" required placeholder="Tu nombre completo">
-              <span id="name-error" class="error-message"></span>
-            </div>
-            
-            <div class="input-group">
-              <label for="email">Correo electrónico *</label>
-              <input type="email" id="email" name="email" required placeholder="ejemplo@correo.com">
-              <span id="email-error" class="error-message"></span>
-            </div>
-          </div>
-          
-          <div class="input-group">
-            <label for="phone">Teléfono (opcional)</label>
-            <input type="tel" id="phone" name="phone" placeholder="+34 612 345 678">
-          </div>
-          
-          <div class="input-group">
-            <label for="subject">Asunto *</label>
-            <select id="subject" name="subject" required>
-              <option value="" selected disabled>Selecciona una opción</option>
-              <option value="informacion">Información general</option>
-              <option value="soporte">Soporte técnico</option>
-              <option value="ventas">Ventas</option>
-              <option value="otro">Otro</option>
-            </select>
-            <span id="subject-error" class="error-message"></span>
-          </div>
-          
-          <div class="input-group">
-            <label for="message">Mensaje *</label>
-            <textarea id="message" name="message" rows="5" required placeholder="Escribe tu mensaje aquí..."></textarea>
-            <span id="message-error" class="error-message"></span>
-          </div>
-          
-          <div class="input-group checkbox-group">
-            <input type="checkbox" id="terms" name="terms" required>
-            <label for="terms">He leído y acepto la <a href="#">política de privacidad</a> *</label>
-            <span id="terms-error" class="error-message"></span>
-          </div>
-          
-          <button type="submit" class="submit-button">
-            <i class="fas fa-paper-plane"></i> Enviar mensaje
-          </button>
-        </form>
-      </div>
-      
-      <div class="contact-info">
-        <div class="info-card">
-          <h3>Información de contacto</h3>
-          <p>Utiliza la siguiente información para ponerte en contacto con nosotros directamente:</p>
-          
-          <div class="info-items">
-            <div class="info-item">
-              <div class="info-icon">
-                <i class="fas fa-map-marker-alt"></i>
-              </div>
-              <div class="info-content">
-                <h4>Dirección</h4>
-                <p>Calle Ejemplo 123, 28001<br>Madrid, España</p>
-              </div>
-            </div>
-            
-            <div class="info-item">
-              <div class="info-icon">
-                <i class="fas fa-phone-alt"></i>
-              </div>
-              <div class="info-content">
-                <h4>Teléfono</h4>
-                <p>+34 912 345 678</p>
-              </div>
-            </div>
-            
-            <div class="info-item">
-              <div class="info-icon">
-                <i class="fas fa-envelope"></i>
-              </div>
-              <div class="info-content">
-                <h4>Email</h4>
-                <p>info@ejemplo.com</p>
-              </div>
-            </div>
-            
-            <div class="info-item">
-              <div class="info-icon">
-                <i class="fas fa-clock"></i>
-              </div>
-              <div class="info-content">
-                <h4>Horario</h4>
-                <p>Lunes - Viernes: 9:00 - 18:00<br>Sábado - Domingo: Cerrado</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="social-links">
-            <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
-            <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
-            <a href="#" class="social-link"><i class="fab fa-linkedin-in"></i></a>
-            <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
-          </div>
-        </div>
-        
-        <div class="map-container">
-          <div class="map-placeholder">
-            <!-- Aquí iría un mapa interactivo -->
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <footer class="contact-footer">
-      <p>&copy; 2025 ContactPro. Todos los derechos reservados.</p>
-    </footer>
-  </div>
-  
-  <!-- Modal de confirmación -->
-  <div id="confirmationModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>¡Mensaje enviado!</h3>
-        <button id="closeModal" class="close-button">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="confirmation-icon">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <p>Gracias por contactar con nosotros. Hemos recibido tu mensaje y nos pondremos en contacto contigo lo antes posible.</p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`,
-            css: `/* Variables y reset */
-:root {
-  --primary-color: #4361EE;
-  --secondary-color: #F72585;
-  --bg-light: #FFFFFF;
-  --bg-dark: #0F1729;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --text-light: #FFFFFF;
-  --border-color: #E5E7EB;
-  --success-color: #10B981;
-  --error-color: #EF4444;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 2rem;
-  --spacing-xl: 4rem;
-  --border-radius: 8px;
-  --transition: all 0.3s ease;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  line-height: 1.6;
-  color: var(--text-primary);
-  background-color: #F9FAFB;
-}
-
-/* Componentes generales */
-a {
-  color: var(--primary-color);
-  text-decoration: none;
-  transition: var(--transition);
-}
-
-a:hover {
-  color: var(--secondary-color);
-}
-
-button {
-  cursor: pointer;
-  font-family: inherit;
-}
-
-/* Página de contacto */
-.contact-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.contact-header {
-  background: linear-gradient(135deg, var(--primary-color), #3a0ca3);
-  color: white;
-  padding: var(--spacing-xl) 0;
-  text-align: center;
-}
-
-.header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-lg);
-}
-
-.logo h1 {
-  font-size: 2.5rem;
-  margin-bottom: var(--spacing-sm);
-}
-
-.logo span {
-  color: var(--secondary-color);
-}
-
-.tagline {
-  font-size: 1.25rem;
-  opacity: 0.9;
-}
-
-.contact-container {
-  max-width: 1200px;
-  margin: -50px auto var(--spacing-xl);
-  padding: 0 var(--spacing-lg);
-  display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: var(--spacing-lg);
-}
-
-/* Formulario de contacto */
-.contact-form-container, .info-card {
-  background-color: var(--bg-light);
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
-}
-
-.form-header {
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.form-header h2 {
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-xs);
-}
-
-.form-header p {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-}
-
-.contact-form {
-  padding: var(--spacing-lg);
-}
-
-.form-group {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-
-.input-group {
-  margin-bottom: var(--spacing-md);
-  position: relative;
-}
-
-.input-group label {
-  display: block;
-  margin-bottom: var(--spacing-xs);
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.input-group input,
-.input-group select,
-.input-group textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  font-family: inherit;
-  font-size: 1rem;
-  color: var(--text-primary);
-  transition: var(--transition);
-}
-
-.input-group input:focus,
-.input-group select:focus,
-.input-group textarea:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-}
-
-.input-group input::placeholder,
-.input-group select::placeholder,
-.input-group textarea::placeholder {
-  color: #A0AEC0;
-}
-
-.checkbox-group {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-lg);
-}
-
-.checkbox-group input {
-  width: auto;
-}
-
-.error-message {
-  display: none;
-  color: var(--error-color);
-  font-size: 0.85rem;
-  margin-top: var(--spacing-xs);
-}
-
-.submit-button {
-  width: 100%;
-  padding: 0.85rem;
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: var(--border-radius);
-  font-size: 1rem;
-  font-weight: 600;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--spacing-sm);
-  transition: var(--transition);
-}
-
-.submit-button:hover {
-  background-color: #3b4fd8;
-  transform: translateY(-2px);
-}
-
-.submit-button i {
-  font-size: 0.9rem;
-}
-
-/* Información de contacto */
-.contact-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-.info-card {
-  padding: var(--spacing-lg);
-}
-
-.info-card h3 {
-  margin-bottom: var(--spacing-sm);
-  color: var(--text-primary);
-}
-
-.info-card > p {
-  margin-bottom: var(--spacing-lg);
-  color: var(--text-secondary);
-}
-
-.info-items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-lg);
-}
-
-.info-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-md);
-}
-
-.info-icon {
-  background-color: rgba(67, 97, 238, 0.1);
-  color: var(--primary-color);
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 1.25rem;
-  margin-right: var(--spacing-sm);
-  flex-shrink: 0;
-}
-
-.info-content h4 {
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-xs);
-  font-size: 1rem;
-}
-
-.info-content p {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
-}
-
-.social-links {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.social-link {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background-color: var(--primary-color);
-  color: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: var(--transition);
-}
-
-.social-link:hover {
-  background-color: var(--secondary-color);
-  color: white;
-  transform: translateY(-3px);
-}
-
-.map-container {
-  flex-grow: 1;
-  min-height: 250px;
-}
-
-.map-placeholder {
-  width: 100%;
-  height: 100%;
-  background-color: #E5E7EB;
-  border-radius: var(--border-radius);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  color: var(--text-secondary);
-  font-size: 3rem;
-}
-
-/* Footer */
-.contact-footer {
-  margin-top: auto;
-  text-align: center;
-  padding: var(--spacing-lg);
-  background-color: var(--bg-dark);
-  color: var(--text-light);
-}
-
-/* Modal de confirmación */
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 100;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  justify-content: center;
-  align-items: center;
-}
-
-.modal.active {
-  display: flex;
-}
-
-.modal-content {
-  background-color: var(--bg-light);
-  border-radius: var(--border-radius);
-  max-width: 500px;
-  width: 90%;
-  box-shadow: var(--shadow-lg);
-  animation: modalOpen 0.3s;
-}
-
-@keyframes modalOpen {
-  from {
-    opacity: 0;
-    transform: translateY(-50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-header {
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h3 {
-  color: var(--text-primary);
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.close-button:hover {
-  color: var(--error-color);
-}
-
-.modal-body {
-  padding: var(--spacing-lg);
-  text-align: center;
-}
-
-.confirmation-icon {
-  font-size: 4rem;
-  color: var(--success-color);
-  margin-bottom: var(--spacing-md);
-}
-
-.modal-body p {
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-md);
-}
-
-/* Media queries */
-@media (max-width: 991px) {
-  .contact-container {
-    grid-template-columns: 1fr;
-  }
-  
-  .contact-form-container, .info-card {
-    padding: var(--spacing-lg);
-  }
-  
-  .contact-header {
-    padding: var(--spacing-lg);
-  }
-  
-  .contact-container {
-    margin-top: var(--spacing-md);
-  }
-  
-  .map-container {
-    min-height: 200px;
-  }
-}
-
-@media (max-width: 768px) {
-  .form-group {
-    grid-template-columns: 1fr;
-  }
-  
-  .contact-header {
-    padding: var(--spacing-lg);
-  }
-  
-  .contact-container {
-    padding: var(--spacing-lg);
-  }
-  
-  .contact-form, .info-card {
-    padding: var(--spacing-lg);
-  }
-  
-  .info-item {
-    flex-direction: column;
-  }
-  
-  .info-icon {
-    margin-right: 0;
-    margin-bottom: var(--spacing-sm);
-  }
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.fadeIn {
-  animation: fadeIn 0.5s forwards;
-}`,
-            js: `document.addEventListener('DOMContentLoaded', function() {
-  // Form validation
-  const contactForm = document.getElementById('contactForm');
-  const nameInput = document.getElementById('name');
-  const emailInput = document.getElementById('email');
-  const phoneInput = document.getElementById('phone');
-  const subjectInput = document.getElementById('subject');
-  const messageInput = document.getElementById('message');
-  const termsCheckbox = document.getElementById('terms');
-  
-  const nameError = document.getElementById('name-error');
-  const emailError = document.getElementById('email-error');
-  const subjectError = document.getElementById('subject-error');
-  const messageError = document.getElementById('message-error');
-  const termsError = document.getElementById('terms-error');
-  
-  const confirmationModal = document.getElementById('confirmationModal');
-  const closeModalButton = document.getElementById('closeModal');
-  
-  // Validation functions
-  function showError(input, errorElement, message) {
-    input.classList.add('error');
-    errorElement.textContent = message;
-    errorElement.style.display = 'block';
-  }
-  
-  function clearError(input, errorElement) {
-    input.classList.remove('error');
-    errorElement.textContent = '';
-    errorElement.style.display = 'none';
-  }
-  
-  function validateEmail(email) {
-    const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    return re.test(String(email).toLowerCase());
-  }
-  
-  function validatePhone(phone) {
-    // This is a simple validation, you might want to use a more complex one
-    return phone === '' || /^[0-9+\-\s()]{6,20}$/.test(phone);
-  }
-  
-  // Add styles for input validation
-  const style = document.createElement('style');
-  style.textContent = \`
-    input.error, select.error, textarea.error {
-      border-color: var(--secondary-color);
-    }
-    
-    input.error:focus, select.error:focus, textarea.error:focus {
-      box-shadow: 0 0 0 3px rgba(247, 37, 133, 0.15);
-    }
-    
-    .input-group.success::after {
-      content: '✓';
-      position: absolute;
-      right: 10px;
-      color: #4CAF50;
-      font-weight: bold;
-    }
-  \`;
-  document.head.appendChild(style);
-  
-  // Add input event listeners for real-time validation
-  nameInput.addEventListener('input', function() {
-    if (nameInput.value.trim().length < 3) {
-      showError(nameInput, nameError, 'El nombre debe tener al menos 3 caracteres');
-    } else {
-      clearError(nameInput, nameError);
-      nameInput.parentElement.classList.add('success');
-    }
-  });
-  
-  emailInput.addEventListener('input', function() {
-    if (!validateEmail(emailInput.value)) {
-      showError(emailInput, emailError, 'Introduce un email válido');
-    } else {
-      clearError(emailInput, emailError);
-      emailInput.parentElement.classList.add('success');
-    }
-  });
-  
-  phoneInput.addEventListener('input', function() {
-    if (phoneInput.value && !validatePhone(phoneInput.value)) {
-      showError(phoneInput, document.createElement('span'), 'Introduce un número de teléfono válido');
-    } else {
-      clearError(phoneInput, document.createElement('span'));
-      if (phoneInput.value) {
-        phoneInput.parentElement.classList.add('success');
-      } else {
-        phoneInput.parentElement.classList.remove('success');
-      }
-    }
-  });
-  
-  subjectInput.addEventListener('change', function() {
-    if (subjectInput.value === '') {
-      showError(subjectInput, subjectError, 'Selecciona un asunto');
-    } else {
-      clearError(subjectInput, subjectError);
-      subjectInput.parentElement.classList.add('success');
-    }
-  });
-  
-  messageInput.addEventListener('input', function() {
-    if (messageInput.value.trim().length < 10) {
-      showError(messageInput, messageError, 'El mensaje debe tener al menos 10 caracteres');
-    } else {
-      clearError(messageInput, messageError);
-      messageInput.parentElement.classList.add('success');
-    }
-  });
-  
-  termsCheckbox.addEventListener('change', function() {
-    if (!termsCheckbox.checked) {
-      showError(termsCheckbox, termsError, 'Debes aceptar los términos');
-    } else {
-      clearError(termsCheckbox, termsError);
-    }
-  });
-  
-  // Form submission
-  contactForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    // Validate all fields
-    let isValid = true;
-    
-    if (nameInput.value.trim().length < 3) {
-      showError(nameInput, nameError, 'El nombre debe tener al menos 3 caracteres');
-      isValid = false;
-    }
-    
-    if (!validateEmail(emailInput.value)) {
-      showError(emailInput, emailError, 'Introduce un email válido');
-      isValid = false;
-    }
-    
-    if (phoneInput.value && !validatePhone(phoneInput.value)) {
-      showError(phoneInput, document.createElement('span'), 'Introduce un número de teléfono válido');
-      isValid = false;
-    }
-    
-    if (subjectInput.value === '') {
-      showError(subjectInput, subjectError, 'Selecciona un asunto');
-      isValid = false;
-    }
-    
-    if (messageInput.value.trim().length < 10) {
-      showError(messageInput, messageError, 'El mensaje debe tener al menos 10 caracteres');
-      isValid = false;
-    }
-    
-    if (!termsCheckbox.checked) {
-      showError(termsCheckbox, termsError, 'Debes aceptar los términos');
-      isValid = false;
-    }
-    
-    if (isValid) {
-      // Show loading state on submit button
-      const submitButton = contactForm.querySelector('button[type="submit"]');
-      const originalText = submitButton.innerHTML;
-      submitButton.disabled = true;
-      submitButton.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Enviando...';
-      
-      // Simulate form submission with a timeout
-      setTimeout(function() {
-        // Show confirmation modal
-        confirmationModal.classList.add('active');
-        
-        // Reset the form and button
-        contactForm.reset();
-        submitButton.disabled = false;
-        submitButton.innerHTML = originalText;
-        
-        // Remove success classes
-        document.querySelectorAll('.input-group.success').forEach(function(el) {
-          el.classList.remove('success');
-        });
-      }, 1500);
-    }
-  });
-  
-  // Close modal
-  closeModalButton.addEventListener('click', function() {
-    confirmationModal.classList.remove('active');
-  });
-  
-  // Close modal by clicking outside
-  confirmationModal.addEventListener('click', function(e) {
-    if (e.target === confirmationModal) {
-      confirmationModal.classList.remove('active');
-    }
-  });
-  
-  // Add transitions for form inputs on focus
-  document.querySelectorAll('input, select, textarea').forEach(function(element) {
-    element.addEventListener('focus', function() {
-      this.parentElement.style.transition = 'transform 0.3s ease';
-      this.parentElement.style.transform = 'translateY(-5px)';
-    });
-    
-    element.addEventListener('blur', function() {
-      this.parentElement.style.transform = 'translateY(0)';
-    });
-  });
-  
-  // Initialize map placeholder with interactive elements
-  const mapPlaceholder = document.querySelector('.map-placeholder');
-  if (mapPlaceholder) {
-    mapPlaceholder.innerHTML = \`
-      <i class="fas fa-map-marked-alt"></i>
-      <p>Aquí iría un mapa interactivo</p>
-      <button id="showMapBtn" class="btn primary" style="margin-top: 1rem">
-        <i class="fas fa-map"></i> Ver en Google Maps
-      </button>
-    \`;
-    
-    document.getElementById('showMapBtn').addEventListener('click', function() {
-      window.open('https://www.google.com/maps?q=Madrid,España', '_blank');
-    });
-  }
-  
-  // Apply fade-in animation to form and info sections
-  document.querySelector('.contact-form').classList.add('fadeIn');
-  document.querySelector('.contact-info').classList.add('fadeIn');
-});`
-        }
-    };
-    
-    // Load template content
-    document.querySelectorAll('.template-card').forEach(card => {
-        card.addEventListener('click', function() {
-            const templateId = this.getAttribute('data-template');
-            const template = templates[templateId];
-            
-            if (template) {
-                htmlEditor.setValue(template.html);
-                cssEditor.setValue(template.css);
-                jsEditor.setValue(template.js);
-                
-                // Close modal
-                document.getElementById('templates-modal').style.display = 'none';
-                
-                // Update preview
-                setTimeout(updatePreview, 500);
-            }
-        });
-    });
-    
-    // Save functionality
-    document.getElementById('save-btn').addEventListener('click', function() {
-        const fileName = prompt('Ingresa un nombre para guardar tu proyecto:');
-        if (fileName) {
-            // Save to localStorage for demonstration
-            localStorage.setItem(`codestorm_web_preview_${fileName}`, JSON.stringify({
-                html: htmlEditor.getValue(),
-                css: cssEditor.getValue(),
-                js: jsEditor.getValue(),
-                timestamp: new Date().toISOString()
-            }));
-            
-            alert(`Proyecto "${fileName}" guardado correctamente.`);
-        }
-    });
-    
-    // Download functionality
-    document.getElementById('download-btn').addEventListener('click', function() {
-        const html = htmlEditor.getValue();
-        const css = cssEditor.getValue();
-        const js = jsEditor.getValue();
-        
-        // Create a combined HTML file with embedded CSS and JS
-        const fullHTML = `
-            ${html.replace('</head>', `
-            <style>
-            ${css}
-            </style>
-            </head>`).replace('</body>', `
-            <script>
-            ${js}
-            </script>
-            </body>`)}
-        `;
-        
-        // Create a blob and download
-        const blob = new Blob([fullHTML], {type: 'text/html'});
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'my_web_project.html';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    });
-    
-    // Clear button
-    document.getElementById('clear-btn').addEventListener('click', function() {
-        if (confirm('¿Estás seguro de que quieres limpiar todos los editores?')) {
-            htmlEditor.setValue('<!DOCTYPE html>\n<html lang="es">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Mi Página Web</title>\n</head>\n<body>\n  <h1>Hola Mundo</h1>\n</body>\n</html>');
-            cssEditor.setValue('/* Estilos para tu página */\nbody {\n  font-family: Arial, sans-serif;\n  line-height: 1.6;\n  margin: 0;\n  padding: 20px;\n  color: #333;\n}');
-            jsEditor.setValue('// JavaScript para tu página\ndocument.addEventListener("DOMContentLoaded", function() {\n  console.log("Página cargada!");\n});');
-            
-            setTimeout(updatePreview, 500);
-        }
-    });
-    
-    // Panel expansion
-    document.querySelectorAll('.fa-expand-arrows-alt').forEach(icon => {
-        icon.addEventListener('click', function() {
-            const panel = this.closest('.editor-panel');
-            
-            // Toggle expanded class
-            panel.classList.toggle('expanded');
-            
-            // Add expanded styles if needed
-            if (!document.getElementById('expanded-panel-style')) {
-                const style = document.createElement('style');
-                style.id = 'expanded-panel-style';
-                style.textContent = `
-                    .editor-panel.expanded {
-                        flex: 3;
-                        transition: all 0.3s ease;
-                    }
-                    
-                    @media (max-width: 768px) {
-                        .editor-panel.expanded {
-                            flex: auto;
-                            height: 400px;
-                        }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-        });
-    });
-    
-    // Inicializar el editor de código combinado
-    const combinedCodeModal = document.getElementById('combined-code-modal');
-    const combinedCodeEditor = CodeMirror.fromTextArea(document.getElementById('combined-code-editor'), {
-        mode: 'htmlmixed',
-        theme: 'monokai',
-        lineNumbers: true,
-        readOnly: false,
-        lineWrapping: true,
-        tabSize: 2
-    });
-    
-    // Botón para ver código completo
-    document.getElementById('view-combined-btn').addEventListener('click', function() {
-        const html = htmlEditor.getValue();
-        const css = cssEditor.getValue();
-        const js = jsEditor.getValue();
-        
-        // Crear el código HTML completo
-        const fullHTML = `<!DOCTYPE html>
+                    <textarea id="code-editor" class="code-editor"><!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mi Página Web</title>
   <style>
-${css}
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+    }
+    
+    header {
+      background-color: #0A2149;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    button {
+      background-color: #FFB400;
+      color: #0A2149;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    
+    button:hover {
+      background-color: #E5A200;
+    }
   </style>
 </head>
 <body>
-${html}
+  <header>
+    <h1>Bienvenido a CODESTORM</h1>
+  </header>
+  
+  <div class="container">
+    <h2>Previsualización Web Simple</h2>
+    <p>Este es un ejemplo básico de una página HTML con CSS y JavaScript.</p>
+    <button id="miBoton">Haz clic aquí</button>
+  </div>
+
   <script>
-${js}
+    document.getElementById('miBoton').addEventListener('click', function() {
+      this.textContent = '¡Gracias por hacer clic!';
+      this.style.backgroundColor = '#4CAF50';
+      this.style.color = 'white';
+      
+      setTimeout(() => {
+        alert('¡Hola desde CODESTORM!');
+      }, 300);
+    });
   </script>
 </body>
-</html>`;
-        
-        // Mostrar en el editor combinado
-        combinedCodeEditor.setValue(fullHTML);
-        combinedCodeEditor.refresh();
-        
-        // Mostrar el modal
-        combinedCodeModal.style.display = 'block';
-    });
+</html></textarea>
+                </div>
+            </div>
+            
+            <div class="preview-panel">
+                <div class="panel-header">
+                    <span><i class="fas fa-eye me-1"></i> Resultado</span>
+                </div>
+                <div class="preview-content">
+                    <iframe id="preview-iframe" sandbox="allow-scripts"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
     
-    // Cerrar modal de código combinado
-    document.getElementById('close-combined-modal').addEventListener('click', function() {
-        combinedCodeModal.style.display = 'none';
-    });
-    
-    // Copiar código combinado
-    document.getElementById('copy-code-btn').addEventListener('click', function() {
-        const code = combinedCodeEditor.getValue();
-        navigator.clipboard.writeText(code).then(() => {
-            // Cambiar texto del botón temporalmente
-            const btn = this;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-            }, 2000);
-        });
-    });
-    
-    // Cerrar modal haciendo clic fuera del contenido
-    combinedCodeModal.addEventListener('click', function(e) {
-        if (e.target === combinedCodeModal) {
-            combinedCodeModal.style.display = 'none';
-        }
-    });
-    
-    // Modal para pegar HTML completo
+    <div id="notification" class="notification">
+        <i class="fas fa-check-circle me-2"></i> <span id="notification-text"></span>
+    </div>
+</div>
+
+<!-- Modal para pegar HTML completo -->
+<div id="paste-complete-modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h5>Pegar HTML Completo</h5>
+            <button id="close-modal" class="btn-close btn-close-white"></button>
+        </div>
+        <div class="modal-body">
+            <p class="text-light mb-3">Pega tu código HTML completo aquí para visualizarlo:</p>
+            <textarea id="full-html-editor"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button id="cancel-btn" class="btn btn-outline-secondary">Cancelar</button>
+            <button id="apply-html-btn" class="btn btn-warning">Aplicar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Referencias a elementos
+    const codeEditor = document.getElementById('code-editor');
+    const previewIframe = document.getElementById('preview-iframe');
+    const runBtn = document.getElementById('run-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const pasteHtmlBtn = document.getElementById('paste-html-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const fullHtmlEditor = document.getElementById('full-html-editor');
     const pasteCompleteModal = document.getElementById('paste-complete-modal');
-    const pasteCompleteEditor = CodeMirror.fromTextArea(document.getElementById('paste-complete-editor'), {
-        mode: 'htmlmixed',
-        theme: 'monokai',
-        lineNumbers: true,
-        autoCloseTags: true,
-        autoCloseBrackets: true,
-        lineWrapping: true,
-        tabSize: 2
-    });
+    const closeModalBtn = document.getElementById('close-modal');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const applyHtmlBtn = document.getElementById('apply-html-btn');
+    const notification = document.getElementById('notification');
+    const notificationText = document.getElementById('notification-text');
     
-    // Abrir modal de pegar HTML completo
-    document.getElementById('paste-complete-btn').addEventListener('click', function() {
-        pasteCompleteEditor.setValue('<!DOCTYPE html>\n<html>\n<head>\n  <title>Mi Página Web</title>\n</head>\n<body>\n  <!-- Pega tu código HTML completo aquí -->\n</body>\n</html>');
-        pasteCompleteEditor.refresh();
-        pasteCompleteModal.style.display = 'block';
+    // Función para actualizar la previsualización
+    function updatePreview() {
+        const code = codeEditor.value;
+        const doc = previewIframe.contentDocument || previewIframe.contentWindow.document;
         
-        // Enfoque en el editor después de que se muestra el modal
-        setTimeout(() => {
-            pasteCompleteEditor.focus();
-            pasteCompleteEditor.setCursor(pasteCompleteEditor.lineCount() - 2, 0);
-            pasteCompleteEditor.setSelection(
-                {line: 6, ch: 0}, 
-                {line: 6, ch: 42}
-            );
-        }, 300);
+        doc.open();
+        doc.write(code);
+        doc.close();
+        
+        showNotification('Previsualización actualizada');
+    }
+    
+    // Inicializar la previsualización al cargar
+    setTimeout(updatePreview, 500);
+    
+    // Evento para botón Ejecutar
+    runBtn.addEventListener('click', updatePreview);
+    
+    // Evento para botón Descargar
+    downloadBtn.addEventListener('click', function() {
+        const code = codeEditor.value;
+        const blob = new Blob([code], {type: 'text/html'});
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'mi_pagina_web.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showNotification('Archivo descargado');
     });
     
-    // Cerrar modal de pegar HTML completo
-    document.getElementById('close-paste-modal').addEventListener('click', function() {
+    // Evento para botón Pegar HTML Completo
+    pasteHtmlBtn.addEventListener('click', function() {
+        fullHtmlEditor.value = '<!DOCTYPE html>\n<html>\n<head>\n  <title>Mi Página Web</title>\n</head>\n<body>\n  <!-- Pega tu código HTML completo aquí -->\n</body>\n</html>';
+        pasteCompleteModal.style.display = 'block';
+    });
+    
+    // Cerrar modal
+    closeModalBtn.addEventListener('click', function() {
         pasteCompleteModal.style.display = 'none';
     });
     
+    // Botón Cancelar del modal
+    cancelBtn.addEventListener('click', function() {
+        pasteCompleteModal.style.display = 'none';
+    });
+    
+    // Botón Aplicar del modal
+    applyHtmlBtn.addEventListener('click', function() {
+        const fullHtml = fullHtmlEditor.value;
+        codeEditor.value = fullHtml;
+        updatePreview();
+        pasteCompleteModal.style.display = 'none';
+    });
+    
+    // Evento para botón Limpiar
+    clearBtn.addEventListener('click', function() {
+        if (confirm('¿Estás seguro de que quieres limpiar el editor?')) {
+            codeEditor.value = '<!DOCTYPE html>\n<html>\n<head>\n  <title>Mi Página Web</title>\n</head>\n<body>\n  <h1>Hola Mundo</h1>\n</body>\n</html>';
+            updatePreview();
+        }
+    });
+    
     // Cerrar modal haciendo clic fuera del contenido
-    pasteCompleteModal.addEventListener('click', function(e) {
+    window.addEventListener('click', function(e) {
         if (e.target === pasteCompleteModal) {
             pasteCompleteModal.style.display = 'none';
         }
     });
     
-    // Renderizar código pegado
-    document.getElementById('render-pasted-code-btn').addEventListener('click', function() {
-        const pastedCode = pasteCompleteEditor.getValue();
+    // Función para mostrar notificaciones
+    function showNotification(message) {
+        notificationText.textContent = message;
+        notification.style.display = 'block';
         
-        // Renderizar directamente en el iframe
-        const iframe = document.getElementById('result-iframe');
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-        
-        iframeDoc.open();
-        iframeDoc.write(pastedCode);
-        iframeDoc.close();
-        
-        // Cerrar el modal después de renderizar
-        pasteCompleteModal.style.display = 'none';
-        
-        // Mostrar notificación de éxito
-        const notification = document.createElement('div');
-        notification.className = 'notification success-notification';
-        notification.innerHTML = '<i class="fas fa-check-circle me-2"></i> Código renderizado correctamente';
-        document.body.appendChild(notification);
-        
-        // Ocultar notificación después de 3 segundos
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => {
-                notification.remove();
-            }, 500);
+        setTimeout(function() {
+            notification.style.display = 'none';
         }, 3000);
-    });
+    }
 });
 </script>
 {% endblock %}
