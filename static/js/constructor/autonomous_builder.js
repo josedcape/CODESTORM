@@ -1128,6 +1128,7 @@ class AutonomousProjectBuilder {
         const agentSwitches = document.querySelectorAll('.agent-selection .form-check');
         agentSwitches.forEach(item => {
             item.classList.remove('active-agent');
+            item.classList.remove('agent-transition');
         });
         
         // Añadir la clase 'active-agent' al agente activo
@@ -1140,7 +1141,73 @@ class AutonomousProjectBuilder {
         
         const targetSwitch = document.getElementById(agentMap[agentId]);
         if (targetSwitch) {
-            targetSwitch.closest('.form-check').classList.add('active-agent');
+            const targetElement = targetSwitch.closest('.form-check');
+            
+            // Aplicar clase de transición primero para destacar el cambio
+            targetElement.classList.add('agent-transition');
+            
+            // Luego de un breve tiempo, quitar la transición y dejar solo el active
+            setTimeout(() => {
+                if (targetElement) {
+                    targetElement.classList.remove('agent-transition');
+                    targetElement.classList.add('active-agent');
+                }
+            }, 1000);
+            
+            // Añadir un efecto de desplazamiento suave a la vista del agente activo
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        // Actualizar dinámicamente el ícono del agente activo en la interfaz
+        this.updateAgentStatusIcon(agentId);
+    }
+    
+    /**
+     * Actualiza el ícono de estado del agente en la interfaz principal.
+     */
+    updateAgentStatusIcon(agentId) {
+        const agentIconMap = {
+            'architect': 'layout',
+            'developer': 'code',
+            'testing': 'check-circle',
+            'fixing': 'tool'
+        };
+        
+        const agentNameMap = {
+            'architect': 'Arquitecto',
+            'developer': 'Desarrollador',
+            'testing': 'QA Tester',
+            'fixing': 'Corrector'
+        };
+        
+        const statusIcon = document.getElementById('currentAgentIcon');
+        const statusLabel = document.getElementById('currentAgentLabel');
+        
+        if (statusIcon) {
+            // Actualizar el ícono
+            statusIcon.innerHTML = '';
+            const newIcon = document.createElement('i');
+            newIcon.setAttribute('data-feather', agentIconMap[agentId] || 'user');
+            statusIcon.appendChild(newIcon);
+            
+            // Reinicializar Feather Icons
+            feather.replace();
+            
+            // Aplicar animación al ícono
+            statusIcon.classList.add('icon-pulse');
+            setTimeout(() => {
+                statusIcon.classList.remove('icon-pulse');
+            }, 1000);
+        }
+        
+        if (statusLabel) {
+            statusLabel.textContent = agentNameMap[agentId] || agentId;
+            
+            // Aplicar animación al texto
+            statusLabel.classList.add('text-highlight');
+            setTimeout(() => {
+                statusLabel.classList.remove('text-highlight');
+            }, 1000);
         }
     }
     

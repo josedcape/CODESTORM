@@ -243,7 +243,17 @@
                             <h5 class="mb-0">
                                 <i data-feather="terminal" class="me-2"></i>
                                 Proceso de Construcción
+                                <div class="d-inline-block ms-3 ps-3 border-start border-light" id="currentAgentInfo">
+                                    <span id="currentAgentIcon" class="me-1"><i data-feather="user"></i></span>
+                                    <span id="currentAgentLabel" class="text-muted">No iniciado</span>
+                                </div>
                             </h5>
+                            <div>
+                                <span class="badge bg-secondary" title="Modelo activo">
+                                    <i data-feather="cpu" class="feather-sm me-1"></i>
+                                    <span id="activeModelBadge">OpenAI</span>
+                                </span>
+                            </div>
                         </div>
                         <div class="card-body p-0">
                             <!-- Área de mensajes -->
