@@ -100,8 +100,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log('Enviando fetch a /api/constructor con datos:', requestData);
         
+        // Obtenemos el ID del proyecto activo o creamos uno nuevo
+        const projectId = requestData.project_id || localStorage.getItem('active_project_id');
+        
+        // URL del endpoint (si hay proyecto activo, usamos el endpoint de proyecto)
+        const apiUrl = projectId 
+            ? `/api/constructor/message/${projectId}`
+            : '/api/constructor/start';
+        
+        console.log(`Enviando fetch a ${apiUrl} con datos:`, requestData);
+        
         // Usamos el endpoint específico para el constructor
-        fetch('/api/constructor', {
+        fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -113,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.json();
         })
         .then(data => {
-            console.log('Datos recibidos de /api/constructor:', data);
+            console.log('Datos recibidos del servidor:', data);
             
             // Eliminar el mensaje de sistema de carga
             removeSystemMessages();
@@ -121,6 +131,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Actualizar el estado de la conversación si se proporciona
             if (data.conversation_state) {
                 conversationState = data.conversation_state;
+            }
+            
+            // Si se creó un nuevo proyecto, guardar su ID
+            if (data.project_id && !localStorage.getItem('active_project_id')) {
+                localStorage.setItem('active_project_id', data.project_id);
+                console.log(`Nuevo proyecto creado con ID: ${data.project_id}`);
             }
             
             // Manejar respuesta
@@ -132,14 +148,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 messageHistory.push({
                     role: 'assistant',
                     content: data.response,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    special_actions: data.special_actions || []
                 });
                 
                 // Añadir respuesta a la interfaz
                 addMessage(data.response, 'assistant');
                 
                 // Ejecutar acciones especiales si las hay
+                if (data.special_actions && data.special_actions.length > 0) {
+                    console.log('Procesando acciones especiales:', data.special_actions);
+                    handleSpecialActions(data.special_actions);
+                }
+                
+                // Compatibilidad con respuestas antiguas (actions en lugar de special_actions)
                 if (data.actions && data.actions.length > 0) {
+                    console.log('Procesando acciones (legacy):', data.actions);
                     handleSpecialActions(data.actions);
                 }
             } else {
@@ -225,47 +249,33 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para mostrar la solicitud de aprobación del plan
     function showApprovalRequest(plan) {
-        // Mostrar un modal o notificación solicitando aprobación
-        const approvalModal = new bootstrap.Modal(document.getElementById('approvalModal'));
+        // Modal debe existir en el HTML
+        const approvalModalElement = document.getElementById('approvalModal');
         
-        // Si no existe el modal, crearlo dinámicamente
-        if (!approvalModal) {
-            const modalHtml = `
-            <div class="modal fade" id="approvalModal" tabindex="-1" aria-labelledby="approvalModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="approvalModalLabel">
-                                <i data-feather="clipboard-check"></i> Plan de Desarrollo - Solicitud de Aprobación
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div id="planContent" class="plan-content"></div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Revisar más tarde</button>
-                            <button type="button" id="approvePlanBtn" class="btn btn-success">Aprobar e Iniciar Construcción</button>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-            
-            // Añadir el modal al DOM
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Inicializar el modal
-            const approvalModal = new bootstrap.Modal(document.getElementById('approvalModal'));
-            
-            // Configurar el botón de aprobación
-            document.getElementById('approvePlanBtn').addEventListener('click', function() {
-                // Enviar mensaje de aprobación
-                userMessageInput.value = "Iniciar construcción";
-                chatForm.dispatchEvent(new Event('submit'));
-                
-                // Cerrar el modal
-                approvalModal.hide();
-            });
+        // Si no existe el modal, mostrar error y salir
+        if (!approvalModalElement) {
+            console.error('Error: No se encuentra el modal #approvalModal en el HTML');
+            addSystemMessage('❌ Error al mostrar el plan de desarrollo. Por favor, recarga la página.');
+            return;
+        }
+        
+        // Configurar el botón de aprobación (solo una vez)
+        if (!window.approvalButtonConfigured) {
+            const approvePlanBtn = document.getElementById('approvePlanBtn');
+            if (approvePlanBtn) {
+                approvePlanBtn.addEventListener('click', function() {
+                    // Enviar mensaje de aprobación
+                    userMessageInput.value = "Iniciar construcción";
+                    chatForm.dispatchEvent(new Event('submit'));
+                    
+                    // Cerrar el modal
+                    const modal = bootstrap.Modal.getInstance(approvalModalElement);
+                    if (modal) {
+                        modal.hide();
+                    }
+                });
+                window.approvalButtonConfigured = true;
+            }
         }
         
         // Actualizar el contenido del plan en el modal
@@ -276,8 +286,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 JSON.stringify(plan, null, 2);
         }
         
+        console.log('Mostrando modal de aprobación con plan:', plan);
+        
         // Mostrar el modal
-        approvalModal.show();
+        const modal = new bootstrap.Modal(approvalModalElement);
+        modal.show();
         
         // Actualizar íconos
         feather.replace();
