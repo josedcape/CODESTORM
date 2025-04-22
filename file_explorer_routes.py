@@ -737,6 +737,118 @@ def upload_file():
         return response, 500
 
 
+@file_explorer_bp.route('/api/explorer/upload_chunk', methods=['POST'])
+def upload_chunk():
+    """
+    Sube un fragmento de archivo al espacio de trabajo.
+    Esta ruta está diseñada para subir archivos grandes en fragmentos.
+    
+    Form data:
+    - chunk: Fragmento de archivo a subir
+    - filename: Nombre del archivo a crear
+    - index: Índice del fragmento (iniciando en 0)
+    - total_chunks: Número total de fragmentos
+    - path: Ruta relativa donde guardar el archivo (predeterminado: '.')
+    - workspace_id: ID del espacio de trabajo (predeterminado: 'default')
+    
+    Retorna:
+    - Confirmación de carga del fragmento o del archivo completo
+    """
+    try:
+        # Verificar si hay un fragmento de archivo en la solicitud
+        if 'chunk' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No se ha enviado ningún fragmento de archivo'
+            }), 400
+            
+        chunk = request.files['chunk']
+        if chunk.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'Nombre de archivo vacío'
+            }), 400
+            
+        # Obtener parámetros
+        filename = request.form.get('filename', '')
+        chunk_index = int(request.form.get('index', 0))
+        total_chunks = int(request.form.get('total_chunks', 1))
+        relative_path = request.form.get('path', '.')
+        workspace_id = request.form.get('workspace_id', 'default')
+        
+        if not filename:
+            return jsonify({
+                'success': False,
+                'error': 'El nombre del archivo es obligatorio'
+            }), 400
+            
+        # Construir ruta completa
+        workspace_path = os.path.join('user_workspaces', workspace_id)
+        target_dir = os.path.join(workspace_path, relative_path)
+        
+        # Asegurar que no se salga del directorio del usuario
+        if not os.path.abspath(target_dir).startswith(os.path.abspath(workspace_path)):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: la ruta se sale del espacio de trabajo'
+            }), 403
+            
+        # Asegurar que el directorio exista
+        os.makedirs(target_dir, exist_ok=True)
+        
+        # Carpeta temporal para almacenar fragmentos
+        temp_dir = os.path.join(target_dir, '.temp_chunks', secure_filename(filename))
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # Guardar el fragmento
+        chunk_path = os.path.join(temp_dir, f"chunk_{chunk_index}")
+        chunk.save(chunk_path)
+        
+        # Verificar si es el último fragmento
+        chunks_dir = os.path.join(target_dir, '.temp_chunks', secure_filename(filename))
+        chunks = os.listdir(chunks_dir)
+        
+        # Si tenemos todos los fragmentos, unirlos
+        if len(chunks) == total_chunks:
+            # Construir el archivo final
+            final_path = os.path.join(target_dir, secure_filename(filename))
+            with open(final_path, 'wb') as final_file:
+                for i in range(total_chunks):
+                    chunk_file_path = os.path.join(temp_dir, f"chunk_{i}")
+                    with open(chunk_file_path, 'rb') as cf:
+                        final_file.write(cf.read())
+            
+            # Limpiar fragmentos temporales
+            import shutil
+            shutil.rmtree(temp_dir)
+            
+            # Verificar si es un archivo ZIP y necesita extracción
+            file_ext = os.path.splitext(filename)[1].lower()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Archivo "{filename}" creado correctamente desde {total_chunks} fragmentos',
+                'file_path': os.path.join(relative_path, secure_filename(filename)),
+                'completed': True,
+                'is_zip': file_ext == '.zip'
+            })
+        else:
+            # No es el último fragmento
+            return jsonify({
+                'success': True,
+                'message': f'Fragmento {chunk_index+1}/{total_chunks} recibido',
+                'completed': False,
+                'chunks_received': len(chunks),
+                'total_chunks': total_chunks
+            })
+            
+    except Exception as e:
+        logger.error(f"Error al subir fragmento: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al subir fragmento: {str(e)}'
+        }), 500
+
 def register_file_explorer_routes(app):
     """Registra las rutas de exploración de archivos en la aplicación Flask."""
     app.register_blueprint(file_explorer_bp)

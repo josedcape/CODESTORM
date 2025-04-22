@@ -1304,55 +1304,195 @@
                     return;
                 }
                 
-                // Actualizar el valor del path en el formulario
-                uploadPathInput.value = currentPath;
+                const file = fileInput.files[0];
+                const fileName = file.name;
+                const fileSize = file.size;
                 
                 // Deshabilitar botón mientras se sube
                 const uploadBtn = document.getElementById('upload-file-submit-btn');
                 uploadBtn.disabled = true;
                 uploadBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Subiendo...';
                 
-                // Usar el formulario directamente en lugar de FormData
-                const form = document.getElementById('upload-file-form');
-                
-                // Crear un iframe oculto para manejar la subida sin recargar la página
-                const iframe = document.createElement('iframe');
-                iframe.name = 'upload-frame';
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
-                
-                // Configurar callback cuando el iframe se carga (subida completa)
-                iframe.onload = function() {
-                    try {
-                        // Intentar obtener el resultado JSON del iframe
-                        const iframeContent = iframe.contentWindow.document.body.textContent;
-                        const data = JSON.parse(iframeContent);
-                        
-                        if (data.success) {
-                            showNotification(data.message || 'Archivo subido correctamente', 'success');
-                            uploadFileModal.hide();
-                            loadFiles(currentPath); // Recargar archivos
-                        } else {
-                            showNotification('Error al subir archivo: ' + (data.error || 'Error desconocido'), 'danger');
+                // Si el archivo es pequeño (menos de 5MB), usar el método tradicional
+                if (fileSize < 5 * 1024 * 1024) {
+                    // Actualizar el valor del path en el formulario
+                    uploadPathInput.value = currentPath;
+                    
+                    // Usar el formulario directamente en lugar de FormData
+                    const form = document.getElementById('upload-file-form');
+                    
+                    // Crear un iframe oculto para manejar la subida sin recargar la página
+                    const iframe = document.createElement('iframe');
+                    iframe.name = 'upload-frame';
+                    iframe.style.display = 'none';
+                    document.body.appendChild(iframe);
+                    
+                    // Configurar callback cuando el iframe se carga (subida completa)
+                    iframe.onload = function() {
+                        try {
+                            // Intentar obtener el resultado JSON del iframe
+                            const iframeContent = iframe.contentWindow.document.body.textContent;
+                            const data = JSON.parse(iframeContent);
+                            
+                            if (data.success) {
+                                showNotification(data.message || 'Archivo subido correctamente', 'success');
+                                uploadFileModal.hide();
+                                loadFiles(currentPath); // Recargar archivos
+                            } else {
+                                showNotification('Error al subir archivo: ' + (data.error || 'Error desconocido'), 'danger');
+                            }
+                        } catch (error) {
+                            console.error('Error al procesar respuesta:', error);
+                            showNotification('Error al subir archivo', 'danger');
                         }
-                    } catch (error) {
-                        console.error('Error al procesar respuesta:', error);
-                        showNotification('Error al subir archivo', 'danger');
+                        
+                        // Limpiar
+                        document.body.removeChild(iframe);
+                        
+                        // Rehabilitar botón
+                        uploadBtn.disabled = false;
+                        uploadBtn.innerHTML = '<i class="bi bi-upload me-1"></i>Subir';
+                    };
+                    
+                    // Configurar el formulario para usar el iframe
+                    form.target = 'upload-frame';
+                    
+                    // Enviar el formulario
+                    form.submit();
+                } else {
+                    // Para archivos grandes, usar el método de fragmentos
+                    uploadFileModal.hide();
+                    
+                    // Crear modal de progreso si no existe
+                    let progressModal = document.getElementById('upload-progress-modal');
+                    if (!progressModal) {
+                        progressModal = document.createElement('div');
+                        progressModal.id = 'upload-progress-modal';
+                        progressModal.className = 'modal fade modal-futuristic';
+                        progressModal.innerHTML = `
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">
+                                            <i class="bi bi-upload me-2"></i>Subiendo archivo
+                                        </h5>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p id="upload-status">Preparando archivo...</p>
+                                        <div class="progress mb-3">
+                                            <div id="upload-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                        <p id="upload-details" class="small text-muted"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(progressModal);
                     }
                     
-                    // Limpiar
-                    document.body.removeChild(iframe);
+                    // Inicializar y mostrar modal de progreso
+                    const uploadProgressModal = new bootstrap.Modal(progressModal);
+                    uploadProgressModal.show();
                     
-                    // Rehabilitar botón
-                    uploadBtn.disabled = false;
-                    uploadBtn.innerHTML = '<i class="bi bi-upload me-1"></i>Subir';
-                };
-                
-                // Configurar el formulario para usar el iframe
-                form.target = 'upload-frame';
-                
-                // Enviar el formulario
-                form.submit();
+                    const uploadStatus = document.getElementById('upload-status');
+                    const uploadProgressBar = document.getElementById('upload-progress-bar');
+                    const uploadDetails = document.getElementById('upload-details');
+                    
+                    // Configuración de carga por fragmentos
+                    const chunkSize = 2 * 1024 * 1024; // 2MB por fragmento
+                    const totalChunks = Math.ceil(fileSize / chunkSize);
+                    let chunkIndex = 0;
+                    let chunksUploaded = 0;
+                    
+                    uploadStatus.textContent = `Subiendo archivo en ${totalChunks} fragmentos...`;
+                    uploadDetails.textContent = `Archivo: ${fileName} (${formatFileSize(fileSize)})`;
+                    
+                    // Función para subir un fragmento
+                    const uploadChunk = function() {
+                        if (chunkIndex >= totalChunks) {
+                            return;
+                        }
+                        
+                        const start = chunkIndex * chunkSize;
+                        const end = Math.min(start + chunkSize, fileSize);
+                        const chunk = file.slice(start, end);
+                        
+                        const formData = new FormData();
+                        formData.append('chunk', chunk);
+                        formData.append('filename', fileName);
+                        formData.append('index', chunkIndex);
+                        formData.append('total_chunks', totalChunks);
+                        formData.append('path', currentPath);
+                        
+                        fetch('/api/explorer/upload_chunk', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                chunksUploaded++;
+                                const progress = Math.round((chunksUploaded / totalChunks) * 100);
+                                uploadProgressBar.style.width = `${progress}%`;
+                                uploadStatus.textContent = `Subiendo fragmento ${chunksUploaded}/${totalChunks} (${progress}%)...`;
+                                
+                                if (data.completed) {
+                                    // El archivo se ha completado
+                                    uploadStatus.textContent = 'Archivo subido correctamente';
+                                    uploadProgressBar.style.width = '100%';
+                                    uploadProgressBar.classList.remove('progress-bar-animated');
+                                    
+                                    // Si es un archivo ZIP, mostrar opción para extraer
+                                    if (data.is_zip) {
+                                        uploadDetails.innerHTML = `
+                                            <div class="alert alert-info mt-3">
+                                                <p>El archivo ZIP se ha subido correctamente.</p>
+                                                <p>¿Deseas extraer su contenido ahora?</p>
+                                                <button id="extract-zip-now" class="btn btn-sm btn-primary">
+                                                    <i class="bi bi-file-earmark-zip me-1"></i>Extraer ahora
+                                                </button>
+                                            </div>
+                                        `;
+                                        
+                                        document.getElementById('extract-zip-now').addEventListener('click', () => {
+                                            showExtractDialog(data.file_path, fileName);
+                                            uploadProgressModal.hide();
+                                        });
+                                    } else {
+                                        // Cerrar modal después de 2 segundos
+                                        setTimeout(() => {
+                                            uploadProgressModal.hide();
+                                            loadFiles(currentPath); // Recargar archivos
+                                        }, 2000);
+                                    }
+                                } else {
+                                    // Continuar con el siguiente fragmento
+                                    chunkIndex++;
+                                    uploadChunk();
+                                }
+                            } else {
+                                uploadStatus.textContent = `Error: ${data.error || 'Error desconocido'}`;
+                                uploadProgressBar.classList.add('bg-danger');
+                                
+                                // Rehabilitar botón
+                                uploadBtn.disabled = false;
+                                uploadBtn.innerHTML = '<i class="bi bi-upload me-1"></i>Subir';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            uploadStatus.textContent = `Error al subir fragmento: ${error.message}`;
+                            uploadProgressBar.classList.add('bg-danger');
+                            
+                            // Rehabilitar botón
+                            uploadBtn.disabled = false;
+                            uploadBtn.innerHTML = '<i class="bi bi-upload me-1"></i>Subir';
+                        });
+                    };
+                    
+                    // Iniciar subida
+                    uploadChunk();
+                }
             }
             
             function compressToZip() {
