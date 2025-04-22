@@ -1,84 +1,72 @@
 {% extends "base.html" %}
 
-{% block title %}CODESTORM - Previsualización Web Simplificada{% endblock %}
+{% block title %}CODESTORM - Previsualización Web{% endblock %}
 
 {% block extra_css %}
 <style>
-    .container-fluid {
-        padding: 20px;
-    }
-    
-    .preview-container {
-        display: grid;
-        grid-template-rows: auto 1fr;
-        gap: 20px;
-        height: calc(100vh - 140px);
-    }
-    
-    .editor-layout {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        height: 100%;
-    }
-    
-    .code-panel {
-        background-color: #1e1e1e;
-        border-radius: 8px;
-        overflow: hidden;
+    .preview-wrapper {
         display: flex;
         flex-direction: column;
-        height: 100%;
+        height: calc(100vh - 180px);
+        margin-bottom: 20px;
     }
     
-    .panel-header {
+    .editor-container {
+        flex: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 15px;
+        border: 1px solid #0A2149;
+    }
+    
+    .editor-header {
         background-color: #0A2149;
         color: white;
         padding: 10px 15px;
-        font-weight: 500;
+        font-weight: bold;
+        border-bottom: 2px solid #FFB400;
+    }
+    
+    #code-editor {
+        width: 100%;
+        height: 300px;
+        border: none;
+        padding: 10px;
+        font-family: monospace;
+        font-size: 14px;
+        resize: vertical;
+        background-color: #1e1e1e;
+        color: #f8f8f8;
+    }
+    
+    .result-container {
+        border: 1px solid #0A2149;
+        border-radius: 8px;
+        overflow: hidden;
+        flex: 1;
+        min-height: 300px;
+        background-color: white;
+    }
+    
+    .result-header {
+        background-color: #0A2149;
+        color: white;
+        padding: 10px 15px;
+        font-weight: bold;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #FFB400;
+        border-bottom: 2px solid #FFB400;
     }
     
-    .panel-content {
-        flex: 1;
-        overflow: auto;
+    #result-display {
         padding: 0;
-    }
-    
-    textarea.code-editor {
+        background-color: white;
+        color: #333;
+        min-height: 300px;
         width: 100%;
         height: 100%;
-        border: none;
-        background-color: #1e1e1e;
-        color: #f8f8f8;
-        font-family: 'Courier New', monospace;
-        font-size: 14px;
-        padding: 10px;
-        resize: none;
-    }
-    
-    .preview-panel {
-        background-color: white;
-        border-radius: 8px;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-    }
-    
-    .preview-content {
-        flex: 1;
         overflow: auto;
-        background-color: white;
-    }
-    
-    iframe {
-        width: 100%;
-        height: 100%;
-        border: none;
     }
     
     .toolbar {
@@ -89,19 +77,7 @@
         gap: 10px;
     }
     
-    .notification {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        padding: 10px 20px;
-        background-color: #4caf50;
-        color: white;
-        border-radius: 4px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        display: none;
-    }
-    
-    #paste-complete-modal {
+    .modal-container {
         display: none;
         position: fixed;
         top: 0;
@@ -110,13 +86,14 @@
         bottom: 0;
         background-color: rgba(0,0,0,0.7);
         z-index: 1000;
+        align-items: center;
+        justify-content: center;
     }
     
-    .modal-dialog {
-        width: 90%;
-        max-width: 800px;
-        margin: 50px auto;
+    .modal-content {
         background-color: #282c34;
+        width: 80%;
+        max-width: 800px;
         border-radius: 8px;
         overflow: hidden;
     }
@@ -125,10 +102,11 @@
         background-color: #0A2149;
         color: white;
         padding: 15px;
+        font-weight: bold;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #FFB400;
+        border-bottom: 2px solid #FFB400;
     }
     
     .modal-body {
@@ -137,65 +115,85 @@
     
     .modal-footer {
         padding: 15px;
+        background-color: #1e1e1e;
         display: flex;
         justify-content: flex-end;
-        background-color: #1e1e1e;
+        gap: 10px;
         border-top: 1px solid #444;
     }
     
-    #full-html-editor {
+    #paste-area {
         width: 100%;
-        height: 400px;
+        height: 300px;
         background-color: #1e1e1e;
         color: #f8f8f8;
-        font-family: 'Courier New', monospace;
         border: 1px solid #444;
         padding: 10px;
+        font-family: monospace;
+        resize: none;
     }
     
-    @media (max-width: 768px) {
-        .editor-layout {
-            grid-template-columns: 1fr;
-            grid-template-rows: 1fr 1fr;
+    .notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        display: none;
+        z-index: 1000;
+    }
+    
+    @media (max-width: 767px) {
+        .preview-wrapper {
+            height: auto;
+        }
+        
+        #code-editor {
+            height: 250px;
+        }
+        
+        .result-container {
+            min-height: 250px;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="section-header my-3">
+<div class="container py-4">
+    <div class="section-header mb-4">
         <h2><i class="fas fa-tv me-2"></i>Previsualización Web</h2>
-        <p class="text-muted">Editor simple para visualizar código HTML, CSS y JavaScript.</p>
+        <p class="text-muted">Visualiza tu código HTML, CSS y JavaScript en tiempo real.</p>
     </div>
-    
+
     <div class="toolbar">
         <div>
-            <button id="run-btn" class="btn btn-primary">
+            <button id="render-btn" class="btn btn-primary">
                 <i class="fas fa-play me-1"></i> Ejecutar
             </button>
-            <button id="download-btn" class="btn btn-outline-secondary">
+            <button id="download-btn" class="btn btn-outline-secondary ms-2">
                 <i class="fas fa-download me-1"></i> Descargar
             </button>
         </div>
         <div>
-            <button id="paste-html-btn" class="btn btn-warning">
+            <button id="paste-complete-btn" class="btn btn-warning">
                 <i class="fas fa-paste me-1"></i> Pegar HTML Completo
             </button>
-            <button id="clear-btn" class="btn btn-outline-danger">
+            <button id="clear-btn" class="btn btn-outline-danger ms-2">
                 <i class="fas fa-trash me-1"></i> Limpiar
             </button>
         </div>
     </div>
-    
-    <div class="preview-container">
-        <div class="editor-layout">
-            <div class="code-panel">
-                <div class="panel-header">
-                    <span><i class="fas fa-code me-1"></i> Código HTML/CSS/JS</span>
-                </div>
-                <div class="panel-content">
-                    <textarea id="code-editor" class="code-editor"><!DOCTYPE html>
+
+    <div class="preview-wrapper">
+        <div class="editor-container">
+            <div class="editor-header">
+                <i class="fas fa-code me-2"></i> Editor de Código
+            </div>
+            <textarea id="code-editor"><!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -251,7 +249,7 @@
   </header>
   
   <div class="container">
-    <h2>Previsualización Web Simple</h2>
+    <h2>Previsualización Web</h2>
     <p>Este es un ejemplo básico de una página HTML con CSS y JavaScript.</p>
     <button id="miBoton">Haz clic aquí</button>
   </div>
@@ -269,39 +267,40 @@
   </script>
 </body>
 </html></textarea>
+        </div>
+
+        <div class="result-container">
+            <div class="result-header">
+                <div><i class="fas fa-eye me-2"></i> Resultado</div>
+                <div>
+                    <button id="full-screen-btn" class="btn btn-sm btn-outline-light">
+                        <i class="fas fa-expand"></i>
+                    </button>
                 </div>
             </div>
-            
-            <div class="preview-panel">
-                <div class="panel-header">
-                    <span><i class="fas fa-eye me-1"></i> Resultado</span>
-                </div>
-                <div class="preview-content">
-                    <iframe id="preview-iframe" sandbox="allow-scripts"></iframe>
-                </div>
-            </div>
+            <div id="result-display"></div>
         </div>
     </div>
     
     <div id="notification" class="notification">
-        <i class="fas fa-check-circle me-2"></i> <span id="notification-text"></span>
+        <i class="fas fa-check-circle me-2"></i> <span id="notification-message"></span>
     </div>
 </div>
 
 <!-- Modal para pegar HTML completo -->
-<div id="paste-complete-modal">
-    <div class="modal-dialog">
+<div id="paste-modal" class="modal-container">
+    <div class="modal-content">
         <div class="modal-header">
-            <h5>Pegar HTML Completo</h5>
+            <div><i class="fas fa-paste me-2"></i> Pegar HTML Completo</div>
             <button id="close-modal" class="btn-close btn-close-white"></button>
         </div>
         <div class="modal-body">
-            <p class="text-light mb-3">Pega tu código HTML completo aquí para visualizarlo:</p>
-            <textarea id="full-html-editor"></textarea>
+            <p class="text-light mb-3">Pega tu código HTML completo aquí:</p>
+            <textarea id="paste-area"></textarea>
         </div>
         <div class="modal-footer">
-            <button id="cancel-btn" class="btn btn-outline-secondary">Cancelar</button>
-            <button id="apply-html-btn" class="btn btn-warning">Aplicar</button>
+            <button id="cancel-modal" class="btn btn-secondary">Cancelar</button>
+            <button id="apply-html" class="btn btn-warning">Aplicar</button>
         </div>
     </div>
 </div>
@@ -310,40 +309,36 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Referencias a elementos
+    // Elementos del DOM
     const codeEditor = document.getElementById('code-editor');
-    const previewIframe = document.getElementById('preview-iframe');
-    const runBtn = document.getElementById('run-btn');
+    const resultDisplay = document.getElementById('result-display');
+    const renderBtn = document.getElementById('render-btn');
     const downloadBtn = document.getElementById('download-btn');
-    const pasteHtmlBtn = document.getElementById('paste-html-btn');
     const clearBtn = document.getElementById('clear-btn');
-    const fullHtmlEditor = document.getElementById('full-html-editor');
-    const pasteCompleteModal = document.getElementById('paste-complete-modal');
+    const pasteCompleteBtn = document.getElementById('paste-complete-btn');
+    const pasteModal = document.getElementById('paste-modal');
     const closeModalBtn = document.getElementById('close-modal');
-    const cancelBtn = document.getElementById('cancel-btn');
-    const applyHtmlBtn = document.getElementById('apply-html-btn');
+    const cancelModalBtn = document.getElementById('cancel-modal');
+    const pasteArea = document.getElementById('paste-area');
+    const applyHtmlBtn = document.getElementById('apply-html');
     const notification = document.getElementById('notification');
-    const notificationText = document.getElementById('notification-text');
-    
-    // Función para actualizar la previsualización
-    function updatePreview() {
+    const notificationMessage = document.getElementById('notification-message');
+    const fullScreenBtn = document.getElementById('full-screen-btn');
+
+    // Función para renderizar el código HTML
+    function renderCode() {
         const code = codeEditor.value;
-        const doc = previewIframe.contentDocument || previewIframe.contentWindow.document;
-        
-        doc.open();
-        doc.write(code);
-        doc.close();
-        
-        showNotification('Previsualización actualizada');
+        resultDisplay.innerHTML = code;
+        showNotification('Código renderizado correctamente');
     }
-    
-    // Inicializar la previsualización al cargar
-    setTimeout(updatePreview, 500);
-    
-    // Evento para botón Ejecutar
-    runBtn.addEventListener('click', updatePreview);
-    
-    // Evento para botón Descargar
+
+    // Renderizar el código inicial
+    renderCode();
+
+    // Event Listeners
+    renderBtn.addEventListener('click', renderCode);
+
+    // Botón de descarga
     downloadBtn.addEventListener('click', function() {
         const code = codeEditor.value;
         const blob = new Blob([code], {type: 'text/html'});
@@ -357,57 +352,67 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        showNotification('Archivo descargado');
+        showNotification('Archivo descargado correctamente');
     });
-    
-    // Evento para botón Pegar HTML Completo
-    pasteHtmlBtn.addEventListener('click', function() {
-        fullHtmlEditor.value = '<!DOCTYPE html>\n<html>\n<head>\n  <title>Mi Página Web</title>\n</head>\n<body>\n  <!-- Pega tu código HTML completo aquí -->\n</body>\n</html>';
-        pasteCompleteModal.style.display = 'block';
-    });
-    
-    // Cerrar modal
-    closeModalBtn.addEventListener('click', function() {
-        pasteCompleteModal.style.display = 'none';
-    });
-    
-    // Botón Cancelar del modal
-    cancelBtn.addEventListener('click', function() {
-        pasteCompleteModal.style.display = 'none';
-    });
-    
-    // Botón Aplicar del modal
-    applyHtmlBtn.addEventListener('click', function() {
-        const fullHtml = fullHtmlEditor.value;
-        codeEditor.value = fullHtml;
-        updatePreview();
-        pasteCompleteModal.style.display = 'none';
-    });
-    
-    // Evento para botón Limpiar
+
+    // Botón para limpiar el editor
     clearBtn.addEventListener('click', function() {
         if (confirm('¿Estás seguro de que quieres limpiar el editor?')) {
             codeEditor.value = '<!DOCTYPE html>\n<html>\n<head>\n  <title>Mi Página Web</title>\n</head>\n<body>\n  <h1>Hola Mundo</h1>\n</body>\n</html>';
-            updatePreview();
+            renderCode();
         }
     });
-    
-    // Cerrar modal haciendo clic fuera del contenido
-    window.addEventListener('click', function(e) {
-        if (e.target === pasteCompleteModal) {
-            pasteCompleteModal.style.display = 'none';
+
+    // Modal para pegar HTML completo
+    pasteCompleteBtn.addEventListener('click', function() {
+        pasteArea.value = '<!DOCTYPE html>\n<html>\n<head>\n  <title>Mi Página Web</title>\n</head>\n<body>\n  <!-- Pega tu código HTML completo aquí -->\n</body>\n</html>';
+        pasteModal.style.display = 'flex';
+    });
+
+    // Cerrar modal
+    closeModalBtn.addEventListener('click', function() {
+        pasteModal.style.display = 'none';
+    });
+
+    // Cancelar modal
+    cancelModalBtn.addEventListener('click', function() {
+        pasteModal.style.display = 'none';
+    });
+
+    // Aplicar HTML del modal
+    applyHtmlBtn.addEventListener('click', function() {
+        const pastedCode = pasteArea.value;
+        codeEditor.value = pastedCode;
+        renderCode();
+        pasteModal.style.display = 'none';
+    });
+
+    // Cerrar modal haciendo clic fuera
+    pasteModal.addEventListener('click', function(e) {
+        if (e.target === pasteModal) {
+            pasteModal.style.display = 'none';
         }
     });
-    
+
     // Función para mostrar notificaciones
     function showNotification(message) {
-        notificationText.textContent = message;
+        notificationMessage.textContent = message;
         notification.style.display = 'block';
         
         setTimeout(function() {
             notification.style.display = 'none';
         }, 3000);
     }
+
+    // Botón de pantalla completa para el resultado
+    fullScreenBtn.addEventListener('click', function() {
+        const code = codeEditor.value;
+        
+        // Abrir una nueva ventana con el código
+        const newWindow = window.open('', '_blank');
+        newWindow.document.write(code);
+        newWindow.document.close();
+    });
 });
 </script>
 {% endblock %}
