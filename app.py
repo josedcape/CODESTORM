@@ -548,6 +548,11 @@ def preview():
     """Render the preview page."""
     return render_template('preview.html')
 
+@app.route('/web-preview', methods=['GET'])
+def web_preview():
+    """Render the web preview page for HTML/CSS/JS editing."""
+    return render_template('web_preview.html')
+
 @app.route('/api/preview', methods=['POST'])
 def generate_preview():
     """Generate a preview of HTML content."""
