@@ -277,8 +277,13 @@ def chat():
     
 @app.route('/files')
 def files():
-    """File explorer view."""
+    """File explorer view with original UI."""
     return render_template('files.html')
+
+@app.route('/explorer')
+def new_files():
+    """File explorer view with new enhanced UI."""
+    return render_template('files_new.html')
     
 @app.route('/edit/<path:file_path>')
 def edit_file(file_path):
