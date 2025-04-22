@@ -45,6 +45,27 @@ document.addEventListener('DOMContentLoaded', function() {
         xhtml: false
     });
     
+    // Configurar el modal de aprobación de plan
+    const approvalModalElement = document.getElementById('approvalModal');
+    const approvePlanBtn = document.getElementById('approvePlanBtn');
+    
+    if (approvalModalElement && approvePlanBtn) {
+        approvePlanBtn.addEventListener('click', function() {
+            // Enviar mensaje de aprobación
+            userMessageInput.value = "Iniciar construcción";
+            chatForm.dispatchEvent(new Event('submit'));
+            
+            // Cerrar el modal
+            const modal = bootstrap.Modal.getInstance(approvalModalElement);
+            if (modal) {
+                modal.hide();
+            }
+        });
+        console.log('Modal de aprobación configurado correctamente');
+    } else {
+        console.warn('No se encontró el modal de aprobación o el botón de aprobación');
+    }
+    
     // Controladores de eventos
     chatForm.addEventListener('submit', handleSubmit);
     clearChatBtn.addEventListener('click', clearChat);
@@ -259,28 +280,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Configurar el botón de aprobación (solo una vez)
-        if (!window.approvalButtonConfigured) {
-            const approvePlanBtn = document.getElementById('approvePlanBtn');
-            if (approvePlanBtn) {
-                approvePlanBtn.addEventListener('click', function() {
-                    // Enviar mensaje de aprobación
-                    userMessageInput.value = "Iniciar construcción";
-                    chatForm.dispatchEvent(new Event('submit'));
-                    
-                    // Cerrar el modal
-                    const modal = bootstrap.Modal.getInstance(approvalModalElement);
-                    if (modal) {
-                        modal.hide();
-                    }
-                });
-                window.approvalButtonConfigured = true;
-            }
-        }
-        
         // Actualizar el contenido del plan en el modal
         const planContent = document.getElementById('planContent');
         if (planContent) {
+            console.log('Actualizando contenido del plan en el modal');
             planContent.innerHTML = typeof plan === 'string' ? 
                 processMarkdown(plan) : 
                 JSON.stringify(plan, null, 2);
