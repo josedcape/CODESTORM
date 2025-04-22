@@ -8,7 +8,7 @@ import logging
 from routes_analyzer import register_analyzer_routes
 from document_routes import register_document_routes
 from github_routes import register_github_routes
-from file_explorer_routes import register_file_explorer_routes
+from file_explorer_routes_new import register_file_explorer_routes
 from constructor_routes import init_constructor_routes
 from app import app, get_user_workspace
 

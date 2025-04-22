@@ -38,10 +38,22 @@
                             <i class="fa-solid fa-robot"></i> Asistente IA
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if '/files' in request.path %}active{% endif %}" href="/files">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if '/files' in request.path or '/explorer' in request.path %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa-solid fa-folder-open"></i> Explorador
                         </a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li>
+                                <a class="dropdown-item {% if '/explorer' in request.path %}active{% endif %}" href="/explorer">
+                                    <i class="fa-solid fa-layer-group"></i> Nuevo Explorador
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if '/files' in request.path %}active{% endif %}" href="/files">
+                                    <i class="fa-solid fa-folder"></i> Explorador Clásico
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if '/code_corrector' in request.path %}active{% endif %}" href="/code_corrector">
