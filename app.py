@@ -283,7 +283,7 @@ def files():
 @app.route('/explorer')
 def new_files():
     """File explorer view with new enhanced UI."""
-    return render_template('explorer_simple.html')
+    return render_template('explorer_basic.html')
     
 @app.route('/edit_file')
 def edit_file():
