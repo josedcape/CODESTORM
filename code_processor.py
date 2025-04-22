@@ -1,10 +1,11 @@
+# Import common dependencies
 import os
 import json
 import logging
-import openai
-from anthropic import Anthropic
-import google.generativeai as genai
 from flask import jsonify
+
+# Import these only when needed to avoid import errors at module level
+# when these dependencies are accessed through app.py's imports
 
 def process_code_improved(data):
     """Versión mejorada para procesar código para correcciones y mejoras."""
@@ -90,78 +91,111 @@ def process_code_improved(data):
         response = {}
 
         if model_choice == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
-            # Usar Anthropic Claude con configuración optimizada para código extenso
-            client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-            completion = client.messages.create(
-                model="claude-3-5-sonnet-20241022",  # Modelo más avanzado para códigos extensos
-                max_tokens=is_large_file and 12000 or 4000,  # Aumentar tokens si es código grande
-                temperature=0.2,
-                system="Eres un experto en programación y tu tarea es corregir y mejorar código. Responde siempre en JSON. Asegúrate de incluir el código completo en tu respuesta.",
-                messages=[{"role": "user", "content": prompt}]
-            )
             try:
-                response = json.loads(completion.content[0].text)
-            except (json.JSONDecodeError, IndexError):
-                # Si no podemos analizar JSON, devolver el texto completo
+                # Importar bajo demanda para evitar errores de importación
+                from anthropic import Anthropic
+                
+                # Usar Anthropic Claude con configuración optimizada para código extenso
+                client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+                completion = client.messages.create(
+                    model="claude-3-5-sonnet-20241022",  # Modelo más avanzado para códigos extensos
+                    max_tokens=is_large_file and 12000 or 4000,  # Aumentar tokens si es código grande
+                    temperature=0.2,
+                    system="Eres un experto en programación y tu tarea es corregir y mejorar código. Responde siempre en JSON. Asegúrate de incluir el código completo en tu respuesta.",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                try:
+                    response = json.loads(completion.content[0].text)
+                except (json.JSONDecodeError, IndexError):
+                    # Si no podemos analizar JSON, devolver el texto completo
+                    response = {
+                        "corrected_code": code,  # Mantener el código original
+                        "summary": ["No se pudieron procesar las correcciones"],
+                        "explanation": completion.content[0].text if completion.content else "No se pudo generar explicación"
+                    }
+            except Exception as e:
+                logging.error(f"Error usando Anthropic: {str(e)}")
                 response = {
-                    "corrected_code": code,  # Mantener el código original
-                    "summary": ["No se pudieron procesar las correcciones"],
-                    "explanation": completion.content[0].text if completion.content else "No se pudo generar explicación"
+                    "corrected_code": code,
+                    "summary": ["Error al usar Anthropic API: " + str(e)],
+                    "explanation": "Se produjo un error al intentar utilizar la API de Anthropic para corregir el código."
                 }
                 
         elif model_choice == 'gemini' and os.environ.get('GEMINI_API_KEY'):
-            # Usar Google Gemini con configuración optimizada
-            genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-            model = genai.GenerativeModel('gemini-1.5-pro')
-            
-            # Configuraciones específicas para Gemini
-            generation_config = {
-                "temperature": 0.2,
-                "max_output_tokens": is_large_file and 8192 or 4096,
-                "top_p": 0.95,
-                "top_k": 40
-            }
-            
-            gemini_response = model.generate_content(
-                prompt,
-                generation_config=generation_config
-            )
-            
             try:
-                response = json.loads(gemini_response.text)
-            except json.JSONDecodeError:
-                # Intentar extraer JSON si está en un formato no estándar
+                # Importar bajo demanda
+                import google.generativeai as genai
+                
+                # Usar Google Gemini con configuración optimizada
+                genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+                model = genai.GenerativeModel('gemini-1.5-pro')
+                
+                # Configuraciones específicas para Gemini
+                generation_config = {
+                    "temperature": 0.2,
+                    "max_output_tokens": is_large_file and 8192 or 4096,
+                    "top_p": 0.95,
+                    "top_k": 40
+                }
+                
+                gemini_response = model.generate_content(
+                    prompt,
+                    generation_config=generation_config
+                )
+                
+                try:
+                    response = json.loads(gemini_response.text)
+                except json.JSONDecodeError:
+                    # Intentar extraer JSON si está en un formato no estándar
+                    response = {
+                        "corrected_code": code,  # Mantener el código original
+                        "summary": ["No se pudieron procesar las correcciones"],
+                        "explanation": gemini_response.text
+                    }
+            except Exception as e:
+                logging.error(f"Error usando Gemini: {str(e)}")
                 response = {
-                    "corrected_code": code,  # Mantener el código original
-                    "summary": ["No se pudieron procesar las correcciones"],
-                    "explanation": gemini_response.text
+                    "corrected_code": code,
+                    "summary": ["Error al usar Gemini API: " + str(e)],
+                    "explanation": "Se produjo un error al intentar utilizar la API de Google Gemini para corregir el código."
                 }
                 
         else:
-            # Usar OpenAI como valor predeterminado
-            openai_client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-            
-            # Configuraciones específicas para código extenso
-            completion = openai_client.chat.completions.create(
-                model="gpt-4o", # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-                response_format={"type": "json_object"},
-                temperature=0.2,
-                max_tokens=is_large_file and 4096 or 2048,  # Ajustar tokens según tamaño
-                messages=[
-                    {"role": "system", "content": "Eres un experto en programación y tu tarea es corregir y mejorar código. "
-                                                + "Responde siempre en JSON. "
-                                                + (is_large_file and "Este es un archivo grande; asegúrate de incluir TODO el código corregido completo." or "")},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
             try:
-                response = json.loads(completion.choices[0].message.content)
-            except json.JSONDecodeError:
+                # Importar bajo demanda para OpenAI
+                import openai
+                
+                # Usar OpenAI como valor predeterminado
+                openai_client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+                
+                # Configuraciones específicas para código extenso
+                completion = openai_client.chat.completions.create(
+                    model="gpt-4o", # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
+                    response_format={"type": "json_object"},
+                    temperature=0.2,
+                    max_tokens=is_large_file and 4096 or 2048,  # Ajustar tokens según tamaño
+                    messages=[
+                        {"role": "system", "content": "Eres un experto en programación y tu tarea es corregir y mejorar código. "
+                                                    + "Responde siempre en JSON. "
+                                                    + (is_large_file and "Este es un archivo grande; asegúrate de incluir TODO el código corregido completo." or "")},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                
+                try:
+                    response = json.loads(completion.choices[0].message.content)
+                except json.JSONDecodeError:
+                    response = {
+                        "corrected_code": code,  # Mantener el código original
+                        "summary": ["No se pudieron procesar las correcciones"],
+                        "explanation": completion.choices[0].message.content
+                    }
+            except Exception as e:
+                logging.error(f"Error usando OpenAI: {str(e)}")
                 response = {
-                    "corrected_code": code,  # Mantener el código original
-                    "summary": ["No se pudieron procesar las correcciones"],
-                    "explanation": completion.choices[0].message.content
+                    "corrected_code": code,
+                    "summary": ["Error al usar OpenAI API: " + str(e)],
+                    "explanation": "Se produjo un error al intentar utilizar la API de OpenAI para corregir el código."
                 }
         
         # Asegurar que todos los campos necesarios estén presentes
