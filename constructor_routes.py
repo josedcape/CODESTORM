@@ -16,6 +16,7 @@ import subprocess
 from flask import jsonify, request, session, current_app
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 
 from models import Project, ProjectSession, Base
 
@@ -27,24 +28,19 @@ logger = logging.getLogger(__name__)
 def get_db_session():
     """
     Obtiene una sesión de base de datos con manejo mejorado de conexiones.
-    Implementa configuraciones para reconexión automática y tolerancia a fallos.
+    Implementa configuraciones para reconexión automática y tolerancia a fallos SSL.
     """
     database_url = os.environ.get("DATABASE_URL")
     
-    # Configuración optimizada para PostgreSQL con reconexión automática
+    # Configuración ultraconservadora para PostgreSQL con foco en estabilidad SSL
+    # Reducir drásticamente el uso de conexiones para minimizar problemas SSL
     engine = create_engine(
         database_url,
-        pool_pre_ping=True,  # Verificar conexión antes de usarla
-        pool_recycle=300,    # Reciclar conexiones cada 5 minutos
-        pool_timeout=30,     # Timeout para obtener conexión
-        max_overflow=10,     # Conexiones adicionales permitidas
-        pool_size=5,         # Tamaño del pool de conexiones
+        poolclass=NullPool,      # Desactivar pooling completamente para evitar problemas de SSL
         connect_args={
-            "connect_timeout": 10,  # Timeout de conexión en segundos
-            "keepalives": 1,        # Mantener conexiones activas
-            "keepalives_idle": 30,  # Tiempo en segundos antes de enviar keepalive
-            "keepalives_interval": 10,  # Intervalo entre keepalives
-            "keepalives_count": 5   # Número de reintentos de keepalive
+            "connect_timeout": 5,      # Timeout corto de conexión en segundos
+            "sslmode": "prefer",       # Más permisivo con SSL
+            "options": "-c statement_timeout=3000"  # Limitar duración de consultas a 3s
         }
     )
     
