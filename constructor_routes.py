@@ -23,18 +23,85 @@ from models import Project, ProjectSession, Base
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Conectar a la base de datos
+# Conectar a la base de datos de forma robusta
 def get_db_session():
-    """Obtiene una sesión de base de datos."""
-    engine = create_engine(os.environ.get("DATABASE_URL"))
-    Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    return Session()
+    """
+    Obtiene una sesión de base de datos con manejo mejorado de conexiones.
+    Implementa configuraciones para reconexión automática y tolerancia a fallos.
+    """
+    database_url = os.environ.get("DATABASE_URL")
+    
+    # Configuración optimizada para PostgreSQL con reconexión automática
+    engine = create_engine(
+        database_url,
+        pool_pre_ping=True,  # Verificar conexión antes de usarla
+        pool_recycle=300,    # Reciclar conexiones cada 5 minutos
+        pool_timeout=30,     # Timeout para obtener conexión
+        max_overflow=10,     # Conexiones adicionales permitidas
+        pool_size=5,         # Tamaño del pool de conexiones
+        connect_args={
+            "connect_timeout": 10,  # Timeout de conexión en segundos
+            "keepalives": 1,        # Mantener conexiones activas
+            "keepalives_idle": 30,  # Tiempo en segundos antes de enviar keepalive
+            "keepalives_interval": 10,  # Intervalo entre keepalives
+            "keepalives_count": 5   # Número de reintentos de keepalive
+        }
+    )
+    
+    try:
+        # Crear tablas si no existen
+        Base.metadata.create_all(engine)
+        # Crear y devolver una sesión
+        Session = sessionmaker(bind=engine)
+        return Session()
+    except Exception as e:
+        logger.error(f"Error al conectar a la base de datos: {str(e)}")
+        # Esperar un poco y reintentar una vez más antes de propagar el error
+        time.sleep(2)
+        Session = sessionmaker(bind=engine)
+        return Session()
 
 # Variables globales para gestionar tareas en segundo plano
 active_projects = {}
 pause_flags = {}
 project_locks = {}
+
+# Envoltorio para operaciones de base de datos con reintentos automáticos
+def db_operation(func):
+    """
+    Decorador para manejar operaciones de base de datos con reintentos automáticos
+    y cierre adecuado de sesiones.
+    """
+    def wrapper(*args, **kwargs):
+        max_retries = 3
+        retry_count = 0
+        last_error = None
+        
+        while retry_count < max_retries:
+            db = None
+            try:
+                db = get_db_session()
+                # Pasar la sesión como primer argumento a la función decorada
+                return func(db, *args, **kwargs)
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Error en operación de base de datos (intento {retry_count+1}/{max_retries}): {str(e)}")
+                # Aumentar tiempo de espera con cada reintento (backoff exponencial)
+                time.sleep(2 ** retry_count)
+                retry_count += 1
+            finally:
+                # Asegurar que la sesión se cierre adecuadamente
+                if db:
+                    try:
+                        db.close()
+                    except Exception as e:
+                        logger.warning(f"Error al cerrar sesión de BD: {str(e)}")
+        
+        # Si llegamos aquí, fallaron todos los reintentos
+        logger.error(f"Fallo definitivo en operación de base de datos después de {max_retries} intentos: {str(last_error)}")
+        raise last_error
+    
+    return wrapper
 
 class AutonomousBuilder:
     """
@@ -182,6 +249,7 @@ class AutonomousBuilder:
             )
             
             # Comenzar el flujo de construcción
+            # El decorador db_operation maneja la sesión automáticamente
             self._update_project_status(project, 'active', 'analysis', 5, 
                                       'Analizando requisitos del proyecto')
             
@@ -225,6 +293,7 @@ class AutonomousBuilder:
                                       'Implementando archivos base')
             
             # Cambiar a agente de desarrollo para la implementación
+            # El decorador db_operation proporciona la sesión de BD automáticamente
             self._switch_agent('developer')
             
             # Comenzar implementación
@@ -347,10 +416,13 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             
             self._cleanup()
     
-    def _update_project_status(self, project, status, phase, progress, current_step):
-        """Actualiza el estado del proyecto de forma segura."""
+    @db_operation
+    def _update_project_status(self, db, project, status, phase, progress, current_step):
+        """
+        Actualiza el estado del proyecto de forma segura.
+        Usa el decorador db_operation para manejo robusto de la sesión.
+        """
         with self.lock:
-            db = get_db_session()
             # Recargar el proyecto para evitar problemas de concurrencia
             db_project = db.query(Project).filter_by(project_id=project.project_id).first()
             if db_project:
@@ -360,8 +432,10 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
                 db_project.current_step = current_step
                 db_project.updated_at = datetime.datetime.utcnow()
                 db.commit()
+                return True
             else:
                 logger.warning(f"No se pudo actualizar el estado del proyecto con ID {project.project_id}")
+                return False
     
     def _send_notification(self, project, session, title, message, notification_type="info"):
         """
@@ -1199,11 +1273,14 @@ Basado en tu descripción, he determinado que estás buscando construir una **{p
 """
         return response
     
-    def _switch_agent(self, agent_id):
+    @db_operation
+    def _switch_agent(self, db, agent_id):
         """
         Cambia el agente activo y actualiza el proyecto en la base de datos.
+        Usa el decorador db_operation para manejo robusto de la sesión.
         
         Args:
+            db: Sesión de base de datos (proporcionada por el decorador)
             agent_id: ID del agente al que cambiar (architect, developer, testing, fixing)
         """
         # Verificar si el método se llama antes de crear el proyecto
@@ -1217,7 +1294,6 @@ Basado en tu descripción, he determinado que estás buscando construir una **{p
             return False
         
         # Actualizar el agente actual
-        db = get_db_session()
         project = db.query(Project).filter_by(project_id=self.project_id).first()
         
         if project:
@@ -1240,6 +1316,8 @@ Basado en tu descripción, he determinado que estás buscando construir una **{p
             
             logger.info(f"Cambiado agente a: {agent_id} para el proyecto {project.project_id}")
             return True
+        else:
+            logger.warning(f"No se encontró el proyecto con ID {self.project_id} al cambiar agente")
         
         return False
     
