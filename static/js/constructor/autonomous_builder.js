@@ -601,6 +601,11 @@ class AutonomousProjectBuilder {
             if (!this.tasks || this.tasks.length === 0) {
                 this.setPlan(project.plan.tasks, project.plan.estimatedTime || 60);
                 
+                // Hacer visible el panel del plan de desarrollo si está oculto
+                if (this.developmentPlan && this.developmentPlan.classList.contains('d-none')) {
+                    this.developmentPlan.classList.remove('d-none');
+                }
+                
                 // Notificar al usuario
                 this.addNotification({
                     title: 'Plan de desarrollo generado',
@@ -615,6 +620,12 @@ class AutonomousProjectBuilder {
                         this.updateTaskStatus(index, task.status);
                     }
                 });
+            }
+            
+            // Asegurar que el panel del plan esté visible y actualizado
+            if (this.developmentPlan) {
+                this.developmentPlan.classList.remove('d-none');
+                this.updateTaskList();
             }
         }
         
@@ -998,8 +1009,23 @@ class AutonomousProjectBuilder {
         // Crear un mensaje tipo sistema para informar
         this.showSystemMessage('✅ Proyecto completado exitosamente');
         
-        // Obtener los archivos creados (si existen)
-        const createdFiles = project.created_files || [];
+        // Obtener los archivos creados (pueden estar en different propiedades según la implementación)
+        const createdFiles = project.created_files || project.generated_files || [];
+        let filesArray = [];
+        
+        // Manejar tanto arrays directos como strings con formato JSON
+        if (typeof createdFiles === 'string') {
+            try {
+                filesArray = JSON.parse(createdFiles);
+            } catch (e) {
+                // Si no se puede parsear como JSON, dividir por líneas
+                filesArray = createdFiles.split('\n').filter(f => f.trim() !== '');
+            }
+        } else if (Array.isArray(createdFiles)) {
+            filesArray = createdFiles;
+        }
+        
+        // Obtener acciones realizadas
         const actions = project.actions || [];
         
         // Generar un mensaje de resumen
@@ -1014,19 +1040,47 @@ class AutonomousProjectBuilder {
             const minutes = Math.floor(timeElapsedMs / 60000);
             
             resultMessage += `⏱️ **Tiempo de construcción:** ${this.formatTimeEstimate(minutes)}\n\n`;
+        } else if (this.startTime) {
+            // Usar el tiempo interno como alternativa
+            const endTime = new Date();
+            const timeElapsedMs = endTime - this.startTime;
+            const minutes = Math.floor(timeElapsedMs / 60000);
+            
+            resultMessage += `⏱️ **Tiempo de construcción:** ${this.formatTimeEstimate(minutes)}\n\n`;
         }
         
         // Mostrar archivos creados
-        if (createdFiles.length > 0) {
+        if (filesArray.length > 0) {
             resultMessage += '### 📂 Archivos Creados\n\n';
             resultMessage += '```\n';
-            createdFiles.forEach(file => {
-                resultMessage += `${file}\n`;
+            filesArray.forEach(file => {
+                // Si es un objeto con propiedades, intentar extraer la ruta
+                if (typeof file === 'object' && file !== null) {
+                    resultMessage += `${file.path || file.name || JSON.stringify(file)}\n`;
+                } else {
+                    resultMessage += `${file}\n`;
+                }
             });
             resultMessage += '```\n\n';
             
             // Añadir enlace para ver los archivos
             resultMessage += '[Ver archivos en el explorador](/files)\n\n';
+        } else {
+            // Si no hay archivos explícitamente definidos, comprobar el campo de estructura
+            if (project.file_structure) {
+                resultMessage += '### 📂 Estructura de Archivos\n\n';
+                resultMessage += '```\n';
+                // Imprimir la estructura si está disponible
+                if (typeof project.file_structure === 'string') {
+                    resultMessage += project.file_structure;
+                } else if (typeof project.file_structure === 'object') {
+                    resultMessage += JSON.stringify(project.file_structure, null, 2);
+                }
+                resultMessage += '\n```\n\n';
+                
+                // Añadir enlace para ver los archivos
+                resultMessage += '[Ver archivos en el explorador](/files)\n\n';
+            }
         }
         
         // Mostrar acciones ejecutadas
@@ -1053,21 +1107,19 @@ class AutonomousProjectBuilder {
         // Mostrar el mensaje en el chat
         this.addMessage(resultMessage, 'assistant');
         
-        // Redirigir al explorador de archivos después de 5 segundos si hay archivos
-        if (createdFiles.length > 0) {
-            setTimeout(() => {
-                const goToFilesBtn = document.createElement('button');
-                goToFilesBtn.className = 'btn btn-primary btn-sm mt-3';
-                goToFilesBtn.innerHTML = '<i data-feather="folder"></i> Ir al explorador de archivos';
-                goToFilesBtn.onclick = () => window.location.href = '/files';
-                
-                // Añadir al contenedor de mensajes
-                if (this.chatMessages) {
-                    this.chatMessages.appendChild(goToFilesBtn);
-                    feather.replace();
-                }
-            }, 2000);
-        }
+        // Añadir botón para ir al explorador de archivos
+        setTimeout(() => {
+            const goToFilesBtn = document.createElement('button');
+            goToFilesBtn.className = 'btn btn-primary btn-sm mt-3';
+            goToFilesBtn.innerHTML = '<i data-feather="folder"></i> Ir al explorador de archivos';
+            goToFilesBtn.onclick = () => window.location.href = '/files';
+            
+            // Añadir al contenedor de mensajes
+            if (this.chatMessages) {
+                this.chatMessages.appendChild(goToFilesBtn);
+                feather.replace();
+            }
+        }, 1500);
     }
     
     /**
