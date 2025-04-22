@@ -329,21 +329,37 @@ def code_corrector():
 def process_code():
     """Process code for corrections and improvements."""
     try:
+        logging.info("Recibiendo petición de corrección de código")
+        
+        # Extraer información para depuración
+        data = request.json
+        code_lines = len(data.get('code', '').split('\n'))
+        model = data.get('model', 'openai')
+        language = data.get('language', 'unknown')
+        logging.info(f"Procesando {code_lines} líneas de código en {language} usando modelo {model}")
+        
         # Importar la función mejorada de process_code
         from code_processor import process_code_improved
+        logging.info("Módulo code_processor importado correctamente")
         
         # Obtener la respuesta usando la función mejorada
-        result = process_code_improved(request.json)
+        result = process_code_improved(data)
+        logging.info("Código procesado correctamente")
         
         # Verificar si el resultado es una tupla (respuesta, código de estado)
         if isinstance(result, tuple):
+            logging.info(f"Devolviendo respuesta con código de estado {result[1]}")
             return result
         
         # Si es un diccionario, convertirlo a JSON
+        logging.info("Devolviendo respuesta JSON")
         return jsonify(result)
         
+    except ImportError as e:
+        logging.error(f"Error de importación: {str(e)}")
+        return jsonify({'error': f'Error de importación: {str(e)}'}), 500
     except Exception as e:
-        logging.error(f"Error processing code: {str(e)}")
+        logging.error(f"Error processing code: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/process_instructions', methods=['POST'])

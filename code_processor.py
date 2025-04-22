@@ -2,7 +2,8 @@
 import os
 import json
 import logging
-from flask import jsonify
+
+# No importamos flask aquí para evitar problemas circulares de importación
 
 # Import these only when needed to avoid import errors at module level
 # when these dependencies are accessed through app.py's imports
@@ -17,7 +18,7 @@ def process_code_improved(data):
         model_choice = data.get('model', 'openai')
         
         if not code:
-            return jsonify({'error': 'No se proporcionó código para procesar'}), 400
+            return {'error': 'No se proporcionó código para procesar'}, 400
             
         # Detectar el lenguaje por la extensión del archivo si no se especificó
         if language == 'unknown' and file_path:
