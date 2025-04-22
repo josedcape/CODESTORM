@@ -527,6 +527,64 @@ class AutonomousProjectBuilder {
             this.consoleOutput = [...project.console_output];
         }
         
+        // Actualizar el plan de desarrollo y tareas
+        if (project.plan && project.plan.tasks) {
+            // Si es la primera vez que recibimos un plan, inicializarlo
+            if (!this.tasks || this.tasks.length === 0) {
+                this.setPlan(project.plan.tasks, project.plan.estimatedTime || 60);
+                
+                // Notificar al usuario
+                this.addNotification({
+                    title: 'Plan de desarrollo generado',
+                    message: `Se ha generado un plan con ${project.plan.tasks.length} tareas. Tiempo estimado: ${this.formatTimeEstimate(project.plan.estimatedTime || 60)}`,
+                    type: 'info',
+                    timestamp: new Date().toISOString()
+                });
+            } else {
+                // Si ya tenemos un plan, actualizar el estado de las tareas
+                project.plan.tasks.forEach((task, index) => {
+                    if (index < this.tasks.length && this.tasks[index].status !== task.status) {
+                        this.updateTaskStatus(index, task.status);
+                    }
+                });
+            }
+        }
+        
+        // Actualizar la tarea actual si ha cambiado
+        if (project.currentTaskIndex !== undefined && 
+            project.currentTaskIndex !== null && 
+            project.currentTaskIndex !== this.currentTaskIndex &&
+            project.currentTaskIndex < (this.tasks?.length || 0)) {
+            this.setCurrentTask(project.currentTaskIndex);
+        }
+        
+        // Actualizar agente actual si ha cambiado
+        if (project.currentAgent && project.currentAgent !== this.currentAgent) {
+            const prevAgent = this.currentAgent;
+            this.currentAgent = project.currentAgent;
+            
+            // Solo notificar si no es la primera vez (prevAgent existe)
+            if (prevAgent) {
+                // Mapeo de nombres de agentes
+                const agentNames = {
+                    'architect': 'Arquitecto',
+                    'developer': 'Desarrollador',
+                    'testing': 'QA Tester',
+                    'fixing': 'Corrector',
+                    'general': 'General'
+                };
+                
+                const displayName = agentNames[this.currentAgent] || this.currentAgent;
+                
+                this.addNotification({
+                    title: `Cambio de agente`,
+                    message: `Ahora el agente "${displayName}" está trabajando en el proyecto`,
+                    type: 'info',
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+        
         // Actualizar mensajes si hay nuevos
         if (project.messages) {
             // Obtener mensajes actuales en la UI

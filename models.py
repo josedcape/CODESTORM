@@ -29,11 +29,41 @@ class Project(Base):
     requirements = Column(JSON)
     generated_files = Column(JSON)
     pending_actions = Column(JSON)
+    # Nuevos campos para soportar plan de desarrollo y agentes
+    plan = Column(JSON)  # Plan de desarrollo con tareas
+    current_task_index = Column(Integer, default=-1)  # Índice de la tarea actual
+    current_agent = Column(String(32), default='architect')  # Agente actual (architect, developer, testing, fixing)
+    structure = Column(JSON)  # Estructura de archivos planificada
+    total_files = Column(Integer, default=0)  # Total de archivos a crear
+    model = Column(String(32), default='openai')  # Modelo de IA utilizado
+    error_count = Column(Integer, default=0)  # Contador de errores
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
     def to_dict(self):
         """Convierte el modelo a un diccionario."""
+        # Parsear el plan si existe y es un string JSON
+        plan_data = None
+        if self.plan:
+            if isinstance(self.plan, str):
+                try:
+                    plan_data = json.loads(self.plan)
+                except:
+                    plan_data = None
+            else:
+                plan_data = self.plan
+        
+        # Parsear la estructura si existe y es un string JSON
+        structure_data = None
+        if self.structure:
+            if isinstance(self.structure, str):
+                try:
+                    structure_data = json.loads(self.structure)
+                except:
+                    structure_data = None
+            else:
+                structure_data = self.structure
+        
         return {
             'id': self.id,
             'project_id': self.project_id,
@@ -48,12 +78,19 @@ class Project(Base):
             'requirements': self.requirements,
             'generated_files': self.generated_files,
             'pending_actions': self.pending_actions,
+            'plan': plan_data,
+            'current_task_index': self.current_task_index,
+            'current_agent': self.current_agent,
+            'structure': structure_data,
+            'total_files': self.total_files,
+            'model': self.model,
+            'error_count': self.error_count,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
     
     @classmethod
-    def create_project(cls, name, description, project_type=None, user_id='default'):
+    def create_project(cls, name, description, project_type=None, user_id='default', model='openai'):
         """Crea un nuevo proyecto."""
         project = cls(
             name=name,
@@ -63,7 +100,14 @@ class Project(Base):
             tech_stack={},
             requirements=[],
             generated_files=[],
-            pending_actions=[]
+            pending_actions=[],
+            plan=None,
+            current_task_index=-1,
+            current_agent='architect',
+            structure=None,
+            total_files=0,
+            model=model,
+            error_count=0
         )
         return project
     
