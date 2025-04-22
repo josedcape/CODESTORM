@@ -299,7 +299,26 @@ class AutonomousProjectBuilder {
         // Inicializar o reiniciar la UI
         this.resetUI();
         
-        // Enviar la petición al servidor
+        // Obtener modelo seleccionado
+        let selectedModel = 'openai';
+        this.modelRadios.forEach(radio => {
+            if (radio.checked) {
+                selectedModel = radio.value;
+            }
+        });
+        
+        // Obtener configuración de agentes
+        const agents = {
+            architect: this.useArchitectAgent ? this.useArchitectAgent.checked : true,
+            developer: this.useDeveloperAgent ? this.useDeveloperAgent.checked : true,
+            testing: this.useTestingAgent ? this.useTestingAgent.checked : true,
+            fixing: this.useFixingAgent ? this.useFixingAgent.checked : true
+        };
+        
+        // Obtener velocidad de desarrollo
+        const speed = this.developmentSpeed ? this.developmentSpeed.value : 'balanced';
+        
+        // Enviar la petición al servidor con la configuración completa
         fetch('/api/constructor/start', {
             method: 'POST',
             headers: {
@@ -307,7 +326,14 @@ class AutonomousProjectBuilder {
             },
             body: JSON.stringify({
                 description: description,
-                model: this.currentModel
+                model: selectedModel,
+                agents: agents,
+                development_speed: speed,
+                config: {
+                    model: selectedModel,
+                    agents: agents,
+                    development_speed: speed
+                }
             })
         })
         .then(response => response.json())
