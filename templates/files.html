@@ -477,6 +477,99 @@
         </div>
     </div>
 
+    <!-- Modal Subir Archivo -->
+    <div class="modal fade modal-futuristic" id="uploadFileModal" tabindex="-1" aria-labelledby="uploadFileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadFileModalLabel"><i class="bi bi-upload me-2"></i>Subir Archivos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="upload-file-form" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="upload-file-input" class="form-label">Seleccione archivos para subir:</label>
+                            <input type="file" class="form-control" id="upload-file-input" multiple>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="extract-files-checkbox">
+                            <label class="form-check-label" for="extract-files-checkbox">Extraer automáticamente archivos comprimidos (ZIP, RAR)</label>
+                        </div>
+                        <div class="text-muted small mb-3">
+                            <i class="bi bi-info-circle"></i> Los archivos comprimidos pueden contener múltiples archivos y carpetas que serán extraídos al workspace.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-futuristic" id="upload-file-submit-btn">
+                        <i class="bi bi-upload"></i> Subir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Extraer Archivo Comprimido -->
+    <div class="modal fade modal-futuristic" id="extractArchiveModal" tabindex="-1" aria-labelledby="extractArchiveModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="extractArchiveModalLabel"><i class="bi bi-file-earmark-zip me-2"></i>Extraer Archivo Comprimido</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <p>¿Desea extraer el archivo comprimido <span id="extract-file-name" class="fw-bold"></span>?</p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="extract-dir-input" class="form-label">Directorio de destino (opcional):</label>
+                        <input type="text" class="form-control" id="extract-dir-input" placeholder="Dejar vacío para extraer junto al archivo">
+                    </div>
+                    <input type="hidden" id="extract-file-path">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-futuristic" id="extract-archive-btn">
+                        <i class="bi bi-folder-plus"></i> Extraer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Comprimir a ZIP -->
+    <div class="modal fade modal-futuristic" id="compressToZipModal" tabindex="-1" aria-labelledby="compressToZipModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="compressToZipModalLabel"><i class="bi bi-file-earmark-zip me-2"></i>Comprimir a ZIP</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <p>¿Desea comprimir <span id="compress-item-name" class="fw-bold"></span> en un archivo ZIP?</p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="zip-name-input" class="form-label">Nombre del archivo ZIP:</label>
+                        <input type="text" class="form-control" id="zip-name-input">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="include-root-checkbox" checked>
+                        <label class="form-check-label" for="include-root-checkbox">Incluir carpeta raíz</label>
+                    </div>
+                    <input type="hidden" id="compress-item-path">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-futuristic" id="compress-to-zip-btn">
+                        <i class="bi bi-file-zip"></i> Comprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Clonar Repositorio GitHub -->
     <div class="modal fade modal-futuristic" id="cloneGithubModal" tabindex="-1" aria-labelledby="cloneGithubModalLabel" aria-hidden="true">
         <div class="modal-dialog">
