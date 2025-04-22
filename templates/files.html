@@ -1452,11 +1452,11 @@
             function createFolder(path) {
                 // En los sistemas de archivos, crear una carpeta vacía a menudo se hace
                 // creando un archivo especial dentro de ella, como .gitkeep
-                fetch('/api/files/create', {
+                fetch('/api/explorer/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        file_path: path + '/.gitkeep',
+                        path: path + '/.gitkeep',
                         content: ''
                     })
                 })
@@ -1476,11 +1476,11 @@
             }
             
             function deleteItem(path) {
-                fetch('/api/files/delete', {
+                fetch('/api/explorer/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        file_path: path
+                        path: path
                     })
                 })
                 .then(response => response.json())
