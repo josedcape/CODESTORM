@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INNOVATE AI - Conversational Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Avatar Section -->
+        <section class="avatar-section">
+            <div class="avatar-container">
+                <video id="avatar-video" class="avatar-video" loop muted>
+                    <source src="{{ url_for('static', filename='assets/videos/innovate.mp4') }}" type="video/mp4">
+                    <div class="avatar-placeholder">
+                        <div class="avatar-placeholder-text">AI Assistant</div>
+                    </div>
+                </video>
+                <div class="futuristic-glow"></div>
+            </div>
+            <div class="system-info">
+                <div class="version-info">
+                    <span>INNOVATE AI v1.0</span>
+                    <div class="status-indicator">
+                        <div class="status-dot"></div>
+                        <span>Online</span>
+                    </div>
+                </div>
+                <div>Powered by OpenAI GPT-4o & Google TTS</div>
+                <div class="feature-links">
+                    <a href="/computer-use-demo" class="feature-link">
+                        <i class="fa-solid fa-robot"></i>
+                        Navegación Autónoma
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Content Section -->
+        <section class="content-section">
+            <!-- Tools Header -->
+            <div class="tools-header">
+                <div class="tools-container">
+                    <!-- Tools will be added dynamically via JavaScript -->
+                </div>
+                <button class="clear-button" title="Clear Conversation">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- File Upload Section (hidden by default, shows for file search) -->
+            <div class="file-upload-container">
+                <input type="file" id="file-upload" class="file-upload-input">
+                <button class="file-upload-button">Upload File</button>
+                <div class="file-list"></div>
+                <div class="file-upload-alert file-upload-success"></div>
+                <div class="file-upload-alert file-upload-error"></div>
+            </div>
+
+            <!-- Conversation Area -->
+            <div class="conversation-container">
+                <!-- Messages will be added dynamically via JavaScript -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-container">
+                <button id="record-button" class="record-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3z" />
+                        <path d="M17 12c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-2.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                    </svg>
+                </button>
+
+                <div class="text-input-container">
+                    <input type="text" id="text-input" class="text-input" placeholder="Escribe tu mensaje o presiona el micrófono para hablar...">
+                    <button id="send-button" class="send-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="20" height="20">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="visualization-container">
+                    <div class="visualization-bars"></div>
+                    <div class="loading-indicator">
+                        <div class="loading-spinner"></div>
+                        <span>Processing...</span>
+                    </div>
+                </div>
+                
+                <div class="status-message">Ready</div>
+                <div class="countdown-timer hidden">5</div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/video-sync.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/audio-processor.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ai-tools.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
