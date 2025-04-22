@@ -249,6 +249,7 @@ class ProjectSession(Base):
     ai_model = Column(String(32), default='openai')
     message_history = Column(JSON)
     last_active = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    special_actions = Column(JSON) # Acciones especiales como plan de desarrollo, archivos creados, etc.
     
     def to_dict(self):
         """Convierte el modelo a un diccionario."""
@@ -258,10 +259,11 @@ class ProjectSession(Base):
             'user_id': self.user_id,
             'ai_model': self.ai_model,
             'message_history': self.message_history,
+            'special_actions': self.special_actions,
             'last_active': self.last_active.isoformat() if self.last_active else None,
         }
     
-    def add_message(self, role, content):
+    def add_message(self, role, content, special_actions=None):
         """Agrega un mensaje al historial."""
         if self.message_history is None:
             self.message_history = []
@@ -272,9 +274,39 @@ class ProjectSession(Base):
             'timestamp': datetime.datetime.utcnow().isoformat()
         }
         
+        # Si hay acciones especiales, añadirlas al mensaje
+        if special_actions:
+            message['special_actions'] = special_actions
+        
         self.message_history.append(message)
         self.last_active = datetime.datetime.utcnow()
         return message
+    
+    def add_special_actions(self, actions):
+        """
+        Añade acciones especiales a la última respuesta del asistente.
+        Si no hay mensajes, crea uno nuevo con la acción.
+        """
+        if self.message_history is None:
+            self.message_history = []
+            
+        # Si no hay mensajes, crear un mensaje del sistema con las acciones
+        if not self.message_history:
+            return self.add_message('system', 'Acciones especiales del sistema', actions)
+            
+        # Buscar el último mensaje del asistente para añadir las acciones
+        for i in range(len(self.message_history) - 1, -1, -1):
+            if self.message_history[i]['role'] == 'assistant':
+                if 'special_actions' not in self.message_history[i]:
+                    self.message_history[i]['special_actions'] = []
+                
+                # Añadir las nuevas acciones
+                self.message_history[i]['special_actions'].extend(actions)
+                self.last_active = datetime.datetime.utcnow()
+                return self.message_history[i]
+        
+        # Si no hay mensajes del asistente, añadir un mensaje del sistema
+        return self.add_message('system', 'Acciones especiales del sistema', actions)
     
     def clear_history(self):
         """Limpia el historial de mensajes."""

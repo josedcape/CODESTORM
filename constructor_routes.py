@@ -322,7 +322,7 @@ class AutonomousBuilder:
             plan = self._generate_development_plan(project_type, tech_stack, file_structure, dev_tasks)
             
             # Enviar el plan de desarrollo como un mensaje separado
-            session.add_message('assistant', f"""## 📝 Plan de Desarrollo Detallado
+            message_text = f"""## 📝 Plan de Desarrollo Detallado
 
 {plan}
 
@@ -331,7 +331,20 @@ class AutonomousBuilder:
 - Para iniciar la construcción automática, responde "Iniciar construcción"
 - Para ajustar algún aspecto del plan, indícame qué cambios necesitas
 
-¿Deseas proceder con este plan o necesitas algún ajuste antes de comenzar?""")
+¿Deseas proceder con este plan o necesitas algún ajuste antes de comenzar?"""
+            
+            session.add_message('assistant', message_text)
+            
+            # Añadir acciones especiales para mostrar el plan y solicitar aprobación
+            special_actions = [{
+                'type': 'show_development_plan',
+                'plan': plan
+            }, {
+                'type': 'project_approval_required',
+                'plan': plan
+            }]
+            
+            session.add_special_actions(special_actions)
             db.commit()
             
             # Esperar confirmación (en un entorno real)
