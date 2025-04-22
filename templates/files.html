@@ -1476,6 +1476,13 @@
             }
             
             function deleteItem(path) {
+                // Deshabilitar temporalmente la interfaz durante la operación
+                const btnConfirmDelete = document.getElementById('btn-confirm-delete');
+                if (btnConfirmDelete) {
+                    btnConfirmDelete.disabled = true;
+                    btnConfirmDelete.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Eliminando...';
+                }
+                
                 fetch('/api/explorer/delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1483,11 +1490,28 @@
                         path: path
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        console.error('Error de servidor:', response.status);
+                        throw new Error('Error del servidor: ' + response.status);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    // Restaurar botón si sigue existiendo
+                    if (btnConfirmDelete) {
+                        btnConfirmDelete.disabled = false;
+                        btnConfirmDelete.innerHTML = 'Eliminar';
+                    }
+                    
                     if (data.success) {
                         showNotification('Elemento eliminado correctamente', 'success');
                         loadFiles(currentPath);
+                        
+                        // Cerrar el modal si está abierto
+                        if (deleteModal) {
+                            deleteModal.hide();
+                        }
                         
                         // Si el archivo eliminado era el que se estaba previsualizando, limpiar la previsualización
                         if (currentFileSelected === path) {
@@ -1507,7 +1531,13 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    showNotification('Error al eliminar', 'danger');
+                    showNotification('Error al eliminar: ' + error.message, 'danger');
+                    
+                    // Restaurar botón si sigue existiendo
+                    if (btnConfirmDelete) {
+                        btnConfirmDelete.disabled = false;
+                        btnConfirmDelete.innerHTML = 'Eliminar';
+                    }
                 });
             }
             

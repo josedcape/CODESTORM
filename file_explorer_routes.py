@@ -483,24 +483,48 @@ def delete_file():
             }), 403
         
         # Determinar si es un archivo o directorio
-        if os.path.isfile(file_path):
-            # Eliminar archivo
-            os.remove(file_path)
-            logger.info(f"Archivo eliminado: {file_path}")
+        # En lugar de fallar, consideramos que si el objetivo es eliminar algo
+        # y ese algo ya no existe, entonces podemos reportar éxito
+        if not os.path.exists(file_path):
+            logger.info(f"El elemento {file_path} ya no existe, se considera eliminado correctamente")
             return jsonify({
                 'success': True,
-                'message': 'Archivo eliminado correctamente'
+                'message': 'Elemento ya eliminado o inexistente'
             })
+        elif os.path.isfile(file_path):
+            # Eliminar archivo
+            try:
+                os.remove(file_path)
+                logger.info(f"Archivo eliminado: {file_path}")
+                return jsonify({
+                    'success': True,
+                    'message': 'Archivo eliminado correctamente'
+                })
+            except Exception as e:
+                logger.error(f"Error al eliminar archivo {file_path}: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al eliminar archivo: {str(e)}'
+                }), 500
         elif os.path.isdir(file_path):
             # Eliminar directorio recursivamente
-            import shutil
-            shutil.rmtree(file_path)
-            logger.info(f"Directorio eliminado: {file_path}")
-            return jsonify({
-                'success': True,
-                'message': 'Directorio eliminado correctamente'
-            })
+            try:
+                import shutil
+                shutil.rmtree(file_path)
+                logger.info(f"Directorio eliminado: {file_path}")
+                return jsonify({
+                    'success': True,
+                    'message': 'Directorio eliminado correctamente'
+                })
+            except Exception as e:
+                logger.error(f"Error al eliminar directorio {file_path}: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Error al eliminar directorio: {str(e)}'
+                }), 500
         else:
+            # Este caso no debería ocurrir nunca (ya que verificamos existence arriba),
+            # pero lo dejamos por completitud
             return jsonify({
                 'success': False,
                 'error': 'El archivo o directorio especificado no existe'
