@@ -15,8 +15,19 @@ class AutonomousProjectBuilder {
         this.progressBar = document.getElementById('buildProgress');
         this.chatMessages = document.getElementById('chatMessages');
         this.notificationsContainer = document.getElementById('notificationsPanel');
-        this.modelSelector = document.getElementById('modelSelector');
-        this.currentModel = 'openai'; // Valor por defecto
+        this.developmentPlan = document.getElementById('developmentPlan');
+        this.taskChecklist = document.getElementById('taskChecklist');
+        this.togglePlanBtn = document.getElementById('togglePlanBtn');
+        this.timeEstimation = document.getElementById('timeEstimation');
+        this.estimatedTimeElement = document.getElementById('estimatedTime');
+        
+        // Referencias a elementos de configuración
+        this.modelRadios = document.querySelectorAll('input[name="aiModelRadio"]');
+        this.useArchitectAgent = document.getElementById('useArchitectAgent');
+        this.useDeveloperAgent = document.getElementById('useDeveloperAgent');
+        this.useTestingAgent = document.getElementById('useTestingAgent');
+        this.useFixingAgent = document.getElementById('useFixingAgent');
+        this.developmentSpeed = document.getElementById('developmentSpeed');
         
         // Estado del constructor
         this.activeProjectId = null;
@@ -29,6 +40,12 @@ class AutonomousProjectBuilder {
         this.errorCount = 0;
         this.projectNotifications = [];
         this.consoleOutput = [];
+        this.tasks = [];
+        this.currentTaskIndex = -1;
+        this.estimatedTime = null;
+        this.startTime = null;
+        this.currentAgent = 'architect';
+        this.selectedModel = 'openai';
         
         // Inicializar eventos
         this.initEvents();
@@ -81,13 +98,136 @@ class AutonomousProjectBuilder {
             clearNotificationsBtn.addEventListener('click', () => this.clearNotifications());
         }
         
-        // Selector de modelo
+        // Botón para alternar la visualización del plan de desarrollo
+        if (this.togglePlanBtn) {
+            this.togglePlanBtn.addEventListener('click', () => {
+                const taskList = this.taskChecklist.parentElement;
+                
+                if (taskList.style.display === 'none') {
+                    taskList.style.display = 'block';
+                    this.togglePlanBtn.querySelector('i').setAttribute('data-feather', 'chevron-up');
+                } else {
+                    taskList.style.display = 'none';
+                    this.togglePlanBtn.querySelector('i').setAttribute('data-feather', 'chevron-down');
+                }
+                
+                feather.replace();
+            });
+        }
+        
+        // Selector de modelo principal mediante radios
+        if (this.modelRadios) {
+            this.modelRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.selectedModel = e.target.value;
+                    this.showSystemMessage(`Modelo principal cambiado a: ${e.target.value}`);
+                    
+                    // Actualizar el modelo en el dropdown de la barra de navegación
+                    if (document.getElementById('currentModel')) {
+                        const modelName = {
+                            'openai': 'OpenAI',
+                            'anthropic': 'Anthropic',
+                            'gemini': 'Gemini'
+                        }[e.target.value] || e.target.value;
+                        document.getElementById('currentModel').textContent = modelName;
+                    }
+                    
+                    // Eliminar el mensaje después de 2 segundos
+                    setTimeout(() => {
+                        const systemMessages = document.querySelectorAll('.system-message');
+                        systemMessages.forEach(message => {
+                            if (message.textContent.includes('Modelo principal cambiado')) {
+                                message.remove();
+                            }
+                        });
+                    }, 2000);
+                });
+            });
+        }
+        
+        // Selector de modo de desarrollo
+        if (this.developmentSpeed) {
+            this.developmentSpeed.addEventListener('change', (e) => {
+                const speedOption = e.target.value;
+                let mensaje;
+                
+                switch (speedOption) {
+                    case 'fast':
+                        mensaje = 'Modo rápido: El constructor priorizará la velocidad sobre la validación exhaustiva';
+                        break;
+                    case 'balanced':
+                        mensaje = 'Modo equilibrado: Balance entre velocidad y validación';
+                        break;
+                    case 'thorough':
+                        mensaje = 'Modo exhaustivo: Mayor validación y pruebas, pero más lento';
+                        break;
+                    default:
+                        mensaje = `Modo de desarrollo cambiado a: ${speedOption}`;
+                }
+                
+                this.showSystemMessage(mensaje);
+                
+                // Eliminar el mensaje después de 2 segundos
+                setTimeout(() => {
+                    const systemMessages = document.querySelectorAll('.system-message');
+                    systemMessages.forEach(message => {
+                        if (message.textContent.includes('Modo')) {
+                            message.remove();
+                        }
+                    });
+                }, 2000);
+            });
+        }
+        
+        // Configuración de agentes especializados
+        const agentSwitches = [
+            this.useArchitectAgent,
+            this.useDeveloperAgent,
+            this.useTestingAgent,
+            this.useFixingAgent
+        ];
+        
+        agentSwitches.forEach(switchElem => {
+            if (switchElem) {
+                switchElem.addEventListener('change', (e) => {
+                    const agentName = e.target.id.replace('use', '').replace('Agent', '');
+                    const status = e.target.checked ? 'activado' : 'desactivado';
+                    this.showSystemMessage(`Agente ${agentName} ${status}`);
+                    
+                    // Eliminar el mensaje después de 2 segundos
+                    setTimeout(() => {
+                        const systemMessages = document.querySelectorAll('.system-message');
+                        systemMessages.forEach(message => {
+                            if (message.textContent.includes('Agente')) {
+                                message.remove();
+                            }
+                        });
+                    }, 2000);
+                });
+            }
+        });
+        
+        // Selector de modelo (menú desplegable viejo - compatibilidad)
         const modelOptions = document.querySelectorAll('.model-option');
         modelOptions.forEach(option => {
             option.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.currentModel = option.getAttribute('data-model');
-                document.getElementById('currentModel').textContent = option.textContent;
+                this.selectedModel = option.getAttribute('data-model');
+                
+                // Actualizar los radios de modelo principal
+                if (this.modelRadios) {
+                    this.modelRadios.forEach(radio => {
+                        if (radio.value === this.selectedModel) {
+                            radio.checked = true;
+                        }
+                    });
+                }
+                
+                // Actualizar el texto del dropdown
+                if (document.getElementById('currentModel')) {
+                    document.getElementById('currentModel').textContent = option.textContent;
+                }
+                
                 this.showSystemMessage(`Modelo cambiado a ${option.textContent}`);
                 
                 // Eliminar el mensaje después de 2 segundos
@@ -566,6 +706,181 @@ class AutonomousProjectBuilder {
         
         // Reiniciar estado
         this.projectStatus.textContent = 'Estado: Iniciando...';
+        
+        // Limpiar lista de tareas
+        if (this.taskChecklist) {
+            this.taskChecklist.innerHTML = `
+                <li class="list-group-item text-center text-muted py-3">
+                    El plan de desarrollo se generará al iniciar la construcción
+                </li>
+            `;
+        }
+        
+        // Ocultar el panel de plan de desarrollo y el tiempo estimado
+        if (this.developmentPlan) {
+            this.developmentPlan.classList.add('d-none');
+        }
+        
+        if (this.timeEstimation) {
+            this.timeEstimation.classList.add('d-none');
+        }
+        
+        // Reiniciar variables de estado
+        this.tasks = [];
+        this.currentTaskIndex = -1;
+        this.errorCount = 0;
+        this.projectNotifications = [];
+        this.consoleOutput = [];
+        this.estimatedTime = null;
+        this.startTime = null;
+    }
+    
+    /**
+     * Establece el plan de desarrollo con las tareas planificadas.
+     */
+    setPlan(tasks, estimatedTime) {
+        this.tasks = tasks;
+        this.estimatedTime = estimatedTime;
+        
+        // Mostrar el panel del plan
+        if (this.developmentPlan) {
+            this.developmentPlan.classList.remove('d-none');
+        }
+        
+        // Mostrar el tiempo estimado
+        if (this.timeEstimation && this.estimatedTimeElement) {
+            this.timeEstimation.classList.remove('d-none');
+            this.estimatedTimeElement.textContent = this.formatTimeEstimate(estimatedTime);
+        }
+        
+        // Guardar la hora de inicio
+        this.startTime = new Date();
+        
+        // Actualizar la UI con las tareas
+        this.updateTaskList();
+    }
+    
+    /**
+     * Actualiza la lista de tareas en la UI
+     */
+    updateTaskList() {
+        if (!this.taskChecklist) return;
+        
+        // Limpiar el contenedor
+        this.taskChecklist.innerHTML = '';
+        
+        // No hay tareas
+        if (!this.tasks || this.tasks.length === 0) {
+            this.taskChecklist.innerHTML = `
+                <li class="list-group-item text-center text-muted py-3">
+                    No hay tareas planificadas aún
+                </li>
+            `;
+            return;
+        }
+        
+        // Agregar cada tarea a la lista
+        this.tasks.forEach((task, index) => {
+            const isCompleted = task.status === 'completed';
+            const isCurrent = index === this.currentTaskIndex;
+            
+            const taskElement = document.createElement('li');
+            taskElement.className = `list-group-item task-item ${isCompleted ? 'task-completed' : ''} ${isCurrent ? 'task-current' : ''}`;
+            
+            // Crear contenido HTML de la tarea
+            taskElement.innerHTML = `
+                <div class="task-checkbox">
+                    <input type="checkbox" class="form-check-input" ${isCompleted ? 'checked' : ''} disabled>
+                </div>
+                <div class="task-content">
+                    <span class="task-title">${task.title}</span>
+                    <div class="task-description">${task.description || ''}</div>
+                    <div class="task-meta">
+                        ${task.time ? `<span class="task-time"><i data-feather="clock"></i> ${this.formatTimeEstimate(task.time)}</span>` : ''}
+                        ${task.agent ? `<span class="task-agent">${task.agent}</span>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            // Añadir a la lista
+            this.taskChecklist.appendChild(taskElement);
+        });
+        
+        // Inicializar iconos
+        feather.replace();
+    }
+    
+    /**
+     * Actualiza el estado de una tarea específica
+     */
+    updateTaskStatus(taskIndex, newStatus) {
+        if (taskIndex >= 0 && taskIndex < this.tasks.length) {
+            this.tasks[taskIndex].status = newStatus;
+            
+            // Si la tarea se completó, actualizar la tarea actual
+            if (newStatus === 'completed' && taskIndex === this.currentTaskIndex) {
+                this.currentTaskIndex++;
+                this.addNotification({
+                    title: `Tarea completada: ${this.tasks[taskIndex].title}`,
+                    message: `Se ha completado la tarea ${taskIndex + 1} de ${this.tasks.length}`,
+                    type: "success",
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            // Actualizar la lista de tareas en la UI
+            this.updateTaskList();
+        }
+    }
+    
+    /**
+     * Establece la tarea actual en ejecución
+     */
+    setCurrentTask(taskIndex) {
+        if (taskIndex >= 0 && taskIndex < this.tasks.length) {
+            this.currentTaskIndex = taskIndex;
+            
+            // Establecer estado a 'in-progress'
+            this.tasks[taskIndex].status = 'in-progress';
+            
+            // Actualizar la lista de tareas en la UI
+            this.updateTaskList();
+            
+            // Notificar el cambio de tarea
+            this.addNotification({
+                title: `Iniciando tarea: ${this.tasks[taskIndex].title}`,
+                message: `Se está trabajando en la tarea ${taskIndex + 1} de ${this.tasks.length}`,
+                type: "info",
+                timestamp: new Date().toISOString()
+            });
+            
+            // Si hay un cambio de agente, notificarlo
+            if (this.tasks[taskIndex].agent && this.tasks[taskIndex].agent !== this.currentAgent) {
+                this.currentAgent = this.tasks[taskIndex].agent;
+                this.addNotification({
+                    title: `Cambio de agente`,
+                    message: `El agente "${this.currentAgent}" está trabajando ahora en esta tarea`,
+                    type: "info",
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+    }
+    
+    /**
+     * Formatea un tiempo estimado en minutos a un formato legible
+     */
+    formatTimeEstimate(minutes) {
+        if (!minutes) return "--:--";
+        
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        
+        if (hours > 0) {
+            return `${hours}h ${mins}m`;
+        } else {
+            return `${mins}m`;
+        }
     }
     
     /**

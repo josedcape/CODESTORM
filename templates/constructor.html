@@ -83,6 +83,72 @@
                                 <textarea id="projectDescription" class="form-control" rows="5" placeholder="Ejemplo: Crea una aplicación web de lista de tareas usando React con un backend en Express. Debe permitir agregar, marcar y eliminar tareas."></textarea>
                             </div>
                             
+                            <!-- Configuración de modelos y agentes -->
+                            <div class="accordion mb-3" id="configAccordion">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingOne">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConfig" aria-expanded="false" aria-controls="collapseConfig">
+                                            <i data-feather="settings" class="me-2"></i> Configuración Avanzada
+                                        </button>
+                                    </h2>
+                                    <div id="collapseConfig" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#configAccordion">
+                                        <div class="accordion-body">
+                                            <!-- Selección de modelos -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Modelo principal:</label>
+                                                <div class="btn-group w-100" role="group">
+                                                    <input type="radio" class="btn-check" name="aiModelRadio" id="openaiRadio" value="openai" checked>
+                                                    <label class="btn btn-outline-primary" for="openaiRadio">OpenAI</label>
+                                                    
+                                                    <input type="radio" class="btn-check" name="aiModelRadio" id="anthropicRadio" value="anthropic">
+                                                    <label class="btn btn-outline-primary" for="anthropicRadio">Anthropic</label>
+                                                    
+                                                    <input type="radio" class="btn-check" name="aiModelRadio" id="geminiRadio" value="gemini">
+                                                    <label class="btn btn-outline-primary" for="geminiRadio">Gemini</label>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Configuración de agentes -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Agentes especializados:</label>
+                                                <div class="agent-selection">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="useArchitectAgent" checked>
+                                                        <label class="form-check-label" for="useArchitectAgent">Arquitecto</label>
+                                                        <small class="text-muted d-block">Diseño y estructura del proyecto</small>
+                                                    </div>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="useDeveloperAgent" checked>
+                                                        <label class="form-check-label" for="useDeveloperAgent">Desarrollador</label>
+                                                        <small class="text-muted d-block">Implementación de código</small>
+                                                    </div>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="useTestingAgent" checked>
+                                                        <label class="form-check-label" for="useTestingAgent">QA Tester</label>
+                                                        <small class="text-muted d-block">Pruebas y verificación</small>
+                                                    </div>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="useFixingAgent" checked>
+                                                        <label class="form-check-label" for="useFixingAgent">Corrector</label>
+                                                        <small class="text-muted d-block">Solución automática de errores</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Tiempo de desarrollo -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Modo de desarrollo:</label>
+                                                <select class="form-select" id="developmentSpeed">
+                                                    <option value="fast">Rápido (menos validaciones)</option>
+                                                    <option value="balanced" selected>Equilibrado</option>
+                                                    <option value="thorough">Exhaustivo (más tiempo)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <div class="d-grid gap-2">
                                 <button id="startBuildButton" class="btn btn-primary">
                                     <i data-feather="play"></i> Iniciar Construcción
@@ -107,9 +173,39 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Tiempo estimado -->
+                            <div id="timeEstimation" class="mt-2 d-none">
+                                <small class="text-muted">
+                                    <i data-feather="clock" class="feather-sm"></i>
+                                    Tiempo estimado: <span id="estimatedTime">--:--</span>
+                                </small>
+                            </div>
                         </div>
                     </div>
                     
+                    <!-- Plan de desarrollo (se mostrará cuando se inicie) -->
+                    <div id="developmentPlan" class="card mb-4 d-none">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i data-feather="clipboard" class="me-2"></i>
+                                Plan de Desarrollo
+                            </h5>
+                            <button class="btn btn-sm btn-link p-0" id="togglePlanBtn" title="Expandir/Contraer">
+                                <i data-feather="chevron-down"></i>
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <ul id="taskChecklist" class="list-group list-group-flush">
+                                <!-- Las tareas se añadirán dinámicamente aquí -->
+                                <li class="list-group-item text-center text-muted py-3">
+                                    El plan de desarrollo se generará al iniciar la construcción
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Información sobre el constructor -->
                     <div class="card mb-4">
                         <div class="card-header">
                             <h5 class="mb-0">
@@ -120,20 +216,20 @@
                         <div class="card-body">
                             <div class="welcome-features">
                                 <div class="feature">
-                                    <i data-feather="zap"></i>
-                                    <span>Construcción totalmente autónoma</span>
+                                    <i data-feather="users"></i>
+                                    <span>Agentes especializados intercambiables</span>
                                 </div>
                                 <div class="feature">
-                                    <i data-feather="refresh-cw"></i>
-                                    <span>Persistencia entre sesiones</span>
+                                    <i data-feather="check-square"></i>
+                                    <span>Plan de desarrollo detallado</span>
                                 </div>
                                 <div class="feature">
-                                    <i data-feather="pause-circle"></i>
-                                    <span>Capacidad de pausar/reanudar</span>
+                                    <i data-feather="alert-triangle"></i>
+                                    <span>Detección y corrección de errores</span>
                                 </div>
                                 <div class="feature">
-                                    <i data-feather="check-circle"></i>
-                                    <span>Aplicaciones completas y funcionales</span>
+                                    <i data-feather="clock"></i>
+                                    <span>Estimación de tiempo de desarrollo</span>
                                 </div>
                             </div>
                         </div>

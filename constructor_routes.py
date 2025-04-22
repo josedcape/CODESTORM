@@ -469,6 +469,10 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
         """Ejecuta un comando y registra el resultado."""
         workspace_path = self._get_workspace_path()
         
+        # Detectar si es un comando complejo y procesarlo de manera especial
+        if self._is_complex_command(command):
+            return self._process_complex_command(command, project, session)
+        
         # Registrar que se va a ejecutar un comando
         session.add_message('assistant', f"⚙️ Ejecutando: `{command}`")
         
@@ -521,6 +525,386 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             error_msg = f"❌ Error al ejecutar comando: {str(e)}"
             session.add_message('assistant', error_msg)
             return False
+    
+    def _is_complex_command(self, command):
+        """Detecta si el comando es un comando complejo que requiere procesamiento especial."""
+        complex_patterns = [
+            # Patrones de instalación
+            r'^npm install (.+)$', 
+            r'^pip install (.+)$',
+            r'^yarn add (.+)$',
+            r'^pnpm install (.+)$',
+            
+            # Patrones de estructura de proyecto
+            r'^mkdir -p (.+)$',
+            r'^touch (.+)$',
+            r'^create-react-app (.+)$',
+            r'^npx create-(.+)$',
+            r'^django-admin startproject (.+)$',
+            r'^django-admin startapp (.+)$',
+            r'^flask create (.+)$'
+        ]
+        
+        for pattern in complex_patterns:
+            if re.match(pattern, command):
+                return True
+        
+        # Identificar comandos específicos manejados por el constructor
+        special_commands = [
+            'create-file', 'create-folder', 'install-package', 
+            'init-project', 'setup-environment', 'clone-repo'
+        ]
+        
+        if command.split()[0] in special_commands:
+            return True
+            
+        return False
+    
+    def _process_complex_command(self, command, project, session):
+        """Procesa un comando complejo con manejo especial y retroalimentación mejorada."""
+        workspace_path = self._get_workspace_path()
+        parts = command.split()
+        cmd_type = parts[0].lower()
+        
+        # Manejar comandos de creación de archivos
+        if cmd_type == 'create-file':
+            if len(parts) < 3:
+                session.add_message('assistant', "❌ Error: El comando create-file requiere un nombre de archivo y contenido.")
+                return False
+                
+            file_path = parts[1]
+            content = ' '.join(parts[2:])
+            
+            # Extraer el contenido si viene delimitado
+            if content.startswith('"""') and content.endswith('"""'):
+                content = content[3:-3]
+            elif content.startswith("'''") and content.endswith("'''"):
+                content = content[3:-3]
+                
+            return self._create_file(file_path, content, project, session)
+            
+        # Manejar comandos de creación de directorios
+        elif cmd_type == 'create-folder':
+            if len(parts) < 2:
+                session.add_message('assistant', "❌ Error: El comando create-folder requiere un nombre de directorio.")
+                return False
+                
+            folder_path = parts[1]
+            return self._create_folder(folder_path, project, session)
+            
+        # Manejar comandos de instalación de paquetes
+        elif cmd_type == 'install-package':
+            if len(parts) < 3:
+                session.add_message('assistant', "❌ Error: El comando install-package requiere un gestor de paquetes y al menos un paquete.")
+                return False
+                
+            package_manager = parts[1]
+            packages = parts[2:]
+            return self._install_packages(package_manager, packages, project, session)
+            
+        # Manejar comandos de inicialización de proyecto
+        elif cmd_type == 'init-project':
+            if len(parts) < 3:
+                session.add_message('assistant', "❌ Error: El comando init-project requiere un tipo de proyecto y un nombre.")
+                return False
+                
+            project_type = parts[1]
+            project_name = parts[2]
+            options = parts[3:] if len(parts) > 3 else []
+            return self._init_project(project_type, project_name, options, project, session)
+            
+        # Manejar comandos de configuración de entorno
+        elif cmd_type == 'setup-environment':
+            if len(parts) < 2:
+                session.add_message('assistant', "❌ Error: El comando setup-environment requiere un tipo de entorno.")
+                return False
+                
+            env_type = parts[1]
+            options = parts[2:] if len(parts) > 2 else []
+            return self._setup_environment(env_type, options, project, session)
+            
+        # Manejar comandos de clonación de repositorios
+        elif cmd_type == 'clone-repo':
+            if len(parts) < 2:
+                session.add_message('assistant', "❌ Error: El comando clone-repo requiere una URL de repositorio.")
+                return False
+                
+            repo_url = parts[1]
+            target_dir = parts[2] if len(parts) > 2 else None
+            return self._clone_repository(repo_url, target_dir, project, session)
+            
+        # Para comandos complejos estándar, procesarlos con comportamiento extendido
+        else:
+            # Comandos npm
+            if command.startswith('npm install'):
+                packages = command.replace('npm install', '').strip()
+                return self._install_packages('npm', packages.split(), project, session)
+                
+            # Comandos pip
+            elif command.startswith('pip install'):
+                packages = command.replace('pip install', '').strip()
+                return self._install_packages('pip', packages.split(), project, session)
+                
+            # Comandos mkdir
+            elif command.startswith('mkdir -p'):
+                folder_path = command.replace('mkdir -p', '').strip()
+                return self._create_folder(folder_path, project, session)
+                
+            # Comandos touch
+            elif command.startswith('touch'):
+                file_path = command.replace('touch', '').strip()
+                return self._create_file(file_path, "", project, session)
+                
+            # Si no es un comando especial, ejecutarlo normalmente
+            else:
+                session.add_message('assistant', f"⚠️ Procesando comando complejo: `{command}`")
+                return self._execute_command_with_progress(command, project, session)
+    
+    def _execute_command_with_progress(self, command, project, session):
+        """Ejecuta un comando mostrando progreso en tiempo real."""
+        workspace_path = self._get_workspace_path()
+        
+        try:
+            session.add_message('assistant', f"⏳ Ejecutando: `{command}`")
+            
+            # Crear un proceso con comunicación bidireccional
+            process = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=workspace_path,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
+            )
+            
+            # Capturar la salida en tiempo real
+            stdout_output = []
+            stderr_output = []
+            
+            # Función para leer de un stream sin bloqueo
+            def read_stream(stream, output_list):
+                while True:
+                    line = stream.readline()
+                    if not line:
+                        break
+                    output_list.append(line)
+                    # Enviar actualización cada 5 líneas o si contiene información importante
+                    if len(output_list) % 5 == 0 or any(keyword in line for keyword in ['installing', 'created', 'success', 'done', 'finished']):
+                        session.add_message('system', f"📋 Progreso: {line.strip()}")
+            
+            # Crear hilos para leer stdout y stderr
+            stdout_thread = threading.Thread(target=read_stream, args=(process.stdout, stdout_output))
+            stderr_thread = threading.Thread(target=read_stream, args=(process.stderr, stderr_output))
+            
+            # Iniciar hilos
+            stdout_thread.start()
+            stderr_thread.start()
+            
+            # Esperar a que terminen los hilos
+            stdout_thread.join()
+            stderr_thread.join()
+            
+            # Esperar a que termine el proceso
+            status = process.wait()
+            
+            # Unir la salida
+            stdout_text = ''.join(stdout_output)
+            stderr_text = ''.join(stderr_output)
+            
+            # Enviar notificación según el resultado
+            if status == 0:
+                self._send_notification(
+                    project,
+                    session,
+                    f"Comando completado: {command.split()[0]}",
+                    f"El comando se ha ejecutado correctamente.",
+                    "success"
+                )
+                session.add_message('assistant', f"✅ Comando ejecutado exitosamente:\n```\n{stdout_text[:300]}{'...' if len(stdout_text) > 300 else ''}\n```")
+            else:
+                session.add_message('assistant', f"⚠️ El comando terminó con código {status}:\n```\n{stderr_text[:300]}{'...' if len(stderr_text) > 300 else ''}\n```")
+                
+                # Intentar solucionar el error
+                if self._analyze_and_fix_error(stderr_text, "command", project, session):
+                    return self._execute_command(command, project, session)
+            
+            # Agregar acción completada
+            action_id = project.add_pending_action('command', f"Ejecutar: {command}")
+            project.complete_action(action_id, {"stdout": stdout_text, "stderr": stderr_text, "status": status})
+            
+            return status == 0
+            
+        except Exception as e:
+            error_msg = f"❌ Error al ejecutar comando: {str(e)}"
+            session.add_message('assistant', error_msg)
+            return False
+    
+    def _create_file(self, file_path, content, project, session):
+        """Crea un archivo con el contenido especificado."""
+        workspace_path = self._get_workspace_path()
+        full_path = os.path.join(workspace_path, file_path)
+        
+        try:
+            # Asegurar que el directorio existe
+            directory = os.path.dirname(full_path)
+            if directory and not os.path.exists(directory):
+                os.makedirs(directory)
+                session.add_message('assistant', f"📁 Creado directorio: `{os.path.dirname(file_path)}`")
+                
+            # Crear archivo con el contenido
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+                
+            session.add_message('assistant', f"✅ Archivo creado: `{file_path}`")
+            self._send_notification(
+                project,
+                session,
+                "Archivo creado",
+                f"Se ha creado el archivo {file_path}",
+                "success"
+            )
+            
+            # Guardar el archivo en el proyecto
+            project.add_file(file_path, content[:200] + ('...' if len(content) > 200 else ''))
+            return True
+            
+        except Exception as e:
+            error_msg = f"❌ Error al crear archivo {file_path}: {str(e)}"
+            session.add_message('assistant', error_msg)
+            return False
+    
+    def _create_folder(self, folder_path, project, session):
+        """Crea un directorio y todos los directorios intermedios necesarios."""
+        workspace_path = self._get_workspace_path()
+        full_path = os.path.join(workspace_path, folder_path)
+        
+        try:
+            # Crear directorio recursivamente
+            os.makedirs(full_path, exist_ok=True)
+            
+            session.add_message('assistant', f"✅ Directorio creado: `{folder_path}`")
+            self._send_notification(
+                project,
+                session,
+                "Directorio creado",
+                f"Se ha creado el directorio {folder_path}",
+                "success"
+            )
+            
+            return True
+            
+        except Exception as e:
+            error_msg = f"❌ Error al crear directorio {folder_path}: {str(e)}"
+            session.add_message('assistant', error_msg)
+            return False
+    
+    def _install_packages(self, package_manager, packages, project, session):
+        """Instala paquetes utilizando el gestor de paquetes especificado."""
+        # Mapeo de comandos de instalación según el gestor de paquetes
+        install_commands = {
+            'npm': 'npm install',
+            'yarn': 'yarn add',
+            'pnpm': 'pnpm install',
+            'pip': 'pip install',
+            'pip3': 'pip3 install',
+            'pipenv': 'pipenv install',
+            'poetry': 'poetry add',
+            'gem': 'gem install',
+            'composer': 'composer require',
+            'cargo': 'cargo add',
+            'go': 'go get',
+            'apt': 'apt-get install -y',
+            'apt-get': 'apt-get install -y',
+            'apk': 'apk add'
+        }
+        
+        # Verificar si el gestor de paquetes es compatible
+        if package_manager not in install_commands:
+            session.add_message('assistant', f"❌ Gestor de paquetes no compatible: {package_manager}")
+            return False
+            
+        # Formar el comando completo
+        command = f"{install_commands[package_manager]} {' '.join(packages)}"
+        
+        # Ejecutar comando con feedback en tiempo real
+        session.add_message('assistant', f"📦 Instalando paquetes con {package_manager}: {', '.join(packages)}")
+        return self._execute_command_with_progress(command, project, session)
+    
+    def _init_project(self, project_type, project_name, options, project, session):
+        """Inicializa un nuevo proyecto utilizando plantillas o comandos específicos."""
+        # Mapeo de comandos de inicialización según el tipo de proyecto
+        init_commands = {
+            'react': f"npx create-react-app {project_name}",
+            'vue': f"npx @vue/cli create {project_name} {' '.join(options)}",
+            'angular': f"npx @angular/cli new {project_name} {' '.join(options)}",
+            'node': f"mkdir -p {project_name} && cd {project_name} && npm init -y",
+            'flask': f"mkdir -p {project_name} && cd {project_name} && touch app.py requirements.txt",
+            'django': f"django-admin startproject {project_name}",
+            'express': f"mkdir -p {project_name} && cd {project_name} && npm init -y && npm install express",
+            'nextjs': f"npx create-next-app {project_name}",
+            'gatsby': f"npx gatsby new {project_name}",
+            'laravel': f"composer create-project --prefer-dist laravel/laravel {project_name}",
+            'spring': f"mkdir -p {project_name} && cd {project_name} && ./mvnw spring-boot:create",
+            'rails': f"rails new {project_name}",
+            'electron': f"npx create-electron-app {project_name}"
+        }
+        
+        # Verificar si el tipo de proyecto es compatible
+        if project_type not in init_commands:
+            session.add_message('assistant', f"❌ Tipo de proyecto no compatible: {project_type}")
+            return False
+            
+        # Ejecutar comando de inicialización
+        command = init_commands[project_type]
+        session.add_message('assistant', f"🚀 Inicializando proyecto {project_type}: {project_name}")
+        
+        # Guardar el tipo de proyecto en los metadatos
+        project.project_type = project_type
+        
+        # Ejecutar con seguimiento del progreso
+        return self._execute_command_with_progress(command, project, session)
+    
+    def _setup_environment(self, env_type, options, project, session):
+        """Configura un entorno de desarrollo específico."""
+        # Mapeo de comandos de configuración de entorno según el tipo
+        env_commands = {
+            'node': "npm init -y && npm install nodemon --save-dev",
+            'python': "pip install virtualenv && virtualenv venv",
+            'react': "npm install eslint prettier --save-dev",
+            'vue': "npm install eslint prettier @vue/eslint-config-prettier --save-dev",
+            'typescript': "npm install typescript ts-node @types/node --save-dev && npx tsc --init",
+            'web': "npm install webpack webpack-cli webpack-dev-server html-webpack-plugin --save-dev",
+            'testing': "npm install jest @testing-library/react @testing-library/jest-dom --save-dev",
+            'docker': "touch Dockerfile docker-compose.yml .dockerignore"
+        }
+        
+        # Verificar si el tipo de entorno es compatible
+        if env_type not in env_commands:
+            session.add_message('assistant', f"❌ Tipo de entorno no compatible: {env_type}")
+            return False
+            
+        # Ejecutar comando de configuración
+        command = env_commands[env_type]
+        session.add_message('assistant', f"⚙️ Configurando entorno {env_type}")
+        
+        # Ejecutar con seguimiento del progreso
+        return self._execute_command_with_progress(command, project, session)
+    
+    def _clone_repository(self, repo_url, target_dir, project, session):
+        """Clona un repositorio Git en el directorio especificado."""
+        if not target_dir:
+            # Extraer el nombre del repositorio de la URL
+            target_dir = repo_url.split('/')[-1]
+            if target_dir.endswith('.git'):
+                target_dir = target_dir[:-4]
+                
+        # Formar el comando de clonación
+        command = f"git clone {repo_url} {target_dir}"
+        
+        session.add_message('assistant', f"📂 Clonando repositorio: {repo_url} en {target_dir}")
+        return self._execute_command_with_progress(command, project, session)
     
     def _wait_with_pause_check(self, seconds):
         """Espera un tiempo determinado, verificando si hay que pausar."""
