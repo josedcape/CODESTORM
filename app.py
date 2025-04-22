@@ -329,122 +329,18 @@ def code_corrector():
 def process_code():
     """Process code for corrections and improvements."""
     try:
-        data = request.json
-        code = data.get('code', '')
-        file_path = data.get('file_path', '')
-        instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
+        # Importar la función mejorada de process_code
+        from code_processor import process_code_improved
         
-        if not code:
-            return jsonify({'error': 'No se proporcionó código para procesar'}), 400
-            
-        # Detectar el lenguaje por la extensión del archivo
-        language = 'unknown'
-        if file_path:
-            ext = file_path.split('.')[-1].lower() if '.' in file_path else ''
-            if ext in ['py', 'pyw']:
-                language = 'python'
-            elif ext in ['js', 'ts', 'jsx', 'tsx']:
-                language = 'javascript'
-            elif ext in ['html', 'htm']:
-                language = 'html'
-            elif ext in ['css', 'scss', 'sass']:
-                language = 'css'
-            elif ext in ['json']:
-                language = 'json'
+        # Obtener la respuesta usando la función mejorada
+        result = process_code_improved(request.json)
         
-        # Preparar el prompt para el modelo
-        prompt = f"""Eres un experto corrector de código en {language}. 
+        # Verificar si el resultado es una tupla (respuesta, código de estado)
+        if isinstance(result, tuple):
+            return result
         
-        Analiza el siguiente código y realiza correcciones y mejoras siguiendo estas instrucciones:
-        {instructions}
-        
-        Código original:
-        ```
-        {code}
-        ```
-        
-        Por favor, proporciona:
-        1. El código corregido
-        2. Un resumen de los cambios realizados (máximo 5 puntos)
-        3. Una explicación detallada de las correcciones y mejoras
-
-        Formato de respuesta:
-        {{"corrected_code": "código corregido aquí", 
-          "summary": ["punto 1", "punto 2", ...], 
-          "explanation": "explicación detallada aquí"}}
-        """
-        
-        # Utilizar el modelo seleccionado predeterminado (OpenAI)
-        response = {}
-        model_choice = data.get('model', 'openai')
-
-        if model_choice == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
-            # Usar Anthropic Claude
-            client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
-            completion = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=4000,
-                temperature=0.2,
-                system="Eres un experto en programación y tu tarea es corregir y mejorar código. Responde siempre en JSON.",
-                messages=[{"role": "user", "content": prompt}]
-            )
-            try:
-                response = json.loads(completion.content[0].text)
-            except (json.JSONDecodeError, IndexError):
-                # Si no podemos analizar JSON, devolver el texto completo
-                response = {
-                    "corrected_code": code,  # Mantener el código original
-                    "summary": ["No se pudieron procesar las correcciones"],
-                    "explanation": completion.content[0].text if completion.content else "No se pudo generar explicación"
-                }
-                
-        elif model_choice == 'gemini' and os.environ.get('GEMINI_API_KEY'):
-            # Usar Google Gemini
-            genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-            model = genai.GenerativeModel('gemini-1.5-pro')
-            gemini_response = model.generate_content(prompt)
-            
-            try:
-                response = json.loads(gemini_response.text)
-            except json.JSONDecodeError:
-                # Intentar extraer JSON si está en un formato no estándar
-                response = {
-                    "corrected_code": code,  # Mantener el código original
-                    "summary": ["No se pudieron procesar las correcciones"],
-                    "explanation": gemini_response.text
-                }
-                
-        else:
-            # Usar OpenAI como valor predeterminado
-            openai_client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-            completion = openai_client.chat.completions.create(
-                model="gpt-4o", # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-                response_format={"type": "json_object"},
-                temperature=0.2,
-                messages=[
-                    {"role": "system", "content": "Eres un experto en programación y tu tarea es corregir y mejorar código. Responde siempre en JSON."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
-            try:
-                response = json.loads(completion.choices[0].message.content)
-            except json.JSONDecodeError:
-                response = {
-                    "corrected_code": code,  # Mantener el código original
-                    "summary": ["No se pudieron procesar las correcciones"],
-                    "explanation": completion.choices[0].message.content
-                }
-        
-        # Asegurar que todos los campos necesarios estén presentes
-        if 'corrected_code' not in response:
-            response['corrected_code'] = code
-        if 'summary' not in response:
-            response['summary'] = ["No se generó resumen de cambios"]
-        if 'explanation' not in response:
-            response['explanation'] = "No se generó explicación detallada"
-        
-        return jsonify(response)
+        # Si es un diccionario, convertirlo a JSON
+        return jsonify(result)
         
     except Exception as e:
         logging.error(f"Error processing code: {str(e)}")
