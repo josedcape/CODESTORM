@@ -530,9 +530,9 @@ def explorer_delete_file_simple():
         logging.error(f"Error en delete_file: {str(e)}")
         return redirect('/explorer_simple?error=Error+interno')
 
-@app.route('/explorer')
-def new_files():
-    """File explorer view with new ultra-minimal UI."""
+@app.route('/files_ultra')
+def files_ultra_simple():
+    """Vista ultra simple del explorador de archivos."""
     try:
         user_id = session.get('user_id', 'default')
         workspace_path = get_user_workspace(user_id)
@@ -550,37 +550,148 @@ def new_files():
         if not os.path.exists(target_path):
             os.makedirs(target_path, exist_ok=True)
         
+        # Obtener mensaje de error si existe
+        error = request.args.get('error', None)
+        
         # Listar archivos y directorios
         if os.path.isdir(target_path):
             items = []
-            for item in os.listdir(target_path):
-                item_path = os.path.join(target_path, item)
-                relative_path = os.path.join(current_path, item) if current_path != '.' else item
-                items.append({
-                    'name': item,
-                    'path': relative_path,
-                    'type': 'directory' if os.path.isdir(item_path) else 'file'
-                })
+            try:
+                for item in os.listdir(target_path):
+                    item_path = os.path.join(target_path, item)
+                    relative_path = os.path.join(current_path, item) if current_path != '.' else item
+                    items.append({
+                        'name': item,
+                        'path': relative_path,
+                        'type': 'directory' if os.path.isdir(item_path) else 'file'
+                    })
+                
+                # Ordenar: carpetas primero, luego archivos
+                items.sort(key=lambda x: (0 if x['type'] == 'directory' else 1, x['name']))
+            except Exception as e:
+                logging.error(f"Error al listar archivos en {target_path}: {str(e)}")
+                error = f"Error al leer directorio: {str(e)}"
             
-            # Ordenar: carpetas primero, luego archivos
-            items.sort(key=lambda x: (0 if x['type'] == 'directory' else 1, x['name']))
-            
-            return render_template('explorer_minimal.html', 
+            return render_template('files_ultra_simple.html', 
                                   items=items, 
                                   current_path=current_path,
-                                  error=None)
+                                  error=error)
         else:
-            return render_template('explorer_minimal.html', 
+            return render_template('files_ultra_simple.html', 
                                   items=[], 
                                   current_path=current_path, 
                                   error=f"La ruta {current_path} no es un directorio válido")
             
     except Exception as e:
         logging.error(f"Error al listar archivos: {str(e)}")
-        return render_template('explorer_minimal.html', 
+        return render_template('files_ultra_simple.html', 
                               items=[], 
                               current_path='.', 
                               error=f"Error al listar archivos: {str(e)}")
+
+@app.route('/files_ultra/create_file', methods=['POST'])
+def files_ultra_create_file():
+    """Crea un archivo (vista ultra simple)."""
+    try:
+        current_path = request.form.get('current_path', '.')
+        file_name = request.form.get('file_name', '')
+        file_content = request.form.get('file_content', '')
+        
+        if not file_name:
+            return redirect(url_for('files_ultra_simple', path=current_path, error='Nombre de archivo requerido'))
+        
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Construir ruta del archivo
+        if current_path == '.':
+            file_path = file_name
+        else:
+            file_path = os.path.join(current_path, file_name)
+        file_path = file_path.replace('..', '')
+        target_file = os.path.join(workspace_path, file_path)
+        
+        # Crear directorio contenedor si no existe
+        dir_name = os.path.dirname(target_file)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
+        
+        # Escribir archivo
+        with open(target_file, 'w', encoding='utf-8') as f:
+            f.write(file_content)
+        
+        return redirect(url_for('files_ultra_simple', path=current_path))
+    except Exception as e:
+        logging.error(f"Error al crear archivo: {str(e)}")
+        return redirect(url_for('files_ultra_simple', error=f'Error al crear archivo: {str(e)}'))
+
+@app.route('/files_ultra/create_folder', methods=['POST'])
+def files_ultra_create_folder():
+    """Crea una carpeta (vista ultra simple)."""
+    try:
+        current_path = request.form.get('current_path', '.')
+        folder_name = request.form.get('folder_name', '')
+        
+        if not folder_name:
+            return redirect(url_for('files_ultra_simple', path=current_path, error='Nombre de carpeta requerido'))
+        
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Construir ruta de la carpeta
+        if current_path == '.':
+            folder_path = folder_name
+        else:
+            folder_path = os.path.join(current_path, folder_name)
+        folder_path = folder_path.replace('..', '')
+        target_folder = os.path.join(workspace_path, folder_path)
+        
+        # Crear carpeta
+        os.makedirs(target_folder, exist_ok=True)
+        
+        return redirect(url_for('files_ultra_simple', path=current_path))
+    except Exception as e:
+        logging.error(f"Error al crear carpeta: {str(e)}")
+        return redirect(url_for('files_ultra_simple', error=f'Error al crear carpeta: {str(e)}'))
+
+@app.route('/files_ultra/delete', methods=['POST'])
+def files_ultra_delete():
+    """Elimina un archivo o carpeta (vista ultra simple)."""
+    try:
+        path = request.form.get('path', '')
+        
+        if not path:
+            return redirect(url_for('files_ultra_simple', error='Ruta no especificada'))
+        
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Sanitizar ruta
+        path = path.replace('..', '')
+        
+        # Calcular directorio padre
+        parent_dir = os.path.dirname(path) if path != '.' else '.'
+        
+        # Ruta completa
+        target_path = os.path.join(workspace_path, path)
+        
+        # Verificar que existe
+        if not os.path.exists(target_path):
+            return redirect(url_for('files_ultra_simple', path=parent_dir, error='El elemento no existe'))
+        
+        # Eliminar
+        try:
+            if os.path.isdir(target_path):
+                shutil.rmtree(target_path)
+            else:
+                os.remove(target_path)
+        except Exception as e:
+            return redirect(url_for('files_ultra_simple', path=parent_dir, error=f'Error al eliminar: {str(e)}'))
+        
+        return redirect(url_for('files_ultra_simple', path=parent_dir))
+    except Exception as e:
+        logging.error(f"Error al eliminar: {str(e)}")
+        return redirect(url_for('files_ultra_simple', error=f'Error interno: {str(e)}'))
     
 @app.route('/edit_file')
 def edit_file():
