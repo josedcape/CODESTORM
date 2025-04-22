@@ -327,55 +327,38 @@ def code_corrector():
     
 @app.route('/api/process_code', methods=['POST'])
 def process_code():
-    """Process code for corrections and improvements."""
+    """Process code for corrections and improvements. Versión ultra simplificada."""
     try:
         logging.info("Recibiendo petición de corrección de código")
         
         # Extraer información para depuración
         data = request.json
-        code_lines = len(data.get('code', '').split('\n'))
-        model = data.get('model', 'openai')
+        code = data.get('code', '')
+        instructions = data.get('instructions', 'Mejora este código')
         language = data.get('language', 'unknown')
         
-        # Si el modelo es Anthropic pero sabemos que hay problemas con su API key,
-        # cambiar automáticamente a OpenAI
-        if model == 'anthropic':
-            # Verificar si Anthropic está teniendo problemas (error 401 en los logs)
-            anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
-            try:
-                # Intentar una llamada simple para verificar si funciona
-                from anthropic import Anthropic
-                client = Anthropic(api_key=anthropic_api_key)
-                # No hacemos una llamada real porque esto podría costar dinero
-                # Simplemente asumimos que si no hay errores al crear el cliente, podría funcionar
-                
-                # Dejamos que el proceso continúe con Anthropic
-                logging.info(f"Procesando {code_lines} líneas de código en {language} usando modelo {model}")
-            except Exception as e:
-                # Si hay un error, cambiar a OpenAI
-                original_model = model
-                model = 'openai'
-                data['model'] = 'openai'
-                logging.warning(f"Cambiando modelo de {original_model} a {model} debido a error: {str(e)}")
-                logging.info(f"Procesando {code_lines} líneas de código en {language} usando modelo {model} (cambiado de {original_model})")
-        else:
-            logging.info(f"Procesando {code_lines} líneas de código en {language} usando modelo {model}")
+        if not code:
+            logging.warning("No se proporcionó código para procesar")
+            return jsonify({
+                'error': 'No se proporcionó código para procesar',
+                'status': 'error'
+            }), 400
         
-        # Importar la función mejorada de process_code desde el nuevo módulo
-        from code_processor_new import process_code_improved
-        logging.info("Módulo code_processor_new importado correctamente")
+        logging.info(f"Procesando código en {language}")
         
-        # Obtener la respuesta usando la función mejorada
-        result = process_code_improved(data)
+        # Usar nuestro corrector simplificado
+        from simple_code_corrector import correct_code
+        
+        corrected_code = correct_code(code, language, instructions)
+        
+        # Crear un formato de respuesta similar al anterior para mantener compatibilidad con la interfaz
+        result = {
+            "corrected_code": corrected_code,
+            "summary": ["Código mejorado según tus instrucciones"],
+            "explanation": "El código ha sido mejorado siguiendo las instrucciones proporcionadas."
+        }
+        
         logging.info("Código procesado correctamente")
-        
-        # Verificar si el resultado es una tupla (respuesta, código de estado)
-        if isinstance(result, tuple):
-            logging.info(f"Devolviendo respuesta con código de estado {result[1]}")
-            return result
-        
-        # Si es un diccionario, convertirlo a JSON
-        logging.info("Devolviendo respuesta JSON")
         return jsonify(result)
         
     except ImportError as e:
