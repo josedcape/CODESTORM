@@ -304,15 +304,38 @@ class AutonomousBuilder:
             with self.lock:
                 project.project_type = project_type
                 project.tech_stack = tech_stack
+                project.requires_approval = True  # Marcar que el proyecto requiere aprobación
                 db.commit()
             
-            # Informar al usuario sobre el análisis
+            # Generar estructura del proyecto
+            file_structure = self._plan_project_structure(project_type, tech_stack)
+            total_files = self._count_files(file_structure)
+            
+            # Generar una lista de tareas para la construcción
+            dev_tasks = self._generate_development_tasks(project_type, tech_stack)
+            
+            # Informar al usuario sobre el análisis y esperar confirmación
             analysis_response = self._generate_analysis_response(project_type, tech_stack)
             session.add_message('assistant', analysis_response)
+            
+            # Mostrar el plan de desarrollo detallado
+            plan = self._generate_development_plan(project_type, tech_stack, file_structure, dev_tasks)
+            
+            # Enviar el plan de desarrollo como un mensaje separado
+            session.add_message('assistant', f"""## 📝 Plan de Desarrollo Detallado
+
+{plan}
+
+**Instrucciones adicionales:**
+- Este es el plan inicial generado a partir de tu descripción
+- Para iniciar la construcción automática, responde "Iniciar construcción"
+- Para ajustar algún aspecto del plan, indícame qué cambios necesitas
+
+¿Deseas proceder con este plan o necesitas algún ajuste antes de comenzar?""")
             db.commit()
             
             # Esperar confirmación (en un entorno real)
-            self.update_project(project, 'active', 'planning', 10, 'Planificando estructura del proyecto')
+            self.update_project(project, 'pending_approval', 'planning', 10, 'Esperando aprobación del plan de desarrollo')
             
             # Simular planificación
             self._wait_with_pause_check(3)
@@ -473,11 +496,12 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
     def _send_notification(self, project, session, title, message, notification_type="info"):
         """
         Envía una notificación para informar sobre el progreso.
-        Los tipos pueden ser: "info", "success", "warning", "error"
+        Los tipos pueden ser: "info", "success", "warning", "error", "progress"
         """
-        # Solo enviar notificaciones si ha pasado suficiente tiempo desde la última
+        # Solo enviar notificaciones si ha pasado suficiente tiempo desde la última,
+        # excepto para notificaciones de tipo progress que siempre se envían
         current_time = time.time()
-        if current_time - self.last_notification_time < self.notification_interval:
+        if notification_type != "progress" and current_time - self.last_notification_time < self.notification_interval:
             return
         
         self.last_notification_time = current_time
@@ -500,7 +524,8 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             "info": "ℹ️",
             "success": "✅",
             "warning": "⚠️",
-            "error": "❌"
+            "error": "❌",
+            "progress": "🔄"
         }
         
         icon = icon_map.get(notification_type, "ℹ️")
@@ -510,8 +535,8 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
         # En su lugar, este mensaje se mostrará en una sección especial de notificaciones
         logger.info(f"Notificación enviada: {title} - {message}")
         
-        # Para notificaciones críticas, añadirlas al chat
-        if notification_type in ["error", "success"]:
+        # Para notificaciones críticas o de progreso, añadirlas al chat
+        if notification_type in ["error", "success", "progress"]:
             session.add_message('system', notification_message)
     
     def _analyze_and_fix_error(self, error_text, file_path, project, session):
@@ -945,11 +970,26 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
                 os.makedirs(directory)
                 session.add_message('assistant', f"📁 Creado directorio: `{os.path.dirname(file_path)}`")
                 
+                # Enviar notificación de progreso sobre creación de directorio
+                if not directory.startswith('.') and directory not in ['.', '..']:
+                    self._send_notification(
+                        project,
+                        session,
+                        "Progreso de construcción",
+                        f"Se ha creado el directorio `{os.path.dirname(file_path)}` para organizar los archivos del proyecto",
+                        "progress"
+                    )
+                
             # Crear archivo con el contenido
             with open(full_path, 'w', encoding='utf-8') as f:
                 f.write(content)
                 
             session.add_message('assistant', f"✅ Archivo creado: `{file_path}`")
+            
+            # Determinar si es un archivo importante para mostrar información detallada
+            important_extensions = ['.py', '.js', '.jsx', '.html', '.vue', '.php', '.css', '.ts', '.tsx', '.json']
+            is_important = any(file_path.endswith(ext) for ext in important_extensions)
+            
             self._send_notification(
                 project,
                 session,
@@ -957,6 +997,21 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
                 f"Se ha creado el archivo {file_path}",
                 "success"
             )
+            
+            # Para archivos importantes, enviar informe detallado de progreso
+            if is_important:
+                # Determinar tipo y propósito del archivo
+                file_type = self._get_file_type_description(file_path)
+                file_purpose = self._get_file_purpose_description(file_path)
+                
+                self._send_notification(
+                    project,
+                    session,
+                    "Progreso de construcción",
+                    f"Se ha implementado un {file_type}: `{file_path}`\n\n" +
+                    f"Este archivo {file_purpose}.",
+                    "progress"
+                )
             
             # Guardar el archivo en el proyecto
             project.add_file(file_path, content[:200] + ('...' if len(content) > 200 else ''))
@@ -966,6 +1021,82 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             error_msg = f"❌ Error al crear archivo {file_path}: {str(e)}"
             session.add_message('assistant', error_msg)
             return False
+            
+    def _get_file_type_description(self, file_path):
+        """Obtiene una descripción del tipo de archivo basada en su extensión y nombre."""
+        file_name = os.path.basename(file_path)
+        extension = os.path.splitext(file_path)[1].lower()
+        
+        # Mapeo de extensiones a descripciones
+        type_map = {
+            '.py': "archivo Python",
+            '.js': "archivo JavaScript",
+            '.jsx': "componente React",
+            '.tsx': "componente React TypeScript",
+            '.ts': "archivo TypeScript",
+            '.html': "plantilla HTML",
+            '.css': "archivo de estilos CSS",
+            '.scss': "archivo de estilos SCSS",
+            '.vue': "componente Vue",
+            '.json': "archivo de configuración JSON",
+            '.md': "documento Markdown",
+            '.sql': "script SQL",
+            '.env': "archivo de variables de entorno"
+        }
+        
+        # Manejo especial para nombres de archivos específicos
+        special_files = {
+            'package.json': "configuración de paquetes npm",
+            'tsconfig.json': "configuración de TypeScript",
+            'requirements.txt': "lista de dependencias Python",
+            'README.md': "documentación del proyecto",
+            'Dockerfile': "configuración de Docker",
+            'docker-compose.yml': "configuración de Docker Compose",
+            '.gitignore': "configuración de Git"
+        }
+        
+        if file_name in special_files:
+            return special_files[file_name]
+        elif extension in type_map:
+            return type_map[extension]
+        else:
+            return "archivo"
+            
+    def _get_file_purpose_description(self, file_path):
+        """Genera una descripción del propósito del archivo basada en su ubicación y nombre."""
+        file_name = os.path.basename(file_path)
+        
+        # Identificar propósitos según la estructura del proyecto
+        if '/components/' in file_path:
+            return "contiene un componente UI reutilizable para la interfaz de usuario"
+        elif '/pages/' in file_path:
+            return "implementa una página o vista principal de la aplicación"
+        elif '/models/' in file_path:
+            return "define la estructura de datos y modelos del proyecto"
+        elif '/routes/' in file_path or '/controllers/' in file_path:
+            return "maneja la lógica de las rutas y controladores de la aplicación"
+        elif '/utils/' in file_path or '/helpers/' in file_path:
+            return "implementa funciones auxiliares y utilidades"
+        elif '/middleware/' in file_path:
+            return "provee funciones de middleware para procesar solicitudes"
+        elif '/config/' in file_path:
+            return "contiene configuraciones para la aplicación"
+        elif '/static/' in file_path or '/public/' in file_path:
+            return "proporciona recursos estáticos para la aplicación"
+        elif '/templates/' in file_path:
+            return "define plantillas para la generación de vistas"
+        elif '/tests/' in file_path:
+            return "implementa pruebas automatizadas"
+        elif '/src/' in file_path:
+            return "forma parte del código fuente principal"
+        elif file_name == 'app.py' or file_name == 'main.py':
+            return "es el punto de entrada principal de la aplicación"
+        elif file_name.startswith('index.'):
+            return "sirve como punto de entrada para un módulo o vista"
+        elif 'config' in file_name.lower():
+            return "establece la configuración y parámetros del proyecto"
+        else:
+            return "es parte de la estructura base del proyecto"
     
     def _create_folder(self, folder_path, project, session):
         """Crea un directorio y todos los directorios intermedios necesarios."""
@@ -1258,7 +1389,10 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
         project_types = {
             'web': 'aplicación web',
             'api': 'API REST',
-            'mobile': 'aplicación móvil web'
+            'mobile': 'aplicación móvil web',
+            'frontend': 'aplicación frontend',
+            'backend': 'aplicación backend',
+            'fullstack': 'aplicación fullstack'
         }
         
         frameworks = {
@@ -1268,13 +1402,21 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             'next.js': 'Next.js',
             'flask': 'Flask',
             'django': 'Django',
-            'express': 'Express.js'
+            'express': 'Express.js',
+            'fastapi': 'FastAPI',
+            'laravel': 'Laravel',
+            'spring': 'Spring Boot'
         }
         
         languages = {
             'javascript': 'JavaScript',
             'python': 'Python',
-            'typescript': 'TypeScript'
+            'typescript': 'TypeScript',
+            'php': 'PHP',
+            'java': 'Java',
+            'go': 'Go',
+            'ruby': 'Ruby',
+            'csharp': 'C#'
         }
         
         databases = {
@@ -1282,6 +1424,9 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             'mysql': 'MySQL',
             'mongodb': 'MongoDB',
             'sqlite': 'SQLite',
+            'redis': 'Redis',
+            'firebase': 'Firebase',
+            'dynamodb': 'DynamoDB',
             None: 'sin base de datos'
         }
         
@@ -1295,16 +1440,163 @@ Basado en tu descripción, he determinado que estás buscando construir una **{p
 - **Framework:** {frameworks.get(tech_stack.get('framework'), tech_stack.get('framework'))}
 - **Base de Datos:** {databases.get(tech_stack.get('database'), 'No especificada')}
 
-## Plan de acción:
-1. Diseñaré la estructura del proyecto
-2. Implementaré los archivos base y configuración
-3. Instalaré las dependencias necesarias
-4. Configuraré la estructura de la aplicación
-5. Implementaré las funcionalidades básicas
-
-¿Estás de acuerdo con este análisis? ¿Quieres que realice algún ajuste en las tecnologías seleccionadas?
+A continuación te presentaré un plan detallado de desarrollo para que puedas revisarlo antes de iniciar la construcción automática.
 """
         return response
+    
+    def _generate_development_tasks(self, project_type, tech_stack):
+        """Genera una lista de tareas para la construcción del proyecto."""
+        tasks = []
+        
+        # Tareas comunes para todos los proyectos
+        tasks.append({
+            "id": "setup",
+            "title": "Configuración del entorno",
+            "description": "Preparar el entorno de desarrollo y estructura base",
+            "estimated_time": "5-10 minutos",
+            "subtasks": [
+                "Crear estructura de directorios",
+                "Configurar archivos base",
+                "Inicializar el proyecto"
+            ]
+        })
+        
+        tasks.append({
+            "id": "dependencies",
+            "title": "Instalación de dependencias",
+            "description": "Instalar y configurar las bibliotecas necesarias",
+            "estimated_time": "5-15 minutos",
+            "subtasks": [
+                "Instalar dependencias core",
+                "Configurar sistema de paquetes",
+                "Validar instalación"
+            ]
+        })
+        
+        # Tareas específicas según el tipo de proyecto
+        if project_type in ["web", "frontend", "fullstack"]:
+            tasks.append({
+                "id": "ui_components",
+                "title": "Implementación de componentes UI",
+                "description": "Crear componentes visuales reutilizables",
+                "estimated_time": "10-20 minutos",
+                "subtasks": [
+                    "Diseñar componentes base",
+                    "Implementar sistema de navegación",
+                    "Crear estilos y temas"
+                ]
+            })
+            
+        if tech_stack.get('database'):
+            tasks.append({
+                "id": "database",
+                "title": "Configuración de base de datos",
+                "description": "Implementar modelos y conexión a base de datos",
+                "estimated_time": "10-15 minutos",
+                "subtasks": [
+                    "Definir modelos/esquemas",
+                    "Configurar conexión a BD",
+                    "Implementar operaciones CRUD"
+                ]
+            })
+            
+        if project_type in ["api", "backend", "fullstack"]:
+            tasks.append({
+                "id": "endpoints",
+                "title": "Implementación de endpoints",
+                "description": "Crear rutas y controladores para la API",
+                "estimated_time": "15-25 minutos",
+                "subtasks": [
+                    "Definir estructura de rutas",
+                    "Implementar controladores",
+                    "Añadir validación y manejo de errores"
+                ]
+            })
+            
+        # Tarea final de pruebas
+        tasks.append({
+            "id": "testing",
+            "title": "Pruebas y validación",
+            "description": "Verificar el funcionamiento correcto de la aplicación",
+            "estimated_time": "5-10 minutos",
+            "subtasks": [
+                "Probar funcionalidad básica",
+                "Validar integración de componentes",
+                "Verificar requisitos cumplidos"
+            ]
+        })
+        
+        return tasks
+        
+    def _generate_development_plan(self, project_type, tech_stack, file_structure, tasks):
+        """Genera un plan de desarrollo detallado para mostrar al usuario."""
+        # Estimar número de archivos
+        total_files = self._count_files(file_structure)
+        
+        # Calcular tiempo estimado total
+        # Basado en las tareas y sus estimaciones
+        min_time = 0
+        max_time = 0
+        for task in tasks:
+            times = task.get("estimated_time", "5-10 minutos").replace("minutos", "").strip().split("-")
+            min_time += int(times[0])
+            max_time += int(times[1]) if len(times) > 1 else int(times[0])
+        
+        # Generar lista de archivos importantes
+        important_files = []
+        flat_files = self._flatten_file_structure(file_structure)
+        for file_info in flat_files[:10]:  # Mostrar solo los 10 primeros
+            file_path = file_info['path']
+            if any(file_path.endswith(ext) for ext in ['.py', '.js', '.jsx', '.ts', '.tsx', '.html', '.css']):
+                important_files.append(f"- `{file_path}`")
+        
+        # Si hay más archivos, indicarlo
+        if len(flat_files) > 10:
+            important_files.append(f"- ... y {len(flat_files) - 10} archivos más")
+        
+        # Frameworks y bibliotecas a utilizar
+        frameworks = []
+        if tech_stack.get('framework'):
+            frameworks.append(tech_stack.get('framework'))
+        if tech_stack.get('frontend'):
+            frameworks.append(tech_stack.get('frontend'))
+        
+        # Bibliotecas según el tipo de proyecto
+        libraries = []
+        if project_type in ["web", "frontend", "fullstack"]:
+            if "react" in str(frameworks).lower():
+                libraries.extend(["react-router-dom", "styled-components"])
+            elif "vue" in str(frameworks).lower():
+                libraries.extend(["vue-router", "vuex"])
+            libraries.append("axios")
+        
+        if project_type in ["api", "backend", "fullstack"]:
+            if "flask" in str(frameworks).lower():
+                libraries.extend(["flask-sqlalchemy", "flask-cors"])
+            elif "express" in str(frameworks).lower():
+                libraries.extend(["mongoose", "cors", "body-parser"])
+            elif "django" in str(frameworks).lower():
+                libraries.extend(["djangorestframework", "django-cors-headers"])
+        
+        # Generar el plan
+        plan = f"""### Detalles del proyecto
+- **Tipo de aplicación:** {project_type.title()}
+- **Lenguaje principal:** {tech_stack.get('language', 'No especificado')}
+- **Framework:** {tech_stack.get('framework', 'No especificado')}
+- **Total de archivos a generar:** {total_files}
+- **Tiempo estimado:** {min_time}-{max_time} minutos
+
+### Estructura de archivos principales
+{chr(10).join(important_files) if important_files else "- No se han definido archivos específicos todavía"}
+
+### Frameworks y bibliotecas
+- Frameworks: {', '.join(frameworks) if frameworks else 'No especificados'}
+- Bibliotecas principales: {', '.join(libraries) if libraries else 'No especificadas'}
+
+### Tareas de desarrollo
+{chr(10).join([f"#### {i+1}. {task['title']}{chr(10)}- {task['description']}{chr(10)}- Tiempo estimado: {task['estimated_time']}{chr(10)}- Subtareas: {', '.join(task['subtasks'])}" for i, task in enumerate(tasks)])}
+"""
+        return plan
     
     def _switch_agent(self, db, agent_id):
         """
