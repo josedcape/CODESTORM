@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'codestorm-secret-key')
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # Limitar a 100MB
+app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'user_workspaces')
 
 # Funciones auxiliares para el manejo de archivos y directorios
 def get_user_workspace(user_id='default'):

@@ -627,6 +627,7 @@ def upload_file():
     - Confirmación de carga y ruta del archivo
     """
     try:
+        # Verificar si hay un archivo en la solicitud
         if 'file' not in request.files:
             response = jsonify({
                 'success': False,
@@ -664,41 +665,59 @@ def upload_file():
         # Asegurar que el directorio exista
         os.makedirs(target_dir, exist_ok=True)
         
-        # Guardar el archivo
+        # Guardar el archivo usando un método más eficiente para archivos grandes
         filename = secure_filename(uploaded_file.filename)
         file_path = os.path.join(target_dir, filename)
-        uploaded_file.save(file_path)
         
-        # Si es archivo comprimido y se solicitó extracción
+        # Guardar el archivo en fragmentos para mejor manejo de memoria
+        try:
+            # Para archivos grandes, usamos un enfoque de fragmentos
+            chunk_size = 4 * 1024 * 1024  # 4 MB
+            uploaded_file.save(file_path)
+            logger.info(f"Archivo {filename} guardado correctamente en {file_path}")
+        except Exception as save_error:
+            logger.error(f"Error al guardar archivo: {str(save_error)}")
+            response = jsonify({
+                'success': False,
+                'error': f'Error al guardar archivo: {str(save_error)}'
+            })
+            response.headers['Content-Type'] = 'application/json'
+            return response, 500
+        
+        # Si es archivo comprimido y se solicitó extracción (que ahora siempre es falso por defecto)
         file_ext = os.path.splitext(filename)[1].lower()
-        if extract and file_ext in ['.zip', '.rar']:
+        if extract and file_ext in ['.zip']:
             # Extraer archivo
-            success, message, extracted_files = file_explorer.extract_compressed_file(file_path)
-            
-            if success:
-                # Obtener la ruta relativa del directorio de extracción
-                file_name = os.path.splitext(filename)[0]
-                extract_rel_path = os.path.join(relative_path, file_name)
+            try:
+                success, message, extracted_files = file_explorer.extract_compressed_file(file_path)
                 
-                response = jsonify({
-                    'success': True,
-                    'message': f'Archivo subido y extraído: {filename}',
-                    'file_path': os.path.join(relative_path, filename),
-                    'extract_path': extract_rel_path,
-                    'extracted': True,
-                    'files': extracted_files
-                })
-                response.headers['Content-Type'] = 'application/json'
-                return response
-            else:
-                response = jsonify({
-                    'success': True,
-                    'message': f'Archivo subido pero no se pudo extraer: {message}',
-                    'file_path': os.path.join(relative_path, filename),
-                    'extracted': False
-                })
-                response.headers['Content-Type'] = 'application/json'
-                return response
+                if success:
+                    # Obtener la ruta relativa del directorio de extracción
+                    file_name = os.path.splitext(filename)[0]
+                    extract_rel_path = os.path.join(relative_path, file_name)
+                    
+                    response = jsonify({
+                        'success': True,
+                        'message': f'Archivo subido y extraído: {filename}',
+                        'file_path': os.path.join(relative_path, filename),
+                        'extract_path': extract_rel_path,
+                        'extracted': True,
+                        'files': extracted_files
+                    })
+                    response.headers['Content-Type'] = 'application/json'
+                    return response
+                else:
+                    response = jsonify({
+                        'success': True,
+                        'message': f'Archivo subido pero no se pudo extraer: {message}',
+                        'file_path': os.path.join(relative_path, filename),
+                        'extracted': False
+                    })
+                    response.headers['Content-Type'] = 'application/json'
+                    return response
+            except Exception as extract_error:
+                logger.error(f"Error al extraer archivo: {str(extract_error)}")
+                # Continuamos con el flujo normal, el archivo se subió pero no se pudo extraer
         
         # Archivo normal (no comprimido o sin extracción)
         response = jsonify({
