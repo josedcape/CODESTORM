@@ -478,7 +478,7 @@ def extract_compressed():
         file_path = os.path.join(workspace_path, relative_path)
         
         # Si se especificó un directorio de extracción, construirlo
-        extract_dir = ""
+        extract_dir = None
         if relative_extract_dir:
             extract_dir = os.path.join(workspace_path, relative_extract_dir)
             
@@ -492,7 +492,7 @@ def extract_compressed():
             return response, 403
         
         # Extraer archivo comprimido
-        success, message, extracted_files = file_explorer.extract_compressed_file(file_path, extract_dir if extract_dir else None)
+        success, message, extracted_files = file_explorer.extract_compressed_file(file_path, extract_dir)
         
         if success:
             # Obtener la ruta relativa del directorio de extracción

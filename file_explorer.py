@@ -314,7 +314,7 @@ def analyze_project_structure(workspace_path: str, max_depth: int = 3) -> Dict:
         }
         
         
-def extract_compressed_file(file_path: str, extract_dir: str = None) -> Tuple[bool, str, List[Dict]]:
+def extract_compressed_file(file_path: str, extract_dir: Optional[str] = None) -> Tuple[bool, str, List[Dict]]:
     """
     Extrae el contenido de un archivo ZIP a un directorio.
     
