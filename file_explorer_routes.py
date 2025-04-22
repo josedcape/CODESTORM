@@ -669,18 +669,10 @@ def upload_file():
         filename = secure_filename(uploaded_file.filename)
         file_path = os.path.join(target_dir, filename)
         
-        # Guardar el archivo en fragmentos para mejor manejo de memoria
+        # Guardar el archivo para mejor manejo de memoria
         try:
-            # Para archivos grandes, usamos un enfoque de fragmentos
-            chunk_size = 4 * 1024 * 1024  # 4 MB
-            with open(file_path, 'wb') as f:
-                # Leer y escribir en fragmentos
-                while True:
-                    chunk = uploaded_file.read(chunk_size)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-            
+            # Usar el método save proporcionado por werkzeug, que maneja internamente los archivos grandes
+            uploaded_file.save(file_path)
             logger.info(f"Archivo {filename} guardado correctamente en {file_path}")
         except Exception as save_error:
             logger.error(f"Error al guardar archivo: {str(save_error)}")
