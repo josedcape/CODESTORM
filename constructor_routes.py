@@ -1026,8 +1026,25 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
                     "progress"
                 )
             
-            # Guardar el archivo en el proyecto
+            # Guardar el archivo en el proyecto y registrarlo para explorador
             project.add_file(file_path, content[:200] + ('...' if len(content) > 200 else ''))
+            
+            # Agregar acción especial para sincronizar con el explorador de archivos
+            session.add_special_actions([{
+                'type': 'create_file',
+                'path': file_path,
+                'content': content[:500] + ('...' if len(content) > 500 else '')  # Limitamos el contenido para la vista previa
+            }])
+            
+            # Si el proyecto está completo (100%), enviar acción para mostrar resultados
+            if project.progress >= 100:
+                session.add_special_actions([{
+                    'type': 'show_results',
+                    'message': 'Proyecto completado exitosamente',
+                    'project_id': project.project_id,
+                    'project_name': project.name
+                }])
+            
             return True
             
         except Exception as e:

@@ -1,26 +1,18 @@
-/**
- * Constructor de Tareas - CODESTORM
- * Sistema para el desarrollo guiado de aplicaciones mediante análisis,
- * retroalimentación y construcción paso a paso
- */
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Referencias a elementos del DOM
+    // Elementos del DOM
     const chatForm = document.getElementById('chatForm');
-    const userMessageInput = document.getElementById('userMessage');
-    const chatMessages = document.getElementById('chatMessages');
+    const userInput = document.getElementById('userInput');
     const sendMessageBtn = document.getElementById('sendMessageBtn');
+    const chatMessages = document.getElementById('chatMessages');
     const clearChatBtn = document.getElementById('clearChatBtn');
-    const modelDropdown = document.querySelectorAll('.model-option');
+    const modelDropdownItems = document.querySelectorAll('.model-option');
     const currentModelSpan = document.getElementById('currentModel');
-    const collaborationModeToggle = document.getElementById('collaborationMode');
     
     // Variables de estado
-    let currentModel = 'openai';
     let messageHistory = [];
-    let isWaitingForResponse = false;
+    let currentModel = 'openai';
     let conversationState = {
-        taskPhase: 'initial', // initial, analysis, planning, implementation, testing, refinement
+        taskPhase: 'initial',
         currentTask: null,
         projectType: null,
         projectRequirements: [],
@@ -29,80 +21,53 @@ document.addEventListener('DOMContentLoaded', function() {
         implementationProgress: 0
     };
     
-    // Configurar opciones de Marked para el procesamiento de Markdown
-    marked.setOptions({
-        renderer: new marked.Renderer(),
-        highlight: function(code, lang) {
-            const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-            return hljs.highlight(code, { language }).value;
-        },
-        langPrefix: 'hljs language-',
-        pedantic: false,
-        gfm: true,
-        breaks: true,
-        sanitize: false,
-        smartypants: false,
-        xhtml: false
-    });
-    
-    // Configurar el modal de aprobación de plan
-    const approvalModalElement = document.getElementById('approvalModal');
-    const approvePlanBtn = document.getElementById('approvePlanBtn');
-    
-    if (approvalModalElement && approvePlanBtn) {
-        approvePlanBtn.addEventListener('click', function() {
-            // Enviar mensaje de aprobación
-            userMessageInput.value = "Iniciar construcción";
-            chatForm.dispatchEvent(new Event('submit'));
-            
-            // Cerrar el modal
-            const modal = bootstrap.Modal.getInstance(approvalModalElement);
-            if (modal) {
-                modal.hide();
-            }
-        });
-        console.log('Modal de aprobación configurado correctamente');
-    } else {
-        console.warn('No se encontró el modal de aprobación o el botón de aprobación');
+    // Configuración inicial
+    if (clearChatBtn) {
+        clearChatBtn.addEventListener('click', clearChat);
     }
     
-    // Controladores de eventos
-    chatForm.addEventListener('submit', handleSubmit);
-    clearChatBtn.addEventListener('click', clearChat);
-    modelDropdown.forEach(option => {
-        option.addEventListener('click', changeModel);
+    // Configurar selector de modelo
+    modelDropdownItems.forEach(item => {
+        item.addEventListener('click', changeModel);
     });
     
-    // Auto-resize del textarea
-    userMessageInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-    });
-
+    // Solicitar permisos de notificación
+    if ('Notification' in window) {
+        Notification.requestPermission();
+    }
+    
+    // Inicializar iconos
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    // Configurar envío de mensajes
+    if (chatForm) {
+        chatForm.addEventListener('submit', handleSubmit);
+    }
+    
     // Función para manejar el envío de mensajes
     function handleSubmit(e) {
         e.preventDefault();
         
-        const message = userMessageInput.value.trim();
-        if (message === '' || isWaitingForResponse) return;
+        const message = userInput.value.trim();
+        if (!message) return;
         
-        // Añadir mensaje del usuario a la interfaz
+        // Limpiar campo de entrada
+        userInput.value = '';
+        
+        // Mostrar mensaje del usuario
         addMessage(message, 'user');
         
-        // Limpiar el campo de texto y ajustar el tamaño
-        userMessageInput.value = '';
-        userMessageInput.style.height = 'auto';
-        
-        // Actualizar historial de mensajes
+        // Almacenar mensaje en historial
         messageHistory.push({
             role: 'user',
-            content: message,
-            timestamp: new Date().toISOString()
+            content: message
         });
         
-        // Mostrar indicador de carga
-        isWaitingForResponse = true;
-        addSystemMessage('⌛ Conectando con el servidor...');
+        // Deshabilitar botón mientras se procesa
+        sendMessageBtn.disabled = true;
+        sendMessageBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
         
         // Enviar mensaje al servidor
         sendMessageToServer(message);
@@ -110,103 +75,69 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para enviar mensaje al servidor
     function sendMessageToServer(message) {
+        // Obtener el ID del proyecto desde la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('project_id');
+        
+        // Configurar datos para la petición
         const requestData = {
             message: message,
-            agent_id: 'architect', // Usamos el agente arquitecto para el constructor
-            context: messageHistory,
             model: currentModel,
-            collaborative_mode: collaborationModeToggle.checked,
             conversation_state: conversationState
         };
         
-        console.log('Enviando fetch a /api/constructor con datos:', requestData);
+        // Si hay un ID de proyecto, incluirlo en la petición
+        if (projectId) {
+            requestData.project_id = projectId;
+        }
         
-        // Obtenemos el ID del proyecto activo o creamos uno nuevo
-        const projectId = requestData.project_id || localStorage.getItem('active_project_id');
-        
-        // URL del endpoint (si hay proyecto activo, usamos el endpoint de proyecto)
-        const apiUrl = projectId 
-            ? `/api/constructor/message/${projectId}`
-            : '/api/constructor/start';
-        
-        console.log(`Enviando fetch a ${apiUrl} con datos:`, requestData);
-        
-        // Usamos el endpoint específico para el constructor
-        fetch(apiUrl, {
+        // Enviar petición al servidor
+        fetch('/api/constructor/message', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(requestData)
         })
-        .then(response => {
-            console.log('Respuesta recibida:', response.status, response.statusText);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('Datos recibidos del servidor:', data);
-            
-            // Eliminar el mensaje de sistema de carga
-            removeSystemMessages();
-            
-            // Actualizar el estado de la conversación si se proporciona
-            if (data.conversation_state) {
-                conversationState = data.conversation_state;
-            }
-            
-            // Si se creó un nuevo proyecto, guardar su ID
-            if (data.project_id && !localStorage.getItem('active_project_id')) {
-                localStorage.setItem('active_project_id', data.project_id);
-                console.log(`Nuevo proyecto creado con ID: ${data.project_id}`);
-            }
-            
-            // Manejar respuesta
-            if (data.success) {
-                // Añadir mensaje de conexión establecida
-                addSystemMessage('✅ Conexión establecida, procesando respuesta...');
-                
-                // Actualizar historial de mensajes con la respuesta
-                messageHistory.push({
-                    role: 'assistant',
-                    content: data.response,
-                    timestamp: new Date().toISOString(),
-                    special_actions: data.special_actions || []
-                });
-                
-                // Añadir respuesta a la interfaz
+            // Añadir respuesta del asistente
+            if (data.response) {
                 addMessage(data.response, 'assistant');
                 
-                // Ejecutar acciones especiales si las hay
-                if (data.special_actions && data.special_actions.length > 0) {
-                    console.log('Procesando acciones especiales:', data.special_actions);
-                    handleSpecialActions(data.special_actions);
-                }
-                
-                // Compatibilidad con respuestas antiguas (actions en lugar de special_actions)
-                if (data.actions && data.actions.length > 0) {
-                    console.log('Procesando acciones (legacy):', data.actions);
-                    handleSpecialActions(data.actions);
-                }
-            } else {
-                // En caso de error
-                addSystemMessage('❌ Error: ' + (data.error || 'No se pudo obtener una respuesta'));
+                // Almacenar mensaje en historial
+                messageHistory.push({
+                    role: 'assistant',
+                    content: data.response
+                });
             }
             
-            // Permitir enviar nuevos mensajes
-            isWaitingForResponse = false;
+            // Actualizar estado de la conversación
+            if (data.conversation_state) {
+                conversationState = {
+                    ...conversationState,
+                    ...data.conversation_state
+                };
+            }
             
-            // Hacer scroll al final de la conversación
-            scrollToBottom();
+            // Procesar acciones especiales
+            if (data.special_actions && Array.isArray(data.special_actions)) {
+                handleSpecialActions(data.special_actions);
+            }
             
-            // Reactivar el botón de enviar
+            // Habilitar nuevamente el botón de envío
             sendMessageBtn.disabled = false;
+            sendMessageBtn.innerHTML = '<i data-feather="send"></i>';
+            feather.replace();
         })
         .catch(error => {
             console.error('Error al enviar mensaje:', error);
-            removeSystemMessages();
-            addSystemMessage('❌ Error de conexión. Por favor, intenta de nuevo.');
-            isWaitingForResponse = false;
+            addSystemMessage('❌ Error de conexión. Intenta nuevamente.');
+            
+            // Habilitar nuevamente el botón de envío
             sendMessageBtn.disabled = false;
+            sendMessageBtn.innerHTML = '<i data-feather="send"></i>';
+            feather.replace();
         });
     }
     
@@ -231,6 +162,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     break;
                 case 'project_approval_required':
                     showApprovalRequest(action.plan);
+                    break;
+                case 'show_results':
+                    showResults();
                     break;
             }
         });
@@ -448,57 +382,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
-    }
     
-    // Función para resaltar el siguiente paso
-    function highlightNextStep(step) {
-        const nextStepNotification = document.createElement('div');
-        nextStepNotification.className = 'next-step-notification';
-        nextStepNotification.innerHTML = `
-            <div class="next-step-header">
-                <i data-feather="arrow-right-circle"></i>
-                <span>Siguiente paso:</span>
-            </div>
-            <div class="next-step-content">${step}</div>
-        `;
-        
-        chatMessages.appendChild(nextStepNotification);
-        feather.replace();
-        
-        // Añadir a la lista de acciones pendientes
-        conversationState.pendingActions.push({
-            description: step,
-            timestamp: new Date().toISOString()
-        });
-    }
-    
-    // Función para añadir mensajes a la interfaz
-    function addMessage(content, role) {
-        const messageElement = document.createElement('div');
-        messageElement.className = `chat-message ${role}-message`;
-        
-        // Configurar avatar e información de remitente
-        const senderInfo = (role === 'user') 
-            ? 'Tú'
-            : 'Constructor de Tareas';
-        
-        // Crear contenido HTML del mensaje
-        messageElement.innerHTML = `
-            <div class="message-header">
-                <span class="sender-name">${senderInfo}</span>
-                <span class="message-time">${formatTime(new Date())}</span>
-            </div>
-            <div class="message-content"></div>
-            ${role === 'assistant' ? '<div class="message-actions"><button class="copy-btn" title="Copiar al portapapeles"><i data-feather="copy"></i></button></div>' : ''}
-        `;
-        
-        // Procesar el contenido Markdown
-        if (role === 'assistant') {
-            const processedContent = processMarkdown(content);
-            messageElement.querySelector('.message-content').innerHTML = processedContent;
-        } else {
-            messageElement.querySelector('.message-content').textContent = content;
-    // Función para resaltar el siguiente paso
     // Función para resaltar el siguiente paso
     function highlightNextStep(step) {
         const nextStepNotification = document.createElement('div');
