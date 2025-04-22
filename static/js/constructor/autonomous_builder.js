@@ -507,8 +507,22 @@ class AutonomousProjectBuilder {
             'completed': 'Completado'
         };
         
+        const agentNames = {
+            'architect': 'Arquitecto',
+            'developer': 'Desarrollador',
+            'testing': 'QA Tester',
+            'fixing': 'Corrector',
+            'general': 'General'
+        };
+        
         const statusText = phases[project.phase] || project.phase;
-        this.projectStatus.textContent = `Estado: ${statusText} (${project.progress}%)`;
+        
+        // Si hay un agente activo, mostrarlo en el estado
+        if (project.current_agent && agentNames[project.current_agent]) {
+            this.projectStatus.textContent = `Estado: ${statusText} (${project.progress}%) - Agente: ${agentNames[project.current_agent]}`;
+        } else {
+            this.projectStatus.textContent = `Estado: ${statusText} (${project.progress}%)`;
+        }
         
         // Comprobar si hay errores para actualizar el contador
         if (project.error_count && project.error_count !== this.errorCount) {
@@ -525,6 +539,23 @@ class AutonomousProjectBuilder {
             } else if (this.errorCount > 0) {
                 this.projectStatus.appendChild(errorBadge);
             }
+        }
+        
+        // Detectar y notificar cambio de agente
+        if (project.current_agent && project.current_agent !== this.currentAgent) {
+            const prevAgent = this.currentAgent;
+            this.currentAgent = project.current_agent;
+            
+            // Enviar notificación de cambio de agente
+            this.addNotification({
+                title: `Cambio de Agente`,
+                message: `${agentNames[prevAgent] || prevAgent} → ${agentNames[this.currentAgent] || this.currentAgent}: El control ha sido transferido para continuar con la fase actual.`,
+                type: 'info',
+                timestamp: new Date().toISOString()
+            });
+            
+            // Actualizar visualmente qué agente está activo en la configuración
+            this.updateActiveAgentVisual(this.currentAgent);
         }
         
         // Actualizar notificaciones si hay nuevas
@@ -813,6 +844,12 @@ class AutonomousProjectBuilder {
         this.tasks = [];
         this.currentTaskIndex = -1;
         this.errorCount = 0;
+        
+        // Quitar los resaltados de agentes activos
+        const agentSwitches = document.querySelectorAll('.agent-selection .form-check');
+        agentSwitches.forEach(item => {
+            item.classList.remove('active-agent');
+        });
         this.projectNotifications = [];
         this.consoleOutput = [];
         this.estimatedTime = null;
@@ -1100,6 +1137,30 @@ class AutonomousProjectBuilder {
      */
     formatTime(date) {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    /**
+     * Actualiza visualmente cuál es el agente activo en la configuración.
+     */
+    updateActiveAgentVisual(agentId) {
+        // Quitar la clase 'active-agent' de todos los agentes
+        const agentSwitches = document.querySelectorAll('.agent-selection .form-check');
+        agentSwitches.forEach(item => {
+            item.classList.remove('active-agent');
+        });
+        
+        // Añadir la clase 'active-agent' al agente activo
+        const agentMap = {
+            'architect': 'useArchitectAgent',
+            'developer': 'useDeveloperAgent',
+            'testing': 'useTestingAgent', 
+            'fixing': 'useFixingAgent'
+        };
+        
+        const targetSwitch = document.getElementById(agentMap[agentId]);
+        if (targetSwitch) {
+            targetSwitch.closest('.form-check').classList.add('active-agent');
+        }
     }
     
     /**
