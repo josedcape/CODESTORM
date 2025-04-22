@@ -336,7 +336,30 @@ def process_code():
         code_lines = len(data.get('code', '').split('\n'))
         model = data.get('model', 'openai')
         language = data.get('language', 'unknown')
-        logging.info(f"Procesando {code_lines} líneas de código en {language} usando modelo {model}")
+        
+        # Si el modelo es Anthropic pero sabemos que hay problemas con su API key,
+        # cambiar automáticamente a OpenAI
+        if model == 'anthropic':
+            # Verificar si Anthropic está teniendo problemas (error 401 en los logs)
+            anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY')
+            try:
+                # Intentar una llamada simple para verificar si funciona
+                from anthropic import Anthropic
+                client = Anthropic(api_key=anthropic_api_key)
+                # No hacemos una llamada real porque esto podría costar dinero
+                # Simplemente asumimos que si no hay errores al crear el cliente, podría funcionar
+                
+                # Dejamos que el proceso continúe con Anthropic
+                logging.info(f"Procesando {code_lines} líneas de código en {language} usando modelo {model}")
+            except Exception as e:
+                # Si hay un error, cambiar a OpenAI
+                original_model = model
+                model = 'openai'
+                data['model'] = 'openai'
+                logging.warning(f"Cambiando modelo de {original_model} a {model} debido a error: {str(e)}")
+                logging.info(f"Procesando {code_lines} líneas de código en {language} usando modelo {model} (cambiado de {original_model})")
+        else:
+            logging.info(f"Procesando {code_lines} líneas de código en {language} usando modelo {model}")
         
         # Importar la función mejorada de process_code
         from code_processor import process_code_improved
