@@ -1308,7 +1308,7 @@
                 const file = fileInput.files[0];
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('directory', currentPath);
+                formData.append('path', currentPath);
                 formData.append('extract', extractCheckbox.checked ? 'true' : 'false');
                 
                 // Deshabilitar botón mientras se sube
@@ -1316,7 +1316,7 @@
                 uploadBtn.disabled = true;
                 uploadBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Subiendo...';
                 
-                fetch('/api/files/upload', {
+                fetch('/api/explorer/upload', {
                     method: 'POST',
                     body: formData,
                 })
