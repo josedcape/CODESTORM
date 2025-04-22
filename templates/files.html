@@ -1359,14 +1359,14 @@
                 compressBtn.disabled = true;
                 compressBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Comprimiendo...';
                 
-                fetch('/api/files/compress', {
+                fetch('/api/explorer/compress', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
                         path: currentFileSelected,
-                        output_filename: zipFilename
+                        output_path: zipFilename.endsWith('.zip') ? zipFilename : zipFilename + '.zip'
                     }),
                 })
                 .then(response => response.json())
@@ -1403,13 +1403,13 @@
                 extractBtn.disabled = true;
                 extractBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Extrayendo...';
                 
-                fetch('/api/files/extract', {
+                fetch('/api/explorer/extract', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        file_path: currentFileSelected,
+                        path: currentFileSelected,
                         extract_dir: extractDir || null
                     }),
                 })
