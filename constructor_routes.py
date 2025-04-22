@@ -1031,12 +1031,12 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             
             # Crear o actualizar el archivo también a través de la API del explorador
             try:
-                import file_explorer
+                from file_manager import FileManager
                 workspace_id = 'default'  # El espacio de trabajo por defecto
                 
-                # Opción 1: Usar file_explorer directamente (más robusto)
+                # Opción 1: Usar FileManager directamente (más robusto)
                 file_path_in_workspace = os.path.join('user_workspaces', workspace_id, file_path)
-                file_explorer.create_file(file_path_in_workspace, content)
+                FileManager.create_file(file_path_in_workspace, content)
                 
                 # Sincronizar con la base de datos
                 project.add_file(file_path, content[:200] + ('...' if len(content) > 200 else ''))
