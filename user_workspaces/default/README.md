@@ -1,12 +1,23 @@
-# Workspace de Usuario
+# Proyecto Web
 
-Este es tu espacio de trabajo personal en CODESTORM Assistant.
+Este proyecto fue creado automáticamente por el Constructor de Tareas de CODESTORM.
 
-## ¿Qué puedes hacer aquí?
+## Tecnologías utilizadas
 
-- Crear nuevos archivos y carpetas
-- Editar código con el asistente
-- Ejecutar comandos y aplicaciones
-- Gestionar tus proyectos
+- Lenguaje: python
+- Framework: flask
+- Base de datos: No especificada
 
-¡Comienza creando un nuevo archivo o preguntando al asistente cómo ayudarte!
+## Instalación
+
+1. Clona este repositorio
+2. Instala las dependencias necesarias
+3. Ejecuta la aplicación
+
+## Estructura del proyecto
+
+La estructura del proyecto está organizada de manera lógica para facilitar el desarrollo y mantenimiento.
+
+## Licencia
+
+MIT
