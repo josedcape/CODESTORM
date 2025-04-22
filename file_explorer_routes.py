@@ -626,9 +626,16 @@ def upload_file():
     Retorna:
     - Confirmación de carga y ruta del archivo
     """
+    logger.info("Iniciando proceso de carga de archivo")
+    
+    # Log de datos de solicitud
+    logger.info(f"Files en request: {list(request.files.keys()) if request.files else 'Ninguno'}")
+    logger.info(f"Form data en request: {request.form}")
+    
     try:
         # Verificar si hay un archivo en la solicitud
         if 'file' not in request.files:
+            logger.error("No se encontró el campo 'file' en la solicitud")
             response = jsonify({
                 'success': False,
                 'error': 'No se ha enviado ningún archivo'
@@ -638,6 +645,7 @@ def upload_file():
             
         uploaded_file = request.files['file']
         if uploaded_file.filename == '':
+            logger.error("Nombre de archivo vacío")
             response = jsonify({
                 'success': False,
                 'error': 'Nombre de archivo vacío'
@@ -645,9 +653,15 @@ def upload_file():
             response.headers['Content-Type'] = 'application/json'
             return response, 400
             
+        logger.info(f"Archivo a cargar: {uploaded_file.filename}")
+            
         relative_path = request.form.get('path', '.')
         workspace_id = request.form.get('workspace_id', 'default')
         extract = request.form.get('extract', 'false').lower() == 'true'
+        
+        logger.info(f"Ruta relativa: {relative_path}")
+        logger.info(f"Workspace ID: {workspace_id}")
+        logger.info(f"Extraer: {extract}")
         
         # Construir ruta completa
         workspace_path = os.path.join('user_workspaces', workspace_id)

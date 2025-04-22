@@ -631,7 +631,9 @@
                         </div>
                         <!-- Eliminada opción de extraer automáticamente -->
                         <input type="hidden" name="extract" value="false">
-                        <input type="hidden" id="upload-current-path" name="path" value=".">
+                        <input type="hidden" id="upload-current-path" name="path" value="."
+                          oninvalid="this.setCustomValidity('El campo path es obligatorio')"
+                          required>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -1965,6 +1967,10 @@
                 const fileName = file.name;
                 const fileSize = file.size;
                 
+                // Debug - mostrar información en consola
+                console.log(`Subiendo archivo: ${fileName}, tamaño: ${fileSize} bytes`);
+                console.log(`Ruta actual: ${currentPath}`);
+                
                 // Deshabilitar botón mientras se sube
                 const uploadBtn = document.getElementById('upload-file-submit-btn');
                 uploadBtn.disabled = true;
@@ -1974,6 +1980,7 @@
                 if (fileSize < 5 * 1024 * 1024) {
                     // Actualizar el valor del path en el formulario
                     uploadPathInput.value = currentPath;
+                    console.log(`Path establecido en formulario: ${uploadPathInput.value}`);
                     
                     // Usar el formulario directamente en lugar de FormData
                     const form = document.getElementById('upload-file-form');
