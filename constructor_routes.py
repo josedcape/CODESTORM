@@ -271,6 +271,10 @@ class AutonomousBuilder:
             elif tech_stack.get('language') == 'python':
                 self._execute_command('pip install -r requirements.txt', project, session)
             
+            # Cambiar a agente de testing si está disponible
+            if self.active_agents.get('testing', False):
+                self._switch_agent('testing')
+            
             # Finalizar proyecto
             self._update_project_status(project, 'active', 'testing', 90, 
                                       'Verificando y probando la aplicación')
@@ -396,6 +400,10 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
         Analiza un error y trata de solucionarlo automáticamente.
         Retorna True si el error fue solucionado.
         """
+        # Cambiar a agente de fixing si está disponible
+        if self.active_agents.get('fixing', False):
+            self._switch_agent('fixing')
+            
         # Incrementar contador de errores
         self.error_count += 1
         self.error_log.append({
