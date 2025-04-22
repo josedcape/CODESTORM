@@ -280,10 +280,155 @@ def files():
     """File explorer view with original UI."""
     return render_template('files.html')
 
+@app.route('/api/explorer/delete', methods=['POST'])
+def explorer_delete_file():
+    """Delete a file or directory in the workspace - simple HTML form version."""
+    try:
+        path = request.form.get('path')
+        if not path:
+            return redirect('/explorer?error=No+se+especificó+ruta')
+            
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Sanitizar la ruta
+        path = path.replace('..', '')
+        
+        # Ruta completa
+        item_path = os.path.join(workspace_path, path)
+        
+        # Verificar que existe
+        if not os.path.exists(item_path):
+            return redirect(f'/explorer?error=El+elemento+no+existe')
+            
+        # Eliminar
+        try:
+            if os.path.isdir(item_path):
+                shutil.rmtree(item_path)
+            else:
+                os.remove(item_path)
+                
+            # Redirigir a la carpeta contenedora
+            parent_dir = os.path.dirname(path) if path != '.' else '.'
+            return redirect(f'/explorer?path={parent_dir}')
+        except Exception as e:
+            logging.error(f"Error al eliminar {path}: {str(e)}")
+            return redirect(f'/explorer?error=Error+al+eliminar:+{str(e)}')
+            
+    except Exception as e:
+        logging.error(f"Error en delete_file: {str(e)}")
+        return redirect('/explorer?error=Error+interno')
+
+@app.route('/api/explorer/create_file', methods=['POST'])
+def explorer_create_file():
+    """Create a file in the workspace - simple HTML form version."""
+    try:
+        current_path = request.form.get('current_path', '.')
+        file_name = request.form.get('file_name', '')
+        file_content = request.form.get('file_content', '')
+        
+        if not file_name:
+            return redirect(f'/explorer?path={current_path}&error=Nombre+de+archivo+requerido')
+            
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Construir la ruta completa del archivo
+        file_path = os.path.join(current_path, file_name) if current_path != '.' else file_name
+        file_path = file_path.replace('..', '')
+        target_file = os.path.join(workspace_path, file_path)
+        
+        # Crear el directorio contenedor si no existe
+        os.makedirs(os.path.dirname(target_file), exist_ok=True)
+        
+        # Escribir el contenido
+        with open(target_file, 'w') as f:
+            f.write(file_content)
+            
+        return redirect(f'/explorer?path={current_path}')
+        
+    except Exception as e:
+        logging.error(f"Error al crear archivo: {str(e)}")
+        return redirect('/explorer?error=Error+al+crear+archivo')
+        
+@app.route('/api/explorer/create_folder', methods=['POST'])
+def explorer_create_folder():
+    """Create a folder in the workspace - simple HTML form version."""
+    try:
+        current_path = request.form.get('current_path', '.')
+        folder_name = request.form.get('folder_name', '')
+        
+        if not folder_name:
+            return redirect(f'/explorer?path={current_path}&error=Nombre+de+carpeta+requerido')
+            
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Construir la ruta completa de la carpeta
+        folder_path = os.path.join(current_path, folder_name) if current_path != '.' else folder_name
+        folder_path = folder_path.replace('..', '')
+        target_folder = os.path.join(workspace_path, folder_path)
+        
+        # Crear la carpeta
+        os.makedirs(target_folder, exist_ok=True)
+        
+        return redirect(f'/explorer?path={current_path}')
+        
+    except Exception as e:
+        logging.error(f"Error al crear carpeta: {str(e)}")
+        return redirect('/explorer?error=Error+al+crear+carpeta')
+
 @app.route('/explorer')
 def new_files():
-    """File explorer view with new enhanced UI."""
-    return render_template('explorer_basic.html')
+    """File explorer view with new ultra-minimal UI."""
+    try:
+        user_id = session.get('user_id', 'default')
+        workspace_path = get_user_workspace(user_id)
+        
+        # Obtener la ruta a listar
+        current_path = request.args.get('path', '.')
+        
+        # Asegurarse de que la ruta está dentro del workspace
+        current_path = current_path.replace('..', '')
+        
+        # Construir ruta completa
+        target_path = os.path.join(workspace_path, current_path)
+        
+        # Asegurar que el directorio existe
+        if not os.path.exists(target_path):
+            os.makedirs(target_path, exist_ok=True)
+        
+        # Listar archivos y directorios
+        if os.path.isdir(target_path):
+            items = []
+            for item in os.listdir(target_path):
+                item_path = os.path.join(target_path, item)
+                relative_path = os.path.join(current_path, item) if current_path != '.' else item
+                items.append({
+                    'name': item,
+                    'path': relative_path,
+                    'type': 'directory' if os.path.isdir(item_path) else 'file'
+                })
+            
+            # Ordenar: carpetas primero, luego archivos
+            items.sort(key=lambda x: (0 if x['type'] == 'directory' else 1, x['name']))
+            
+            return render_template('explorer_minimal.html', 
+                                  items=items, 
+                                  current_path=current_path,
+                                  error=None)
+        else:
+            return render_template('explorer_minimal.html', 
+                                  items=[], 
+                                  current_path=current_path, 
+                                  error=f"La ruta {current_path} no es un directorio válido")
+            
+    except Exception as e:
+        logging.error(f"Error al listar archivos: {str(e)}")
+        return render_template('explorer_minimal.html', 
+                              items=[], 
+                              current_path='.', 
+                              error=f"Error al listar archivos: {str(e)}")
     
 @app.route('/edit_file')
 def edit_file():
