@@ -1616,29 +1616,52 @@
                 });
             }
             
-            // Función auxiliar para encontrar un elemento por su ruta
+            /**
+             * Función auxiliar para encontrar un elemento por su ruta en el explorador de archivos
+             * @param {string} path - Ruta completa del archivo o carpeta
+             * @return {HTMLElement|null} El elemento del DOM o null si no se encuentra
+             */
             function findFileElementByPath(path) {
+                console.log(`[Explorer] Buscando elemento para ruta: ${path}`);
+                // Extraer nombre del archivo o carpeta de la ruta completa
+                const pathParts = path.split('/');
+                const targetName = pathParts[pathParts.length - 1];
+                
                 // Buscar en todos los elementos del explorador
                 const items = document.querySelectorAll('.file-explorer-item');
                 
+                // Primer intento: Buscar coincidencia exacta por nombre de archivo
                 for (const item of items) {
-                    // Verificar si este elemento representa un archivo o carpeta que incluye la ruta buscada
                     const fileNameElement = item.querySelector('.file-name');
                     if (fileNameElement) {
-                        const fileName = fileNameElement.textContent.trim();
+                        // Limpiar el texto (puede tener espacios o elementos extras)
+                        let fileName = fileNameElement.textContent.trim();
+                        // Si tiene un elemento .file-type-badge, quitar esa parte del texto
+                        const fileTypeBadge = fileNameElement.querySelector('.file-type-badge');
+                        if (fileTypeBadge) {
+                            fileName = fileName.replace(fileTypeBadge.textContent.trim(), '').trim();
+                        }
                         
-                        // Extraer nombre del archivo o carpeta de la ruta completa
-                        const pathParts = path.split('/');
-                        const targetName = pathParts[pathParts.length - 1];
-                        
-                        // Si coincide el nombre y encontramos el botón de eliminar, es probable que sea el elemento
+                        // Si coincide el nombre y el elemento tiene un botón de eliminar, es probablemente el correcto
                         if (fileName === targetName && item.querySelector('.delete-btn')) {
+                            console.log(`[Explorer] Elemento encontrado para ${targetName}`);
                             return item;
                         }
                     }
                 }
                 
-                // Si no lo encontramos, intentamos ocultar todos los que tengan el mismo nombre
+                // Segundo intento: Comparación menos estricta, solo verificar si el nombre está contenido
+                if (targetName) {
+                    for (const item of items) {
+                        const itemText = item.textContent.trim();
+                        if (itemText.includes(targetName) && item.querySelector('.delete-btn')) {
+                            console.log(`[Explorer] Elemento probable para ${targetName} (búsqueda parcial)`);
+                            return item;
+                        }
+                    }
+                }
+                
+                console.log(`[Explorer] No se encontró elemento para ${targetName}`);
                 return null;
             }
             
@@ -1646,11 +1669,25 @@
             let notificationCounter = 0;
             function showNotification(message, type = 'success', autoClose = true) {
                 const notificationId = 'notification-' + (++notificationCounter);
-                const notificationsContainer = document.getElementById('notifications-container');
                 
+                // Buscar el contenedor de notificaciones existente o usar 'notifications'
+                let notificationsContainer = document.getElementById('notifications-container');
                 if (!notificationsContainer) {
-                    console.error('Contenedor de notificaciones no encontrado');
-                    return notificationId;
+                    notificationsContainer = document.getElementById('notifications');
+                    if (!notificationsContainer) {
+                        // Si no existe ningún contenedor, creamos uno
+                        notificationsContainer = document.createElement('div');
+                        notificationsContainer.id = 'notifications-container';
+                        notificationsContainer.className = 'notifications-container';
+                        notificationsContainer.style.cssText = `
+                            position: fixed;
+                            top: 20px;
+                            right: 20px;
+                            z-index: 9999;
+                            max-width: 350px;
+                        `;
+                        document.body.appendChild(notificationsContainer);
+                    }
                 }
                 
                 const notification = document.createElement('div');
