@@ -293,6 +293,9 @@
             <button id="download-btn" class="btn btn-outline-secondary">
                 <i class="fas fa-download me-1"></i> Descargar
             </button>
+            <button id="view-combined-btn" class="btn btn-success">
+                <i class="fas fa-code me-1"></i> Ver Código Completo
+            </button>
         </div>
         <div class="toolbar-right">
             <button id="templates-btn" class="btn btn-accent">
@@ -367,6 +370,26 @@
             <div class="result-content">
                 <iframe id="result-iframe" sandbox="allow-scripts allow-same-origin" class="result-iframe"></iframe>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver código completo -->
+<div id="combined-code-modal" class="templates-modal">
+    <div class="modal-content slideIn" style="max-width: 900px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Código Completo</h3>
+            <div>
+                <button id="copy-code-btn" class="btn btn-sm btn-outline-primary me-2">
+                    <i class="fas fa-copy"></i> Copiar
+                </button>
+                <button id="close-combined-modal" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="combined-code-container">
+            <textarea id="combined-code-editor"></textarea>
         </div>
     </div>
 </div>
@@ -3134,8 +3157,23 @@ input:focus, select:focus, textarea:focus {
 
 .fadeIn {
   animation: fadeIn 0.5s forwards;
-}`,
-                js: `document.addEventListener('DOMContentLoaded', function() {
+}
+
+/* Estilos para el editor de código combinado */
+.combined-code-container {
+  height: 500px;
+  padding: 0;
+}
+
+#combined-code-editor {
+  width: 100%;
+  height: 100%;
+}
+
+.CodeMirror.cm-s-combined {
+  height: 100%;
+  font-size: 14px;
+}
   // Form validation
   const contactForm = document.getElementById('contactForm');
   const nameInput = document.getElementById('name');
@@ -3472,6 +3510,76 @@ input:focus, select:focus, textarea:focus {
                     document.head.appendChild(style);
                 }
             });
+        });
+        
+        // Inicializar el editor de código combinado
+        const combinedCodeModal = document.getElementById('combined-code-modal');
+        const combinedCodeEditor = CodeMirror.fromTextArea(document.getElementById('combined-code-editor'), {
+            mode: 'htmlmixed',
+            theme: 'monokai',
+            lineNumbers: true,
+            readOnly: false,
+            lineWrapping: true,
+            tabSize: 2
+        });
+        
+        // Botón para ver código completo
+        document.getElementById('view-combined-btn').addEventListener('click', function() {
+            const html = htmlEditor.getValue();
+            const css = cssEditor.getValue();
+            const js = jsEditor.getValue();
+            
+            // Crear el código HTML completo
+            const fullHTML = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Página Web</title>
+  <style>
+${css}
+  </style>
+</head>
+<body>
+${html.split('<!DOCTYPE html>')[1].split('<html')[0] ? '' : html.split('<body>')[1].split('</body>')[0]}
+  <script>
+${js}
+  </script>
+</body>
+</html>`;
+            
+            // Mostrar en el editor combinado
+            combinedCodeEditor.setValue(fullHTML);
+            combinedCodeEditor.refresh();
+            
+            // Mostrar el modal
+            combinedCodeModal.style.display = 'block';
+        });
+        
+        // Cerrar modal de código combinado
+        document.getElementById('close-combined-modal').addEventListener('click', function() {
+            combinedCodeModal.style.display = 'none';
+        });
+        
+        // Copiar código combinado
+        document.getElementById('copy-code-btn').addEventListener('click', function() {
+            const code = combinedCodeEditor.getValue();
+            navigator.clipboard.writeText(code).then(() => {
+                // Cambiar texto del botón temporalmente
+                const btn = this;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            });
+        });
+        
+        // Cerrar modal haciendo clic fuera del contenido
+        combinedCodeModal.addEventListener('click', function(e) {
+            if (e.target === combinedCodeModal) {
+                combinedCodeModal.style.display = 'none';
+            }
         });
     });
 </script>
