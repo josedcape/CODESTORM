@@ -248,6 +248,16 @@
                         <textarea id="instructions" class="instructions-textarea" placeholder="Describe qué correcciones necesitas en el código. Por ejemplo: 'Corrige el manejo de errores y optimiza el rendimiento'"></textarea>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Modelo de IA:</label>
+                        <div class="d-flex">
+                            <select id="ai-model-selector" class="form-select">
+                                <option value="openai">OpenAI (GPT-4o)</option>
+                                <option value="anthropic">Anthropic (Claude 3.5)</option>
+                                <option value="gemini">Google Gemini</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
                         <label for="code-input" class="form-label">Código a corregir:</label>
                         <textarea id="code-input" class="code-textarea" placeholder="Ingresa aquí tu código para revisión..."></textarea>
                     </div>
@@ -395,6 +405,7 @@
         correctButton.addEventListener('click', function() {
             const code = codeInput.value.trim();
             const instructions = instructionsInput.value.trim();
+            const modelSelected = document.getElementById('ai-model-selector').value;
             
             if (!code) {
                 alert('Por favor ingresa código para corregir.');
@@ -409,27 +420,50 @@
             // Mostrar overlay de carga
             loadingOverlay.classList.add('active');
             
-            // Simulación de envío al servidor (en producción esto sería una llamada API real)
-            setTimeout(() => {
-                // Simulamos un resultado
-                const result = simulateCodeCorrection(code, instructions, currentLanguage);
-                
+            // Enviar solicitud al servidor
+            fetch('/api/process_code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    code: code,
+                    instructions: instructions,
+                    language: currentLanguage,
+                    model: modelSelected,
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+                return response.json();
+            })
+            .then(result => {
                 // Actualizar vista de código
-                correctedCode.textContent = result.correctedCode;
+                correctedCode.textContent = result.corrected_code;
                 correctedCode.className = `language-${currentLanguage}`;
                 Prism.highlightElement(correctedCode);
                 
                 // Actualizar vista de cambios
-                renderChanges(result.changes);
-                explanationContent.textContent = result.explanation;
+                renderChanges(result.summary ? result.summary.map(desc => {
+                    return { description: desc, lineNumbers: [] };
+                }) : []);
+                
+                explanationContent.textContent = result.explanation || "No se proporcionó explicación detallada.";
                 
                 // Mostrar resultado
                 initialMessage.style.display = 'none';
                 correctedCodeContainer.style.display = 'block';
-                
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Hubo un error al procesar el código. Por favor intenta de nuevo.');
+            })
+            .finally(() => {
                 // Ocultar overlay de carga
                 loadingOverlay.classList.remove('active');
-            }, 2000);
+            });
         });
         
         // Botón para limpiar
