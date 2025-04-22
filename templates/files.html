@@ -829,6 +829,9 @@
                             ${dir.name}
                         </div>
                         <div class="actions">
+                            <button class="btn btn-sm btn-action btn-outline-secondary compress-btn" title="Comprimir en ZIP">
+                                <i class="bi bi-file-earmark-zip"></i>
+                            </button>
                             <button class="btn btn-sm btn-action btn-outline-danger delete-btn" title="Eliminar carpeta">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -848,6 +851,15 @@
                         e.stopPropagation();
                         showDeleteConfirmation(dir.path, 'carpeta', dir.name);
                     });
+                    
+                    // Evento para comprimir carpeta
+                    const compressBtn = dirElement.querySelector('.compress-btn');
+                    if (compressBtn) {
+                        compressBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            showCompressDialog(dir.path, dir.name);
+                        });
+                    }
                     
                     filesContainer.appendChild(dirElement);
                 });
@@ -884,6 +896,15 @@
                             <button class="btn btn-sm btn-action btn-outline-info" title="Editar archivo">
                                 <i class="bi bi-pencil"></i>
                             </button>
+                            ${['zip', 'rar'].includes(ext) ? `
+                            <button class="btn btn-sm btn-action btn-outline-secondary extract-btn" title="Extraer archivo">
+                                <i class="bi bi-file-earmark-zip"></i>
+                            </button>
+                            ` : `
+                            <button class="btn btn-sm btn-action btn-outline-secondary compress-btn" title="Comprimir en ZIP">
+                                <i class="bi bi-file-earmark-zip"></i>
+                            </button>
+                            `}
                             <button class="btn btn-sm btn-action btn-outline-danger delete-btn" title="Eliminar archivo">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -910,6 +931,25 @@
                         e.stopPropagation();
                         showDeleteConfirmation(file.path, 'archivo', file.name);
                     });
+                    
+                    // Eventos para comprimir o extraer archivos
+                    if (['zip', 'rar'].includes(ext)) {
+                        const extractBtn = fileElement.querySelector('.extract-btn');
+                        if (extractBtn) {
+                            extractBtn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                showExtractDialog(file.path, file.name);
+                            });
+                        }
+                    } else {
+                        const compressBtn = fileElement.querySelector('.compress-btn');
+                        if (compressBtn) {
+                            compressBtn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                showCompressDialog(file.path, file.name);
+                            });
+                        }
+                    }
                     
                     filesContainer.appendChild(fileElement);
                 });
@@ -1253,6 +1293,166 @@
                     notification.classList.remove('show');
                     setTimeout(() => notification.remove(), 300);
                 }, 5000);
+            }
+            
+            // Funciones para manejar archivos comprimidos
+            function uploadFile() {
+                const fileInput = document.getElementById('upload-file');
+                const extractCheckbox = document.getElementById('extract-compressed');
+                
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    showNotification('Por favor, selecciona un archivo para subir', 'warning');
+                    return;
+                }
+                
+                const file = fileInput.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('directory', currentPath);
+                formData.append('extract', extractCheckbox.checked ? 'true' : 'false');
+                
+                // Deshabilitar botón mientras se sube
+                const uploadBtn = document.getElementById('upload-file-submit-btn');
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Subiendo...';
+                
+                fetch('/api/files/upload', {
+                    method: 'POST',
+                    body: formData,
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message || 'Archivo subido correctamente', 'success');
+                        uploadFileModal.hide();
+                        loadFiles(currentPath); // Recargar archivos
+                    } else {
+                        showNotification('Error al subir archivo: ' + (data.error || 'Error desconocido'), 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al subir archivo', 'danger');
+                })
+                .finally(() => {
+                    // Rehabilitar botón
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerHTML = '<i class="bi bi-upload me-1"></i>Subir';
+                });
+            }
+            
+            function compressToZip() {
+                if (!currentFileSelected) {
+                    showNotification('No hay ningún elemento seleccionado para comprimir', 'warning');
+                    return;
+                }
+                
+                const zipFilename = document.getElementById('zip-filename').value.trim();
+                
+                if (!zipFilename) {
+                    showNotification('Por favor, especifica un nombre para el archivo ZIP', 'warning');
+                    return;
+                }
+                
+                // Deshabilitar botón mientras se comprime
+                const compressBtn = document.getElementById('confirm-compress-btn');
+                compressBtn.disabled = true;
+                compressBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Comprimiendo...';
+                
+                fetch('/api/files/compress', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        path: currentFileSelected,
+                        output_filename: zipFilename
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message || 'Archivo comprimido correctamente', 'success');
+                        compressToZipModal.hide();
+                        loadFiles(currentPath); // Recargar archivos
+                    } else {
+                        showNotification('Error al comprimir: ' + (data.error || 'Error desconocido'), 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al comprimir archivo', 'danger');
+                })
+                .finally(() => {
+                    // Rehabilitar botón
+                    compressBtn.disabled = false;
+                    compressBtn.innerHTML = '<i class="bi bi-file-earmark-zip me-1"></i>Comprimir';
+                });
+            }
+            
+            function extractCompressedFile() {
+                if (!currentFileSelected) {
+                    showNotification('No hay ningún archivo comprimido seleccionado', 'warning');
+                    return;
+                }
+                
+                const extractDir = document.getElementById('extract-dir').value.trim();
+                
+                // Deshabilitar botón mientras se extrae
+                const extractBtn = document.getElementById('confirm-extract-btn');
+                extractBtn.disabled = true;
+                extractBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Extrayendo...';
+                
+                fetch('/api/files/extract', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        file_path: currentFileSelected,
+                        extract_dir: extractDir || null
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message || 'Archivo extraído correctamente', 'success');
+                        extractFileModal.hide();
+                        loadFiles(currentPath); // Recargar archivos
+                    } else {
+                        showNotification('Error al extraer: ' + (data.error || 'Error desconocido'), 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Error al extraer archivo', 'danger');
+                })
+                .finally(() => {
+                    // Rehabilitar botón
+                    extractBtn.disabled = false;
+                    extractBtn.innerHTML = '<i class="bi bi-file-earmark-zip me-1"></i>Extraer';
+                });
+            }
+            
+            // Función para mostrar diálogo de compresión
+            function showCompressDialog(path, name) {
+                currentFileSelected = path;
+                document.getElementById('compress-item-name').textContent = name;
+                
+                // Sugerir nombre para el archivo ZIP (quitar extensión si tiene)
+                const baseName = name.includes('.') ? name.split('.').slice(0, -1).join('.') : name;
+                document.getElementById('zip-filename').value = `${baseName}.zip`;
+                
+                compressToZipModal.show();
+            }
+            
+            // Función para mostrar diálogo de extracción
+            function showExtractDialog(path, name) {
+                currentFileSelected = path;
+                document.getElementById('extract-file-name').textContent = name;
+                document.getElementById('extract-dir').value = '';
+                
+                extractFileModal.show();
             }
         });
     </script>
