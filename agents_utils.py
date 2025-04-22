@@ -12,7 +12,7 @@ import openai
 import anthropic
 import google.generativeai as genai
 from dotenv import load_dotenv
-import file_explorer
+from file_manager import FileManager
 
 # Cargar variables de entorno
 load_dotenv()

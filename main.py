@@ -8,7 +8,7 @@ import logging
 from routes_analyzer import register_analyzer_routes
 from document_routes import register_document_routes
 from github_routes import register_github_routes
-from file_explorer_routes_new import register_file_explorer_routes
+from files_routes import register_routes as register_files_routes
 from constructor_routes import init_constructor_routes
 from app import app, get_user_workspace
 
@@ -37,7 +37,7 @@ except Exception as e:
     
 # Registrar las rutas para exploración de archivos
 try:
-    register_file_explorer_routes(app)
+    register_files_routes(app)
     logger.info("Rutas de exploración de archivos registradas correctamente")
 except Exception as e:
     logger.error(f"Error al registrar rutas de exploración de archivos: {str(e)}")
