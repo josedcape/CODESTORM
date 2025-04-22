@@ -1587,6 +1587,14 @@ def init_constructor_routes(app):
             data = request.json
             user_id = data.get('user_id', 'default')
             description = data.get('description')
+            model = data.get('model', 'openai')  # Modelo de IA seleccionado
+            agents = data.get('agents', {  # Agentes seleccionados
+                'architect': True,
+                'developer': True,
+                'testing': True,
+                'fixing': True
+            })
+            development_speed = data.get('development_speed', 'balanced')  # Velocidad de desarrollo
             
             if not description:
                 return jsonify({
@@ -1594,17 +1602,30 @@ def init_constructor_routes(app):
                     'error': 'Se requiere una descripción del proyecto'
                 }), 400
             
+            # Validar el modelo seleccionado
+            valid_models = ['openai', 'anthropic', 'gemini']
+            if model not in valid_models:
+                model = 'openai'  # Usar modelo por defecto si no es válido
+            
             # Generar ID único para el proyecto
             project_id = str(uuid.uuid4())
             
-            # Iniciar el constructor autónomo
+            # Crear objeto de configuración
+            config = {
+                'model': model,
+                'agents': agents,
+                'development_speed': development_speed
+            }
+            
+            # Iniciar el constructor autónomo con la configuración
             builder = AutonomousBuilder(project_id, user_id)
-            builder.start_building(description)
+            builder.start_building(description, config)
             
             return jsonify({
                 'success': True,
                 'project_id': project_id,
-                'message': 'Construcción del proyecto iniciada correctamente'
+                'message': 'Construcción del proyecto iniciada correctamente',
+                'config': config
             })
         except Exception as e:
             logger.error(f"Error al iniciar proyecto: {str(e)}")
