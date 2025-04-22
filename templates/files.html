@@ -1094,7 +1094,7 @@
                 // Determinar el tipo de contenido
                 if (textExtensions.includes(extension)) {
                     // Previsualizar archivos de texto/código
-                    fetch(`/api/explorer/read?path=${encodeURIComponent(path)}`)
+                    fetch(`/api/explorer/file?path=${encodeURIComponent(path)}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
@@ -1452,8 +1452,8 @@
             function createFolder(path) {
                 // En los sistemas de archivos, crear una carpeta vacía a menudo se hace
                 // creando un archivo especial dentro de ella, como .gitkeep
-                fetch('/api/explorer/create', {
-                    method: 'POST',
+                fetch('/api/explorer/file', {
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         path: path + '/.gitkeep',

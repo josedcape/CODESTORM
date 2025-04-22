@@ -448,6 +448,70 @@ def compress_to_zip():
         }), 500
 
 
+@file_explorer_bp.route('/api/explorer/delete', methods=['POST'])
+def delete_file():
+    """
+    Elimina un archivo o directorio del espacio de trabajo.
+    
+    Espera:
+    - path: Ruta relativa al archivo o directorio a eliminar
+    - workspace_id: ID del espacio de trabajo (predeterminado: 'default')
+    
+    Retorna:
+    - Confirmación de eliminación
+    """
+    try:
+        data = request.json
+        relative_path = data.get('path')
+        workspace_id = data.get('workspace_id', 'default')
+        
+        if not relative_path:
+            return jsonify({
+                'success': False,
+                'error': 'Debe especificar una ruta a eliminar'
+            }), 400
+        
+        # Construir ruta completa
+        workspace_path = os.path.join('user_workspaces', workspace_id)
+        file_path = os.path.join(workspace_path, relative_path)
+        
+        # Asegurar que no se salga del directorio del usuario
+        if not os.path.abspath(file_path).startswith(os.path.abspath(workspace_path)):
+            return jsonify({
+                'success': False,
+                'error': 'Acceso denegado: la ruta se sale del espacio de trabajo'
+            }), 403
+        
+        # Determinar si es un archivo o directorio
+        if os.path.isfile(file_path):
+            # Eliminar archivo
+            os.remove(file_path)
+            logger.info(f"Archivo eliminado: {file_path}")
+            return jsonify({
+                'success': True,
+                'message': 'Archivo eliminado correctamente'
+            })
+        elif os.path.isdir(file_path):
+            # Eliminar directorio recursivamente
+            import shutil
+            shutil.rmtree(file_path)
+            logger.info(f"Directorio eliminado: {file_path}")
+            return jsonify({
+                'success': True,
+                'message': 'Directorio eliminado correctamente'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'El archivo o directorio especificado no existe'
+            }), 404
+    except Exception as e:
+        logger.error(f"Error al eliminar archivo o directorio: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al eliminar: {str(e)}'
+        }), 500
+
 @file_explorer_bp.route('/api/explorer/extract', methods=['POST'])
 def extract_compressed():
     """
