@@ -465,6 +465,8 @@ def delete_file():
         relative_path = data.get('path')
         workspace_id = data.get('workspace_id', 'default')
         
+        logger.info(f"Solicitud de eliminación recibida: ruta={relative_path}, workspace={workspace_id}")
+        
         if not relative_path:
             return jsonify({
                 'success': False,
@@ -473,7 +475,26 @@ def delete_file():
         
         # Construir ruta completa
         workspace_path = os.path.join('user_workspaces', workspace_id)
-        file_path = os.path.join(workspace_path, relative_path)
+        
+        # Fix: Corregir problemas de rutas duplicadas
+        normalized_path = relative_path
+        if 'user_workspaces' in normalized_path:
+            # Extraer sólo la parte relevante de la ruta
+            parts = normalized_path.split('/')
+            while parts and parts[0] != '.' and parts[0] not in ['user_workspaces', workspace_id]:
+                parts.pop(0)
+            
+            if parts and parts[0] == 'user_workspaces':
+                # Saltar la parte de user_workspaces/workspace_id
+                if len(parts) > 2:
+                    normalized_path = '/'.join(parts[2:])
+                else:
+                    normalized_path = '.'
+        
+        # Usar la ruta normalizada
+        file_path = os.path.join(workspace_path, normalized_path)
+        
+        logger.info(f"Procesando eliminación: Ruta original='{relative_path}', Ruta normalizada='{normalized_path}', Ruta final='{file_path}'")
         
         # Asegurar que no se salga del directorio del usuario
         if not os.path.abspath(file_path).startswith(os.path.abspath(workspace_path)):

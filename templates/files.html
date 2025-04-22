@@ -873,23 +873,55 @@
             function loadFiles(path) {
                 currentPath = path;
                 
+                // Agregar indicador de carga
+                document.getElementById('file-list').innerHTML = `
+                    <div class="text-center p-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando archivos...</p>
+                    </div>
+                `;
+                
                 // Actualizar la ruta en la miga de pan
                 updateBreadcrumb(path);
                 
-                fetch(`/api/explorer/list?path=${encodeURIComponent(path)}`)
-                    .then(response => response.json())
+                console.log(`[Explorer] Cargando archivos para ruta: ${path}`);
+                
+                // Agregar timestamp para evitar caché
+                fetch(`/api/explorer/list?path=${encodeURIComponent(path)}&t=${Date.now()}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error del servidor: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.success) {
+                            console.log(`[Explorer] Archivos cargados: ${(data.items || data.files).length} elementos`);
                             displayFiles(data.items || data.files);
                             // También actualizar el árbol de directorios
                             // loadDirectoryTree(path);
                         } else {
+                            console.error(`[Explorer] Error al cargar archivos:`, data.error);
                             showNotification('Error al cargar archivos: ' + data.error, 'danger');
+                            document.getElementById('file-list').innerHTML = `
+                                <div class="alert alert-danger m-3">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    Error al cargar archivos: ${data.error}
+                                </div>
+                            `;
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
-                        showNotification('Error al cargar archivos', 'danger');
+                        console.error('[Explorer] Error al cargar archivos:', error);
+                        showNotification('Error al cargar archivos: ' + error.message, 'danger');
+                        document.getElementById('file-list').innerHTML = `
+                            <div class="alert alert-danger m-3">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Error al cargar archivos: ${error.message}
+                            </div>
+                        `;
                     });
             }
             
