@@ -3,24 +3,35 @@ import os
 import json
 import logging
 
-# No importamos flask aquí para evitar problemas circulares de importación
-
-# Import these only when needed to avoid import errors at module level
-# when these dependencies are accessed through app.py's imports
-
 def process_code_improved(data):
-    """Versión mejorada para procesar código para correcciones y mejoras."""
+    """
+    Versión mejorada para procesar código para correcciones y mejoras.
+    
+    Args:
+        data (dict): Diccionario con los datos del código a procesar:
+            - code: Código a analizar y mejorar
+            - file_path (opcional): Ruta del archivo
+            - instructions: Instrucciones para la mejora
+            - language: Lenguaje del código
+            - model: Modelo de IA a utilizar (openai, anthropic, gemini)
+            
+    Returns:
+        dict: Resultado del procesamiento con el código corregido, resumen y explicación
+    """
     try:
+        # Extraer los datos de entrada
         code = data.get('code', '')
         file_path = data.get('file_path', '')
         instructions = data.get('instructions', 'Corrige errores y mejora la calidad del código')
         language = data.get('language', 'unknown')
         model_choice = data.get('model', 'openai')
         
+        # Validación inicial
         if not code:
-            return {'error': 'No se proporcionó código para procesar'}, 400
+            logging.warning("No se proporcionó código para procesar")
+            return {'error': 'No se proporcionó código para procesar', 'status': 'error'}, 400
             
-        # Detectar el lenguaje por la extensión del archivo si no se especificó
+        # Autodetección de lenguaje por extensión si no se especificó
         if language == 'unknown' and file_path:
             ext = file_path.split('.')[-1].lower() if '.' in file_path else ''
             if ext in ['py', 'pyw']:
@@ -33,14 +44,13 @@ def process_code_improved(data):
                 language = 'css'
             elif ext in ['json']:
                 language = 'json'
-                
-        # Calcular longitud aproximada del código para determinar si necesitamos tratamiento especial
+        
+        # Estadísticas y configuración para procesamiento
         code_lines = code.count('\n') + 1
         is_large_file = code_lines > 500  # Consideramos grande si tiene más de 500 líneas
-        
         logging.info(f"Procesando código de {code_lines} líneas en lenguaje {language} con modelo {model_choice}")
         
-        # Preparar el prompt para el modelo, ajustando según el tamaño del código
+        # Preparar el prompt para el modelo según tamaño
         if is_large_file:
             prompt = f"""Eres un experto corrector de código en {language} especializado en refactorización de código extenso.
             
@@ -88,50 +98,60 @@ def process_code_improved(data):
             }}
             """
         
-        # Utilizar el modelo seleccionado
-        response = {}
+        # Respuesta predeterminada (se sobreescribirá si el modelo funciona correctamente)
+        response = {
+            "corrected_code": code,
+            "summary": ["No se pudieron procesar correcciones"],
+            "explanation": "No se pudo completar el procesamiento"
+        }
 
+        # Procesar según el modelo seleccionado
         if model_choice == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'):
             try:
-                # Importar bajo demanda para evitar errores de importación
+                # Importar bajo demanda
                 from anthropic import Anthropic
                 
-                # Usar Anthropic Claude con configuración optimizada para código extenso
+                # Usar Anthropic Claude con configuración optimizada
                 client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
                 completion = client.messages.create(
-                    model="claude-3-5-sonnet-20241022",  # Modelo más avanzado para códigos extensos
-                    max_tokens=is_large_file and 12000 or 4000,  # Aumentar tokens si es código grande
+                    model="claude-3-5-sonnet-20241022",  # Modelo más avanzado para código extenso
+                    max_tokens=is_large_file and 12000 or 4000,
                     temperature=0.2,
                     system="Eres un experto en programación y tu tarea es corregir y mejorar código. Responde siempre en JSON. Asegúrate de incluir el código completo en tu respuesta.",
                     messages=[{"role": "user", "content": prompt}]
                 )
+                
                 try:
-                    response = json.loads(completion.content[0].text)
-                except (json.JSONDecodeError, IndexError):
-                    # Si no podemos analizar JSON, devolver el texto completo
-                    response = {
-                        "corrected_code": code,  # Mantener el código original
-                        "summary": ["No se pudieron procesar las correcciones"],
-                        "explanation": completion.content[0].text if completion.content else "No se pudo generar explicación"
-                    }
+                    # Extraer contenido JSON
+                    json_content = completion.content[0].text if completion.content else ""
+                    parsed_response = json.loads(json_content)
+                    
+                    # Validar campos requeridos
+                    if "corrected_code" in parsed_response:
+                        response = parsed_response
+                    else:
+                        logging.warning(f"Respuesta de Anthropic no contiene campo 'corrected_code': {json_content[:100]}...")
+                        response["explanation"] = json_content
+                        
+                except (json.JSONDecodeError, IndexError) as json_err:
+                    logging.warning(f"Error al decodificar JSON de Anthropic: {str(json_err)}")
+                    response["explanation"] = completion.content[0].text if completion.content else "No se pudo generar explicación"
+                    
             except Exception as e:
                 logging.error(f"Error usando Anthropic: {str(e)}")
-                response = {
-                    "corrected_code": code,
-                    "summary": ["Error al usar Anthropic API: " + str(e)],
-                    "explanation": "Se produjo un error al intentar utilizar la API de Anthropic para corregir el código."
-                }
+                response["summary"] = ["Error al usar Anthropic API: " + str(e)]
+                response["explanation"] = "Se produjo un error al intentar utilizar la API de Anthropic para corregir el código."
                 
         elif model_choice == 'gemini' and os.environ.get('GEMINI_API_KEY'):
             try:
                 # Importar bajo demanda
                 import google.generativeai as genai
                 
-                # Usar Google Gemini con configuración optimizada
+                # Configurar y usar Google Gemini
                 genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
                 model = genai.GenerativeModel('gemini-1.5-pro')
                 
-                # Configuraciones específicas para Gemini
+                # Configuración optimizada
                 generation_config = {
                     "temperature": 0.2,
                     "max_output_tokens": is_large_file and 8192 or 4096,
@@ -145,71 +165,91 @@ def process_code_improved(data):
                 )
                 
                 try:
-                    response = json.loads(gemini_response.text)
-                except json.JSONDecodeError:
-                    # Intentar extraer JSON si está en un formato no estándar
-                    response = {
-                        "corrected_code": code,  # Mantener el código original
-                        "summary": ["No se pudieron procesar las correcciones"],
-                        "explanation": gemini_response.text
-                    }
+                    # Extraer y validar respuesta
+                    parsed_response = json.loads(gemini_response.text)
+                    if "corrected_code" in parsed_response:
+                        response = parsed_response
+                    else:
+                        logging.warning(f"Respuesta de Gemini no contiene código corregido: {gemini_response.text[:100]}...")
+                        response["explanation"] = gemini_response.text
+                        
+                except json.JSONDecodeError as json_err:
+                    logging.warning(f"Error al decodificar JSON de Gemini: {str(json_err)}")
+                    response["explanation"] = gemini_response.text
+                    
             except Exception as e:
                 logging.error(f"Error usando Gemini: {str(e)}")
-                response = {
-                    "corrected_code": code,
-                    "summary": ["Error al usar Gemini API: " + str(e)],
-                    "explanation": "Se produjo un error al intentar utilizar la API de Google Gemini para corregir el código."
-                }
+                response["summary"] = ["Error al usar Gemini API: " + str(e)]
+                response["explanation"] = "Se produjo un error al intentar utilizar la API de Google Gemini para corregir el código."
                 
-        else:
+        else:  # OpenAI (predeterminado)
             try:
-                # Importar bajo demanda para OpenAI
+                # Importar bajo demanda
                 import openai
                 
-                # Usar OpenAI como valor predeterminado
+                # Configurar y usar OpenAI
                 openai_client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
                 
-                # Configuraciones específicas para código extenso
+                # Ajustar prompts y parámetros según el tamaño del archivo
+                system_prompt = (
+                    "Eres un experto en programación y tu tarea es corregir y mejorar código. "
+                    "Responde siempre en JSON. "
+                    + (is_large_file and "Este es un archivo grande; asegúrate de incluir TODO el código corregido completo." or "")
+                )
+                
                 completion = openai_client.chat.completions.create(
-                    model="gpt-4o", # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
+                    model="gpt-4o",  # Modelo más reciente
                     response_format={"type": "json_object"},
                     temperature=0.2,
-                    max_tokens=is_large_file and 4096 or 2048,  # Ajustar tokens según tamaño
+                    max_tokens=is_large_file and 4096 or 2048,
                     messages=[
-                        {"role": "system", "content": "Eres un experto en programación y tu tarea es corregir y mejorar código. "
-                                                    + "Responde siempre en JSON. "
-                                                    + (is_large_file and "Este es un archivo grande; asegúrate de incluir TODO el código corregido completo." or "")},
+                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": prompt}
                     ]
                 )
                 
                 try:
-                    response = json.loads(completion.choices[0].message.content)
-                except json.JSONDecodeError:
-                    response = {
-                        "corrected_code": code,  # Mantener el código original
-                        "summary": ["No se pudieron procesar las correcciones"],
-                        "explanation": completion.choices[0].message.content
-                    }
+                    # Extraer y validar respuesta
+                    parsed_response = json.loads(completion.choices[0].message.content)
+                    if "corrected_code" in parsed_response:
+                        response = parsed_response
+                    else:
+                        logging.warning(f"Respuesta de OpenAI no contiene código corregido")
+                        response["explanation"] = completion.choices[0].message.content
+                        
+                except json.JSONDecodeError as json_err:
+                    logging.warning(f"Error al decodificar JSON de OpenAI: {str(json_err)}")
+                    response["explanation"] = completion.choices[0].message.content
+                    
             except Exception as e:
                 logging.error(f"Error usando OpenAI: {str(e)}")
-                response = {
-                    "corrected_code": code,
-                    "summary": ["Error al usar OpenAI API: " + str(e)],
-                    "explanation": "Se produjo un error al intentar utilizar la API de OpenAI para corregir el código."
-                }
+                response["summary"] = ["Error al usar OpenAI API: " + str(e)]
+                response["explanation"] = "Se produjo un error al intentar utilizar la API de OpenAI para corregir el código."
         
-        # Asegurar que todos los campos necesarios estén presentes
-        if 'corrected_code' not in response:
+        # Normalizar respuesta: asegurar que tiene todos los campos necesarios
+        if 'corrected_code' not in response or not response['corrected_code']:
             response['corrected_code'] = code
-        if 'summary' not in response:
+            
+        if 'summary' not in response or not response['summary']:
             response['summary'] = ["No se generó resumen de cambios"]
-        if 'explanation' not in response:
+            
+        if 'explanation' not in response or not response['explanation']:
             response['explanation'] = "No se generó explicación detallada"
+        
+        # Incluir campos adicionales para frontend
+        response['status'] = 'success'
+        response['lines_processed'] = code_lines
+        response['model_used'] = model_choice
         
         logging.info(f"Código procesado exitosamente con {len(response.get('summary', []))} cambios")
         return response
         
     except Exception as e:
         logging.error(f"Error processing code: {str(e)}")
-        return {'error': str(e)}
+        return {
+            'error': str(e), 
+            'status': 'error',
+            'corrected_code': data.get('code', ''),
+            'summary': ["Error al procesar el código: " + str(e)],
+            'explanation': "Se produjo un error durante el procesamiento del código."
+        }
