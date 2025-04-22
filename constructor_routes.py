@@ -126,6 +126,13 @@ class AutonomousBuilder:
         """
         Método auxiliar para actualizar el estado de un proyecto.
         Invoca la función decorada _update_project_status con los parámetros adecuados.
+        
+        Args:
+            project: Objeto del proyecto a actualizar
+            status: Estado del proyecto ('active', 'paused', 'completed', 'error')
+            phase: Fase actual del proyecto ('planning', 'implementation', 'testing', 'completed')
+            progress: Porcentaje de progreso (0-100)
+            current_step: Descripción del paso actual
         """
         try:
             return self._update_project_status(project, status, phase, progress, current_step)
@@ -137,6 +144,9 @@ class AutonomousBuilder:
         """
         Método auxiliar para cambiar el agente activo.
         Invoca la función decorada _switch_agent con los parámetros adecuados.
+        
+        Args:
+            agent_id: ID del agente al que cambiar (architect, developer, testing, fixing)
         """
         try:
             return self._switch_agent(agent_id)
@@ -502,7 +512,7 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
         """
         # Cambiar a agente de fixing si está disponible
         if self.active_agents.get('fixing', False):
-            self._switch_agent('fixing')
+            self.update_agent('fixing')
             
         # Incrementar contador de errores
         self.error_count += 1
@@ -1165,7 +1175,7 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
         En un entorno real, esto utilizaría una llamada a la IA.
         """
         # Cambiar a agente arquitecto para análisis inicial
-        self._switch_agent('architect')
+        self.update_agent('architect')
         
         # Patrones para detección de tipo de proyecto
         web_patterns = ['web', 'página', 'sitio', 'aplicación web', 'frontend', 'backend']
