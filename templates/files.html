@@ -876,11 +876,11 @@
                 // Actualizar la ruta en la miga de pan
                 updateBreadcrumb(path);
                 
-                fetch(`/api/files?directory=${encodeURIComponent(path)}`)
+                fetch(`/api/explorer/list?path=${encodeURIComponent(path)}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            displayFiles(data.files);
+                            displayFiles(data.items || data.files);
                             // También actualizar el árbol de directorios
                             // loadDirectoryTree(path);
                         } else {
@@ -1094,7 +1094,7 @@
                 // Determinar el tipo de contenido
                 if (textExtensions.includes(extension)) {
                     // Previsualizar archivos de texto/código
-                    fetch(`/api/files/read?file_path=${encodeURIComponent(path)}`)
+                    fetch(`/api/explorer/read?path=${encodeURIComponent(path)}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
