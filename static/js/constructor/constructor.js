@@ -166,8 +166,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 case 'show_results':
                     showResults();
                     break;
+                case 'refresh_explorer':
+                    refreshExplorer(action.path, action.workspace_id);
+                    break;
             }
         });
+    }
+    
+    // Función para actualizar el explorador de archivos
+    function refreshExplorer(path, workspace_id) {
+        console.log(`Actualizando explorador de archivos: ${path}, workspace: ${workspace_id}`);
+        
+        // Almacenar en localStorage para que el explorador se actualice cuando se abra
+        localStorage.setItem('explorer_refresh_needed', 'true');
+        localStorage.setItem('explorer_refresh_path', path || '.');
+        localStorage.setItem('explorer_refresh_workspace', workspace_id || 'default');
+        localStorage.setItem('explorer_refresh_timestamp', Date.now());
+        
+        // Notificar al usuario
+        addSystemMessage("✓ Los archivos se han sincronizado con el explorador");
+        
+        // Si existe una ventana del explorador abierta, intentar refrescarla
+        try {
+            if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({
+                    action: 'refresh_explorer',
+                    path: path || '.',
+                    workspace_id: workspace_id || 'default'
+                }, '*');
+            }
+        } catch (e) {
+            console.error('Error al comunicar con ventana del explorador:', e);
+        }
     }
     
     // Función para mostrar el plan de desarrollo recibido del servidor

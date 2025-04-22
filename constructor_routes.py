@@ -972,7 +972,7 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             return False
     
     def _create_file(self, file_path, content, project, session):
-        """Crea un archivo con el contenido especificado."""
+        """Crea un archivo con el contenido especificado y lo sincroniza con el explorador de archivos."""
         workspace_path = self._get_workspace_path()
         full_path = os.path.join(workspace_path, file_path)
         
@@ -1029,6 +1029,24 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
             # Guardar el archivo en el proyecto y registrarlo para explorador
             project.add_file(file_path, content[:200] + ('...' if len(content) > 200 else ''))
             
+            # Crear o actualizar el archivo también a través de la API del explorador
+            try:
+                import file_explorer
+                workspace_id = 'default'  # El espacio de trabajo por defecto
+                
+                # Opción 1: Usar file_explorer directamente (más robusto)
+                file_path_in_workspace = os.path.join('user_workspaces', workspace_id, file_path)
+                file_explorer.create_file(file_path_in_workspace, content)
+                
+                # Sincronizar con la base de datos
+                project.add_file(file_path, content[:200] + ('...' if len(content) > 200 else ''))
+                
+                # Log para debugging
+                logging.info(f"Archivo sincronizado con explorador: {file_path}")
+            except Exception as sync_error:
+                # Si falla la sincronización, registrar error pero continuar
+                logging.error(f"Error al sincronizar archivo con explorador: {str(sync_error)}")
+            
             # Agregar acción especial para sincronizar con el explorador de archivos
             session.add_special_actions([{
                 'type': 'create_file',
@@ -1044,12 +1062,23 @@ Si necesitas realizar algún ajuste o tienes preguntas sobre la implementación,
                     'project_id': project.project_id,
                     'project_name': project.name
                 }])
+                
+                # Forzar actualización del explorador de archivos
+                logging.info(f"Proyecto completado (100%). Enviando acciones especiales.")
+                
+                # Enviar directorio raíz completo para actualizar explorador
+                session.add_special_actions([{
+                    'type': 'refresh_explorer',
+                    'path': '.',
+                    'workspace_id': 'default'
+                }])
             
             return True
             
         except Exception as e:
             error_msg = f"❌ Error al crear archivo {file_path}: {str(e)}"
             session.add_message('assistant', error_msg)
+            logging.error(f"Error detallado al crear archivo: {str(e)}")
             return False
             
     def _get_file_type_description(self, file_path):
