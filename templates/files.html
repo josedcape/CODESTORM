@@ -740,6 +740,9 @@
             const compressToZipModal = new bootstrap.Modal(document.getElementById('compressToZipModal'));
             const extractFileModal = new bootstrap.Modal(document.getElementById('extractFileModal'));
             
+            // Verificar si hay una solicitud de actualización desde Constructor
+            checkForRefreshRequests();
+            
             // Cargar archivos iniciales
             loadFiles(currentPath);
             
@@ -1602,6 +1605,41 @@
                 .catch(error => {
                     console.error('Error:', error);
                     showNotification('Error al procesar la solicitud: ' + error.message, 'danger');
+                });
+            }
+            
+            // Función para verificar si hay solicitudes de actualización del Constructor
+            function checkForRefreshRequests() {
+                // Verificar localStorage para solicitudes de actualización
+                const refreshNeeded = localStorage.getItem('explorer_refresh_needed');
+                
+                if (refreshNeeded === 'true') {
+                    // Obtener información adicional
+                    const refreshPath = localStorage.getItem('explorer_refresh_path') || '.';
+                    const refreshWorkspace = localStorage.getItem('explorer_refresh_workspace') || 'default';
+                    const refreshTimestamp = localStorage.getItem('explorer_refresh_timestamp');
+                    
+                    console.log(`Se detectó solicitud de actualización: ${refreshPath}, workspace: ${refreshWorkspace}, timestamp: ${refreshTimestamp}`);
+                    
+                    // Limpiar después de procesar
+                    localStorage.removeItem('explorer_refresh_needed');
+                    localStorage.removeItem('explorer_refresh_path');
+                    localStorage.removeItem('explorer_refresh_workspace');
+                    localStorage.removeItem('explorer_refresh_timestamp');
+                    
+                    // Cargar los archivos del path especificado
+                    loadFiles(refreshPath);
+                    
+                    // Mostrar mensaje de confirmación
+                    showNotification('Explorador de archivos actualizado con cambios recientes', 'success');
+                }
+                
+                // Establecer un listener para mensajes de ventanas
+                window.addEventListener('message', function(event) {
+                    if (event.data && event.data.action === 'refresh_explorer') {
+                        console.log('Recibido mensaje para actualizar explorador:', event.data);
+                        loadFiles(event.data.path || '.');
+                    }
                 });
             }
             
