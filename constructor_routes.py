@@ -121,6 +121,28 @@ class AutonomousBuilder:
         active_projects[project_id] = self
         pause_flags[project_id] = self.pause_flag
         project_locks[project_id] = self.lock
+        
+    def update_project(self, project, status, phase, progress, current_step):
+        """
+        Método auxiliar para actualizar el estado de un proyecto.
+        Invoca la función decorada _update_project_status con los parámetros adecuados.
+        """
+        try:
+            return self._update_project_status(project, status, phase, progress, current_step)
+        except Exception as e:
+            logger.error(f"Error al actualizar estado de proyecto: {str(e)}")
+            return False
+            
+    def update_agent(self, agent_id):
+        """
+        Método auxiliar para cambiar el agente activo.
+        Invoca la función decorada _switch_agent con los parámetros adecuados.
+        """
+        try:
+            return self._switch_agent(agent_id)
+        except Exception as e:
+            logger.error(f"Error al cambiar agente a {agent_id}: {str(e)}")
+            return False
     
     def start_building(self, project_description, config=None):
         """
@@ -249,9 +271,7 @@ class AutonomousBuilder:
             )
             
             # Comenzar el flujo de construcción
-            # El decorador db_operation maneja la sesión automáticamente
-            self._update_project_status(project, 'active', 'analysis', 5, 
-                                      'Analizando requisitos del proyecto')
+            self.update_project(project, 'active', 'analysis', 5, 'Analizando requisitos del proyecto')
             
             # Simular análisis de requisitos
             self._wait_with_pause_check(3)
@@ -272,8 +292,7 @@ class AutonomousBuilder:
             db.commit()
             
             # Esperar confirmación (en un entorno real)
-            self._update_project_status(project, 'active', 'planning', 10, 
-                                      'Planificando estructura del proyecto')
+            self.update_project(project, 'active', 'planning', 10, 'Planificando estructura del proyecto')
             
             # Simular planificación
             self._wait_with_pause_check(3)
@@ -289,12 +308,10 @@ class AutonomousBuilder:
             self._wait_with_pause_check(2)
             
             # Actualizar estado
-            self._update_project_status(project, 'active', 'implementation', 25, 
-                                      'Implementando archivos base')
+            self.update_project(project, 'active', 'implementation', 25, 'Implementando archivos base')
             
             # Cambiar a agente de desarrollo para la implementación
-            # El decorador db_operation proporciona la sesión de BD automáticamente
-            self._switch_agent('developer')
+            self.update_agent('developer')
             
             # Comenzar implementación
             workspace_path = self._get_workspace_path()
@@ -337,8 +354,7 @@ class AutonomousBuilder:
                 self._wait_with_pause_check(1)
             
             # Ejecutar comandos necesarios (instalación de dependencias, etc.)
-            self._update_project_status(project, 'active', 'implementation', 75, 
-                                      'Instalando dependencias y configurando el proyecto')
+            self.update_project(project, 'active', 'implementation', 75, 'Instalando dependencias y configurando el proyecto')
             
             # Simular instalación de dependencias
             if tech_stack.get('framework') in ['react', 'vue', 'angular', 'next.js']:
@@ -348,18 +364,16 @@ class AutonomousBuilder:
             
             # Cambiar a agente de testing si está disponible
             if self.active_agents.get('testing', False):
-                self._switch_agent('testing')
+                self.update_agent('testing')
             
             # Finalizar proyecto
-            self._update_project_status(project, 'active', 'testing', 90, 
-                                      'Verificando y probando la aplicación')
+            self.update_project(project, 'active', 'testing', 90, 'Verificando y probando la aplicación')
             
             # Simular pruebas
             self._wait_with_pause_check(3)
             
             # Completar proyecto
-            self._update_project_status(project, 'completed', 'completed', 100, 
-                                      'Proyecto completado exitosamente')
+            self.update_project(project, 'completed', 'completed', 100, 'Proyecto completado exitosamente')
             
             # Mensaje final
             completion_message = f"""
