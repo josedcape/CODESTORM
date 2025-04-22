@@ -178,14 +178,105 @@
     @media (max-width: 767px) {
         .preview-wrapper {
             height: auto;
+            flex-direction: column;
         }
         
         #code-editor {
-            height: 250px;
+            height: 200px;
         }
         
         .result-container {
-            min-height: 250px;
+            min-height: 400px;
+        }
+        
+        .toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .toolbar > div {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+        
+        .toolbar button {
+            flex: 1;
+            margin: 5px;
+            padding: 8px;
+            font-size: 14px;
+        }
+        
+        .toolbar button i {
+            margin-right: 0;
+        }
+        
+        .toolbar button span {
+            display: none;
+        }
+        
+        .device-selector {
+            margin-right: 5px;
+        }
+        
+        .modal-content {
+            width: 95%;
+        }
+        
+        #paste-area {
+            height: 200px;
+        }
+    }
+    
+    /* Ajustes para pantallas muy pequeñas */
+    @media (max-width: 480px) {
+        .result-header {
+            flex-direction: column;
+            align-items: flex-start;
+            padding-bottom: 5px;
+        }
+        
+        .result-header > div:last-child {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+        
+        .device-selector {
+            margin-right: 0;
+            justify-content: flex-start;
+        }
+        
+        #result-iframe-container {
+            min-height: 350px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            overflow: auto;
+        }
+        
+        /* Mejora específica para visualización en móvil */
+        #result-iframe.mobile-view {
+            height: 100%;
+            max-height: 667px;
+            width: 100%;
+            max-width: 375px;
+            margin: 0 auto;
+            border: 8px solid #444;
+            border-radius: 20px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        #result-iframe.tablet-view {
+            height: 100%; 
+            max-height: 1024px;
+            width: 100%;
+            max-width: 768px;
+            margin: 0 auto;
+            border: 8px solid #444;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
         }
     }
 </style>
@@ -559,10 +650,18 @@
                         <button class="device-option" data-device="mobile" title="Vista de móvil">
                             <i class="fas fa-mobile-alt"></i>
                         </button>
+                        <button id="rotate-device-btn" class="btn btn-sm btn-outline-light ms-2" title="Rotar dispositivo" style="display: none;">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
                     </div>
-                    <button id="full-screen-btn" class="btn btn-sm btn-outline-light" title="Pantalla completa">
-                        <i class="fas fa-expand"></i>
-                    </button>
+                    <div>
+                        <button id="auto-adjust-btn" class="btn btn-sm btn-outline-light me-2" title="Ajuste automático">
+                            <i class="fas fa-arrows-alt-h"></i>
+                        </button>
+                        <button id="full-screen-btn" class="btn btn-sm btn-outline-light" title="Pantalla completa">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div id="result-iframe-container">
@@ -748,24 +847,57 @@ document.addEventListener('DOMContentLoaded', function() {
             const deviceType = this.getAttribute('data-device');
             const iframeContainer = document.getElementById('result-iframe-container');
             
-            // Ajustar el tamaño del iframe según el dispositivo
+            // Remover todas las clases de vista previa anteriores
+            resultIframe.classList.remove('desktop-view', 'tablet-view', 'mobile-view');
+            
+            // Ajustar el tamaño del iframe según el dispositivo y agregar clases CSS
             if (deviceType === 'desktop') {
                 resultIframe.style.width = '100%';
                 resultIframe.style.height = '100%';
                 resultIframe.style.margin = '0';
                 resultIframe.style.transform = 'scale(1)';
+                resultIframe.style.border = 'none';
+                resultIframe.style.borderRadius = '0';
+                resultIframe.style.boxShadow = 'none';
+                resultIframe.classList.add('desktop-view');
             } else if (deviceType === 'tablet') {
-                resultIframe.style.width = '768px';
-                resultIframe.style.height = '1024px';
+                // En pantallas pequeñas, ajustamos el ancho para que sea responsivo
+                if (window.innerWidth < 800) {
+                    resultIframe.style.width = '100%';
+                    resultIframe.style.maxWidth = '768px';
+                    resultIframe.style.height = '1024px';
+                    resultIframe.style.maxHeight = '80vh';
+                    resultIframe.style.transform = 'scale(1)';
+                } else {
+                    resultIframe.style.width = '768px';
+                    resultIframe.style.height = '1024px';
+                    resultIframe.style.transform = 'scale(0.85)';
+                }
                 resultIframe.style.margin = '0 auto';
-                resultIframe.style.transform = 'scale(0.9)';
                 resultIframe.style.transformOrigin = 'center top';
+                resultIframe.style.border = '8px solid #444';
+                resultIframe.style.borderRadius = '10px';
+                resultIframe.style.boxShadow = '0 0 15px rgba(0, 0, 0, 0.3)';
+                resultIframe.classList.add('tablet-view');
             } else if (deviceType === 'mobile') {
-                resultIframe.style.width = '375px';
-                resultIframe.style.height = '667px';
+                // En pantallas pequeñas, ajustamos el ancho para que sea responsivo
+                if (window.innerWidth < 500) {
+                    resultIframe.style.width = '100%';
+                    resultIframe.style.maxWidth = '375px';
+                    resultIframe.style.height = '667px';
+                    resultIframe.style.maxHeight = '80vh';
+                    resultIframe.style.transform = 'scale(1)';
+                } else {
+                    resultIframe.style.width = '375px';
+                    resultIframe.style.height = '667px';
+                    resultIframe.style.transform = 'scale(0.9)';
+                }
                 resultIframe.style.margin = '0 auto';
-                resultIframe.style.transform = 'scale(0.9)';
                 resultIframe.style.transformOrigin = 'center top';
+                resultIframe.style.border = '12px solid #444';
+                resultIframe.style.borderRadius = '20px';
+                resultIframe.style.boxShadow = '0 0 15px rgba(0, 0, 0, 0.3)';
+                resultIframe.classList.add('mobile-view');
             }
             
             // Re-renderizar para aplicar los cambios
@@ -790,6 +922,134 @@ document.addEventListener('DOMContentLoaded', function() {
     codeEditor.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
             renderCode();
+        }
+    });
+    
+    // Funcionalidad para el botón de rotación de dispositivo
+    const rotateDeviceBtn = document.getElementById('rotate-device-btn');
+    let isLandscape = false;
+    
+    // Inicializar estado de orientación
+    function updateRotationButtonVisibility() {
+        // Solo mostramos el botón cuando estamos en vista de móvil o tablet
+        const activeDevice = document.querySelector('.device-option.active');
+        if (activeDevice) {
+            const deviceType = activeDevice.getAttribute('data-device');
+            if (deviceType === 'mobile' || deviceType === 'tablet') {
+                rotateDeviceBtn.style.display = 'inline-block';
+            } else {
+                rotateDeviceBtn.style.display = 'none';
+            }
+        }
+    }
+    
+    // Actualizar visibilidad inicial del botón de rotación
+    updateRotationButtonVisibility();
+    
+    // Actualizar cuando se cambia de dispositivo
+    deviceOptions.forEach(option => {
+        option.addEventListener('click', updateRotationButtonVisibility);
+    });
+    
+    // Evento para rotar el dispositivo
+    rotateDeviceBtn.addEventListener('click', function() {
+        isLandscape = !isLandscape;
+        
+        // Obtener el dispositivo activo actual
+        const activeDevice = document.querySelector('.device-option.active');
+        if (!activeDevice) return;
+        
+        const deviceType = activeDevice.getAttribute('data-device');
+        
+        // Solo rotamos si estamos en móvil o tablet
+        if (deviceType === 'mobile' || deviceType === 'tablet') {
+            // Intercambiar ancho y alto
+            let tempWidth = resultIframe.style.width;
+            let tempHeight = resultIframe.style.height;
+            let tempMaxWidth = resultIframe.style.maxWidth;
+            let tempMaxHeight = resultIframe.style.maxHeight;
+            
+            if (deviceType === 'mobile') {
+                if (isLandscape) {
+                    // Cambiar a horizontal (landscape)
+                    resultIframe.style.width = '667px';
+                    resultIframe.style.height = '375px';
+                    resultIframe.style.maxWidth = tempMaxHeight;
+                    resultIframe.style.maxHeight = tempMaxWidth;
+                    rotateDeviceBtn.title = 'Cambiar a vertical';
+                    // Actualizar icono
+                    rotateDeviceBtn.innerHTML = '<i class="fas fa-mobile-alt fa-rotate-90"></i>';
+                } else {
+                    // Cambiar a vertical (portrait)
+                    resultIframe.style.width = '375px';
+                    resultIframe.style.height = '667px';
+                    resultIframe.style.maxWidth = tempMaxHeight;
+                    resultIframe.style.maxHeight = tempMaxWidth;
+                    rotateDeviceBtn.title = 'Cambiar a horizontal';
+                    // Actualizar icono
+                    rotateDeviceBtn.innerHTML = '<i class="fas fa-mobile-alt"></i>';
+                }
+            } else if (deviceType === 'tablet') {
+                if (isLandscape) {
+                    // Cambiar a horizontal (landscape)
+                    resultIframe.style.width = '1024px';
+                    resultIframe.style.height = '768px';
+                    resultIframe.style.maxWidth = tempMaxHeight;
+                    resultIframe.style.maxHeight = tempMaxWidth;
+                    rotateDeviceBtn.title = 'Cambiar a vertical';
+                    // Actualizar icono
+                    rotateDeviceBtn.innerHTML = '<i class="fas fa-tablet-alt fa-rotate-90"></i>';
+                } else {
+                    // Cambiar a vertical (portrait)
+                    resultIframe.style.width = '768px';
+                    resultIframe.style.height = '1024px';
+                    resultIframe.style.maxWidth = tempMaxHeight;
+                    resultIframe.style.maxHeight = tempMaxWidth;
+                    rotateDeviceBtn.title = 'Cambiar a horizontal';
+                    // Actualizar icono
+                    rotateDeviceBtn.innerHTML = '<i class="fas fa-tablet-alt"></i>';
+                }
+            }
+            
+            // Mantener los bordes y estilos
+            resultIframe.style.margin = '0 auto';
+            resultIframe.style.transformOrigin = 'center top';
+            
+            // Re-renderizar para aplicar los cambios
+            renderCode();
+            
+            // Mostrar notificación
+            showNotification(isLandscape ? 'Vista horizontal' : 'Vista vertical');
+        }
+    });
+    
+    // Botón de ajuste automático
+    const autoAdjustBtn = document.getElementById('auto-adjust-btn');
+    
+    autoAdjustBtn.addEventListener('click', function() {
+        const activeDevice = document.querySelector('.device-option.active');
+        if (!activeDevice) return;
+        
+        const deviceType = activeDevice.getAttribute('data-device');
+        
+        // Determinar si debemos usar orientación landscape basado en el contenido
+        try {
+            const iframeDoc = resultIframe.contentDocument || resultIframe.contentWindow.document;
+            const contentWidth = iframeDoc.documentElement.scrollWidth;
+            const contentHeight = iframeDoc.documentElement.scrollHeight;
+            
+            // Si el contenido es más ancho que alto, cambiar a landscape
+            const shouldBeLandscape = contentWidth > contentHeight;
+            
+            // Solo cambiar si la orientación actual es diferente
+            if (shouldBeLandscape !== isLandscape && (deviceType === 'mobile' || deviceType === 'tablet')) {
+                rotateDeviceBtn.click(); // Simular clic en el botón de rotación
+            }
+            
+            showNotification('Ajuste automático de orientación aplicado');
+        } catch (error) {
+            console.error('Error al ajustar automáticamente:', error);
+            showNotification('Error al ajustar automáticamente la orientación', 'error');
         }
     });
 });
