@@ -16,6 +16,7 @@ export interface AIResponse {
   error?: string;
   fallbackUsed?: boolean;
   executionTime?: number;
+  isProjectRequest?: boolean;
 }
 
 async function tryWithFallback(instruction: string, model: string): Promise<AIResponse> {
@@ -27,9 +28,9 @@ async function tryWithFallback(instruction: string, model: string): Promise<AIRe
       // If we get a quota error, try with alternative models in sequence
       console.log(`${model} quota exceeded, trying fallback models...`);
 
-      // Define fallback order
+      // Define fallback order - Gemini models first
       const fallbackOrder = [
-        'GPT-O3 Mini',
+        'Gemini 2.5',
         'Gemini 2.0 Flash',
         'Claude 3.5 Sonnet V2',
         'Qwen2.5-Omni-7B'
@@ -58,6 +59,15 @@ async function tryWithFallback(instruction: string, model: string): Promise<AIRe
 
 export async function processInstruction(instruction: string, model: string): Promise<AIResponse> {
   try {
+    // Determinar si es una solicitud de proyecto completo
+    const isProjectRequest = instruction.toLowerCase().includes('crea') &&
+      (instruction.toLowerCase().includes('proyecto') ||
+       instruction.toLowerCase().includes('aplicación') ||
+       instruction.toLowerCase().includes('programa') ||
+       instruction.toLowerCase().includes('calculadora') ||
+       instruction.toLowerCase().includes('juego') ||
+       instruction.toLowerCase().includes('web'));
+
     switch (model) {
       case 'GPT-4O':
         try {
@@ -77,7 +87,8 @@ export async function processInstruction(instruction: string, model: string): Pr
           });
           return {
             content: completion.choices[0].message.content || '',
-            model: 'GPT-4O'
+            model: 'GPT-4O',
+            isProjectRequest
           };
         } catch (error) {
           console.error('Error with OpenAI GPT-4O API:', error);
@@ -102,7 +113,8 @@ export async function processInstruction(instruction: string, model: string): Pr
           });
           return {
             content: completion.choices[0].message.content || '',
-            model: 'GPT-O3 Mini'
+            model: 'GPT-O3 Mini',
+            isProjectRequest
           };
         } catch (error) {
           console.error('Error with OpenAI GPT-O3 Mini API:', error);
@@ -117,7 +129,8 @@ export async function processInstruction(instruction: string, model: string): Pr
           const response = await result.response;
           return {
             content: response.text(),
-            model: 'Gemini 2.5'
+            model: 'Gemini 2.5',
+            isProjectRequest
           };
         } catch (error) {
           console.error('Error with Gemini 2.5 API:', error);
@@ -132,7 +145,8 @@ export async function processInstruction(instruction: string, model: string): Pr
           const response = await result.response;
           return {
             content: response.text(),
-            model: 'Gemini 2.0 Flash'
+            model: 'Gemini 2.0 Flash',
+            isProjectRequest
           };
         } catch (error) {
           console.error('Error with Gemini 2.0 Flash API:', error);
@@ -172,7 +186,8 @@ export async function processInstruction(instruction: string, model: string): Pr
           return {
             content: data.content[0].text,
             model: 'Claude 3.7',
-            executionTime: Math.floor(Math.random() * 2000) + 1000 // Tiempo simulado
+            executionTime: Math.floor(Math.random() * 2000) + 1000, // Tiempo simulado
+            isProjectRequest
           };
         } catch (error) {
           console.error('Error with Claude 3.7 API:', error);
@@ -212,7 +227,8 @@ export async function processInstruction(instruction: string, model: string): Pr
           return {
             content: data.content[0].text,
             model: 'Claude 3.5 Sonnet V2',
-            executionTime: Math.floor(Math.random() * 1500) + 800 // Tiempo simulado
+            executionTime: Math.floor(Math.random() * 1500) + 800, // Tiempo simulado
+            isProjectRequest
           };
         } catch (error) {
           console.error('Error with Claude 3.5 Sonnet V2 API:', error);
@@ -226,7 +242,8 @@ export async function processInstruction(instruction: string, model: string): Pr
           // En una implementación real, esto se conectaría a un servicio local que ejecuta el modelo
           return {
             content: `# Respuesta generada por Qwen2.5-Omni-7B (modelo local)\n\n${instruction}\n\n# Código generado:\n\ndef main():\n    print("Implementación generada por Qwen2.5-Omni-7B")\n    # Aquí iría la implementación real\n\nif __name__ == "__main__":\n    main()`,
-            model: 'Qwen2.5-Omni-7B'
+            model: 'Qwen2.5-Omni-7B',
+            isProjectRequest
           };
         } catch (error) {
           console.error('Error with Qwen2.5-Omni-7B API:', error);

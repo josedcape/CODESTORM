@@ -17,9 +17,10 @@ import {
 
 interface TerminalProps {
   outputs: TerminalOutput[];
+  onCommandExecuted?: (command: string, output: string) => void;
 }
 
-const Terminal: React.FC<TerminalProps> = ({ outputs }) => {
+const Terminal: React.FC<TerminalProps> = ({ outputs, onCommandExecuted }) => {
   const [expandedOutputs, setExpandedOutputs] = useState<Record<string, boolean>>({});
 
   const toggleExpand = (id: string) => {
@@ -28,6 +29,18 @@ const Terminal: React.FC<TerminalProps> = ({ outputs }) => {
       [id]: !prev[id]
     }));
   };
+
+  // Efecto para notificar cuando se ejecuta un comando
+  React.useEffect(() => {
+    if (outputs.length > 0) {
+      const latestOutput = outputs[outputs.length - 1];
+
+      // Notificar al componente padre sobre el comando ejecutado
+      if (onCommandExecuted && latestOutput.status !== 'info') {
+        onCommandExecuted(latestOutput.command, latestOutput.output);
+      }
+    }
+  }, [outputs, onCommandExecuted]);
 
   return (
     <div className="bg-codestorm-dark rounded-lg shadow-md h-full flex flex-col border border-codestorm-blue/30">
