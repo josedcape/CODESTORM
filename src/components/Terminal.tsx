@@ -1,82 +1,148 @@
-import React, { useEffect, useRef } from 'react';
-import { Terminal as XTerm } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
-import { TerminalOutput } from '../types';
-import 'xterm/css/xterm.css';
+import React, { useState } from 'react';
+import { TerminalOutput, CommandAnalysis } from '../types';
+import {
+  Terminal as TerminalIcon,
+  X,
+  Maximize2,
+  Minimize2,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle,
+  AlertCircle,
+  AlertTriangle,
+  Clock,
+  Cpu,
+  Lightbulb
+} from 'lucide-react';
 
 interface TerminalProps {
   outputs: TerminalOutput[];
 }
 
 const Terminal: React.FC<TerminalProps> = ({ outputs }) => {
-  const terminalRef = useRef<HTMLDivElement>(null);
-  const xtermRef = useRef<XTerm | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
+  const [expandedOutputs, setExpandedOutputs] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    if (!terminalRef.current) return;
-
-    // Initialize terminal if it doesn't exist
-    if (!xtermRef.current) {
-      xtermRef.current = new XTerm({
-        cursorBlink: true,
-        theme: {
-          background: '#1E1E1E',
-          foreground: '#FFFFFF',
-          cursor: '#FFFFFF',
-          selectionBackground: '#4D4D4D',
-        },
-      });
-
-      fitAddonRef.current = new FitAddon();
-      xtermRef.current.loadAddon(fitAddonRef.current);
-      xtermRef.current.open(terminalRef.current);
-      fitAddonRef.current.fit();
-    }
-
-    // Clear terminal
-    xtermRef.current.clear();
-
-    // Write all outputs to terminal
-    outputs.forEach(output => {
-      const timestamp = new Date(output.timestamp).toLocaleTimeString();
-      const statusColor = output.status === 'error' ? '\x1b[31m' : output.status === 'success' ? '\x1b[32m' : '\x1b[34m';
-      
-      xtermRef.current?.writeln(`\x1b[90m[${timestamp}]\x1b[0m ${statusColor}${output.status.toUpperCase()}\x1b[0m: $ ${output.command}`);
-      
-      if (output.output) {
-        output.output.split('\n').forEach(line => {
-          xtermRef.current?.writeln(`  ${line}`);
-        });
-      }
-      
-      xtermRef.current?.writeln('');
-    });
-
-    // Handle resize
-    const handleResize = () => {
-      fitAddonRef.current?.fit();
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [outputs]);
+  const toggleExpand = (id: string) => {
+    setExpandedOutputs(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   return (
-    <div className="bg-[#1E1E1E] rounded-lg shadow-md p-0 h-full">
-      <div className="bg-gray-800 text-white px-3 py-2 rounded-t-lg flex items-center">
-        <div className="flex space-x-2 mr-3">
-          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+    <div className="bg-codestorm-dark rounded-lg shadow-md h-full flex flex-col border border-codestorm-blue/30">
+      <div className="flex items-center justify-between bg-codestorm-blue/20 p-2 border-b border-codestorm-blue/30">
+        <div className="flex items-center">
+          <TerminalIcon className="h-4 w-4 text-codestorm-gold mr-2" />
+          <span className="font-medium text-sm text-white">Terminal</span>
         </div>
-        <span className="text-sm font-mono">Terminal</span>
+        <div className="flex space-x-1">
+          <button className="p-1.5 rounded-md hover:bg-codestorm-blue/30 transition-colors text-gray-400 hover:text-white">
+            <Minimize2 className="h-3 w-3" />
+          </button>
+          <button className="p-1.5 rounded-md hover:bg-codestorm-blue/30 transition-colors text-gray-400 hover:text-white">
+            <Maximize2 className="h-3 w-3" />
+          </button>
+          <button className="p-1.5 rounded-md hover:bg-codestorm-blue/30 transition-colors text-gray-400 hover:text-white">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
       </div>
-      <div ref={terminalRef} className="h-[calc(100%-36px)]" />
+      <div className="flex-1 overflow-auto p-3 font-mono text-sm bg-codestorm-darker">
+        {outputs.map((output) => (
+          <div key={output.id} className="mb-4 border-b border-codestorm-blue/10 pb-2">
+            <div className="flex items-center text-codestorm-gold">
+              <span className="mr-2">$</span>
+              <span>{output.command}</span>
+            </div>
+            <div className={`ml-2 ${getOutputColor(output.status)}`}>
+              {output.output}
+            </div>
+
+            {output.analysis && (
+              <div className="mt-2 ml-2">
+                <button
+                  onClick={() => toggleExpand(output.id)}
+                  className="flex items-center text-xs text-codestorm-accent hover:text-codestorm-gold transition-colors"
+                >
+                  {expandedOutputs[output.id] ? (
+                    <ChevronDown className="h-3 w-3 mr-1" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 mr-1" />
+                  )}
+                  <span>Análisis de comando</span>
+                  {getStatusIcon(output.analysis)}
+                </button>
+
+                {expandedOutputs[output.id] && (
+                  <div className="mt-2 bg-codestorm-blue/5 p-2 rounded border border-codestorm-blue/20 text-xs">
+                    <div className="mb-1 text-white font-medium">{output.analysis.summary}</div>
+
+                    {output.analysis.details && (
+                      <div className="mb-2 text-gray-300">{output.analysis.details}</div>
+                    )}
+
+                    {output.analysis.suggestions && output.analysis.suggestions.length > 0 && (
+                      <div className="mb-2">
+                        <div className="flex items-center text-yellow-300 mb-1">
+                          <Lightbulb className="h-3 w-3 mr-1" />
+                          <span>Sugerencias:</span>
+                        </div>
+                        <ul className="list-disc list-inside text-gray-300">
+                          {output.analysis.suggestions.map((suggestion, idx) => (
+                            <li key={idx}>{suggestion}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {output.analysis.executionTime && (
+                      <div className="flex items-center text-gray-400 text-xs">
+                        <Clock className="h-3 w-3 mr-1" />
+                        <span>Tiempo: {output.analysis.executionTime}ms</span>
+                      </div>
+                    )}
+
+                    {output.analysis.resourceUsage && (
+                      <div className="flex items-center text-gray-400 text-xs mt-1">
+                        <Cpu className="h-3 w-3 mr-1" />
+                        <span>
+                          {output.analysis.resourceUsage.cpu && `CPU: ${output.analysis.resourceUsage.cpu}`}
+                          {output.analysis.resourceUsage.memory && ` | Memoria: ${output.analysis.resourceUsage.memory}`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
+};
+
+const getStatusIcon = (analysis: CommandAnalysis) => {
+  if (analysis.isValid) {
+    return <CheckCircle className="h-3 w-3 ml-1 text-green-400" />;
+  } else {
+    return <AlertCircle className="h-3 w-3 ml-1 text-red-400" />;
+  }
+};
+
+const getOutputColor = (status: string) => {
+  switch (status) {
+    case 'success':
+      return 'text-green-400';
+    case 'error':
+      return 'text-red-400';
+    case 'warning':
+      return 'text-yellow-400';
+    case 'info':
+    default:
+      return 'text-gray-300';
+  }
 };
 
 export default Terminal;

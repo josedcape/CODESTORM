@@ -33,10 +33,23 @@ export interface FileItem {
   language: string;
 }
 
+export interface CommandAnalysis {
+  isValid: boolean;
+  summary: string;
+  details?: string;
+  suggestions?: string[];
+  executionTime?: number;
+  resourceUsage?: {
+    cpu?: string;
+    memory?: string;
+  };
+}
+
 export interface TerminalOutput {
   id: string;
   command: string;
   output: string;
   timestamp: number;
-  status: 'success' | 'error' | 'info';
+  status: 'success' | 'error' | 'info' | 'warning';
+  analysis?: CommandAnalysis;
 }

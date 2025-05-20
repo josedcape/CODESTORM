@@ -1,76 +1,56 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { FileItem } from '../types';
-import { FolderOpen, File, ChevronRight, ChevronDown } from 'lucide-react';
+import { Folder, File, Plus, FolderPlus, RefreshCw } from 'lucide-react';
 
 interface FileExplorerProps {
   files: FileItem[];
-  onSelectFile: (fileId: string) => void;
   selectedFileId: string | null;
+  onSelectFile: (fileId: string) => void;
 }
 
-const FileExplorer: React.FC<FileExplorerProps> = ({ 
-  files, 
-  onSelectFile, 
-  selectedFileId 
-}) => {
-  const [expanded, setExpanded] = useState(true);
-
-  // Group files by directory
-  const fileStructure: Record<string, FileItem[]> = {};
-  
-  files.forEach(file => {
-    const directory = file.path.split('/').slice(0, -1).join('/') || '/';
-    if (!fileStructure[directory]) {
-      fileStructure[directory] = [];
-    }
-    fileStructure[directory].push(file);
-  });
-
+const FileExplorer: React.FC<FileExplorerProps> = ({ files, selectedFileId, onSelectFile }) => {
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 h-full">
-      <div 
-        className="flex items-center justify-between mb-3 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <h2 className="text-lg font-semibold flex items-center">
-          <FolderOpen className="h-5 w-5 mr-2 text-indigo-600" />
-          Files
-        </h2>
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 text-gray-500" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-gray-500" />
-        )}
+    <div className="bg-codestorm-dark rounded-lg shadow-md h-full border border-codestorm-blue/30 flex flex-col">
+      <div className="bg-codestorm-blue/20 p-3 border-b border-codestorm-blue/30 flex justify-between items-center">
+        <h2 className="text-sm font-medium text-white">Explorador</h2>
       </div>
       
-      {expanded && (
-        <div className="space-y-1">
-          {Object.entries(fileStructure).map(([directory, dirFiles]) => (
-            <div key={directory} className="ml-2">
-              <div className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                <FolderOpen className="h-4 w-4 mr-1 text-yellow-500" />
-                <span>{directory === '/' ? 'Root' : directory}</span>
-              </div>
-              <ul className="ml-4 space-y-1">
-                {dirFiles.map(file => (
-                  <li 
-                    key={file.id}
-                    className={`flex items-center text-sm py-1 px-2 rounded-md cursor-pointer ${
-                      selectedFileId === file.id 
-                        ? 'bg-indigo-100 text-indigo-700' 
-                        : 'hover:bg-gray-100'
-                    }`}
-                    onClick={() => onSelectFile(file.id)}
-                  >
-                    <File className="h-4 w-4 mr-1 text-gray-500" />
-                    <span>{file.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+      <div className="p-2 flex space-x-2 border-b border-codestorm-blue/30">
+        <button className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white">
+          <Plus className="h-4 w-4" />
+        </button>
+        <button className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white">
+          <FolderPlus className="h-4 w-4" />
+        </button>
+        <button className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white">
+          <RefreshCw className="h-4 w-4" />
+        </button>
+      </div>
+      
+      <div className="flex-1 overflow-auto p-2">
+        <div className="mb-2">
+          <div className="flex items-center text-codestorm-gold mb-1">
+            <Folder className="h-4 w-4 mr-1" />
+            <span className="text-sm">proyecto</span>
+          </div>
+          <ul className="pl-4">
+            {files.map((file) => (
+              <li 
+                key={file.id}
+                className={`flex items-center py-1 px-2 rounded-md cursor-pointer ${
+                  selectedFileId === file.id 
+                    ? 'bg-codestorm-blue text-white' 
+                    : 'text-gray-300 hover:bg-codestorm-blue/10'
+                }`}
+                onClick={() => onSelectFile(file.id)}
+              >
+                <File className="h-4 w-4 mr-2" />
+                <span className="text-sm">{file.name}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-      )}
+      </div>
     </div>
   );
 };

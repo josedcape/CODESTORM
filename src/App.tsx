@@ -7,13 +7,14 @@ import FileExplorer from './components/FileExplorer';
 import CodeEditor from './components/CodeEditor';
 import Terminal from './components/Terminal';
 import { availableModels } from './data/models';
-import { ProjectState, FileItem, Task } from './types';
+import { ProjectState, FileItem, Task, CommandAnalysis } from './types';
 import { processInstruction, tryWithFallback } from './services/ai';
+import { analyzeCommandOutput } from './services/terminalAnalyzer';
 
 function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  
+
   const [projectState, setProjectState] = useState<ProjectState>({
     phase: 'planning',
     currentModel: 'GPT-4O',
@@ -41,7 +42,34 @@ function App() {
         command: 'python --version',
         output: 'Python 3.10.0',
         timestamp: Date.now() - 60000,
-        status: 'success'
+        status: 'success',
+        analysis: {
+          isValid: true,
+          summary: 'Versión de Python verificada correctamente',
+          details: 'Se está utilizando Python 3.10.0, que es compatible con todas las funcionalidades requeridas.',
+          executionTime: 120,
+          resourceUsage: {
+            cpu: '5%',
+            memory: '25MB'
+          }
+        }
+      },
+      {
+        id: 'init-2',
+        command: 'npm --version',
+        output: '9.8.1',
+        timestamp: Date.now() - 50000,
+        status: 'success',
+        analysis: {
+          isValid: true,
+          summary: 'Versión de NPM verificada correctamente',
+          details: 'Se está utilizando NPM 9.8.1, que es compatible con el proyecto.',
+          executionTime: 85,
+          resourceUsage: {
+            cpu: '3%',
+            memory: '18MB'
+          }
+        }
       }
     ]
   });
@@ -60,7 +88,7 @@ function App() {
 
   const handleSubmitInstruction = async (instruction: string) => {
     setIsProcessing(true);
-    
+
     try {
       // Add a new task
       const newTask: Task = {
@@ -69,16 +97,23 @@ function App() {
         assignedModel: projectState.currentModel,
         status: 'in-progress'
       };
-      
-      // Add terminal command
+
+      // Add terminal command with analysis
+      const processCommand = `process_instruction "${instruction}"`;
       const newTerminalOutput = {
         id: `term-${Date.now()}`,
-        command: `process_instruction "${instruction}"`,
+        command: processCommand,
         output: 'Processing instruction...',
         timestamp: Date.now(),
-        status: 'info' as const
+        status: 'info' as const,
+        analysis: analyzeCommandOutput(
+          processCommand,
+          'Processing instruction...',
+          'info',
+          0
+        )
       };
-      
+
       // Update project state with new task and terminal output
       setProjectState(prev => ({
         ...prev,
@@ -104,20 +139,27 @@ function App() {
         language: 'python'
       };
 
-      // Add success terminal output with fallback notification if used
+      // Add success terminal output with analysis
+      const successCommand = 'python generated_code.py';
       const successOutput = {
         id: `term-${Date.now()}`,
-        command: 'python generated_code.py',
+        command: successCommand,
         output: `Code generated successfully${response.fallbackUsed ? ' (using fallback model due to OpenAI quota exceeded)' : ''}`,
         timestamp: Date.now(),
-        status: 'success' as const
+        status: 'success' as const,
+        analysis: analyzeCommandOutput(
+          successCommand,
+          `Code generated successfully${response.fallbackUsed ? ' (using fallback model due to OpenAI quota exceeded)' : ''}`,
+          'success',
+          response.executionTime || Math.floor(Math.random() * 1000) + 500
+        )
       };
 
       // Update project state with completed task and new file
       setProjectState(prev => {
-        const updatedTasks = prev.tasks.map(task => 
-          task.id === newTask.id 
-            ? { ...task, status: 'completed' } 
+        const updatedTasks = prev.tasks.map(task =>
+          task.id === newTask.id
+            ? { ...task, status: 'completed' as const }
             : task
         );
 
@@ -133,13 +175,21 @@ function App() {
       // Set the newly created file as selected
       setSelectedFileId(newFile.id);
     } catch (error) {
-      // Handle error
+      // Handle error with analysis
+      const errorCommand = `process_instruction "${instruction}"`;
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
       const errorOutput = {
         id: `term-${Date.now()}`,
-        command: `process_instruction "${instruction}"`,
-        output: error instanceof Error ? error.message : 'An error occurred',
+        command: errorCommand,
+        output: errorMessage,
         timestamp: Date.now(),
-        status: 'error' as const
+        status: 'error' as const,
+        analysis: analyzeCommandOutput(
+          errorCommand,
+          errorMessage,
+          'error',
+          Math.floor(Math.random() * 500) + 100
+        )
       };
 
       setProjectState(prev => ({
@@ -152,39 +202,39 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-codestorm-darker flex flex-col">
       <Header />
-      
-      <main className="flex-1 container mx-auto py-6 px-4 grid grid-cols-12 gap-6">
+
+      <main className="flex-1 container mx-auto py-4 px-4 grid grid-cols-12 gap-4">
         {/* Left sidebar */}
-        <div className="col-span-3 space-y-6">
-          <ModelSelector 
-            models={availableModels} 
-            selectedModel={availableModels.find(m => m.name === projectState.currentModel)?.id || ''} 
-            onSelectModel={handleSelectModel} 
+        <div className="col-span-3 space-y-4">
+          <ModelSelector
+            models={availableModels}
+            selectedModel={availableModels.find(m => m.name === projectState.currentModel)?.id || ''}
+            onSelectModel={handleSelectModel}
           />
           <ProjectStatus projectState={projectState} />
         </div>
-        
+
         {/* Main content area */}
-        <div className="col-span-9 space-y-6">
-          <InstructionInput 
-            onSubmitInstruction={handleSubmitInstruction} 
-            isProcessing={isProcessing} 
+        <div className="col-span-9 space-y-4">
+          <InstructionInput
+            onSubmitInstruction={handleSubmitInstruction}
+            isProcessing={isProcessing}
           />
-          
-          <div className="grid grid-cols-12 gap-6 h-[600px]">
+
+          <div className="grid grid-cols-12 gap-4 h-[600px]">
             {/* File explorer */}
             <div className="col-span-3 h-full">
-              <FileExplorer 
-                files={projectState.files} 
-                onSelectFile={setSelectedFileId} 
-                selectedFileId={selectedFileId} 
+              <FileExplorer
+                files={projectState.files}
+                onSelectFile={setSelectedFileId}
+                selectedFileId={selectedFileId}
               />
             </div>
-            
+
             {/* Code editor and terminal */}
-            <div className="col-span-9 grid grid-rows-2 gap-6 h-full">
+            <div className="col-span-9 grid grid-rows-2 gap-4 h-full">
               <CodeEditor file={selectedFile} />
               <Terminal outputs={projectState.terminal} />
             </div>
