@@ -74,7 +74,7 @@ export interface ProjectPlan {
 }
 
 // Tipos para el sistema multi-agente
-export type AgentType = 'planner' | 'codeGenerator' | 'fileSynchronizer' | 'codeModifier';
+export type AgentType = 'planner' | 'codeGenerator' | 'fileSynchronizer' | 'codeModifier' | 'fileObserver' | 'codeSplitter';
 
 export type AgentStatus = 'idle' | 'working' | 'completed' | 'failed';
 
@@ -139,4 +139,117 @@ export interface CodeModifierResult extends AgentResult {
       lineNumbers?: [number, number]; // [inicio, fin]
     }[];
   };
+}
+
+// Comandos para el sistema de archivos
+export type FileSystemCommandType = 'create' | 'update' | 'delete' | 'rename' | 'move';
+
+export interface FileSystemCommand {
+  type: FileSystemCommandType;
+  path: string;
+  content?: string;
+  newPath?: string; // Para comandos rename y move
+  language?: string; // Para comandos create
+}
+
+// Tipos para el sistema de aprobación por etapas (Constructor)
+export type ApprovalStatus = 'pending' | 'approved' | 'modified' | 'rejected';
+
+export interface ApprovalStage {
+  id: string;
+  type: AgentType;
+  title: string;
+  description: string;
+  status: ApprovalStatus;
+  proposal: string;
+  feedback?: string;
+  timestamp: number;
+}
+
+export interface ConstructorState extends ProjectState {
+  stages: ApprovalStage[];
+  currentStageId: string | null;
+  sessionId: string;
+  isPaused: boolean;
+  lastModified: number;
+  fileObserver?: FileObserverState;
+}
+
+// Tipos para el chat interactivo del Constructor
+export interface ChatMessage {
+  id: string;
+  sender: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+  type: 'text' | 'code' | 'proposal' | 'notification';
+  metadata?: {
+    language?: string;
+    stageId?: string;
+    requiresAction?: boolean;
+    fileId?: string;
+  };
+}
+
+// Tipos para el analizador de código
+export type CodeIssueLevel = 'critical' | 'warning' | 'suggestion';
+
+export interface CodeIssue {
+  id: string;
+  level: CodeIssueLevel;
+  message: string;
+  description: string;
+  lineStart: number;
+  lineEnd: number;
+  filePath: string;
+  suggestion?: string;
+  isIgnored: boolean;
+  ignoreReason?: string;
+}
+
+export interface CodeAnalysisResult {
+  fileId: string;
+  issues: CodeIssue[];
+  summary: {
+    critical: number;
+    warning: number;
+    suggestion: number;
+  };
+}
+
+// Tipos para el Agente de Observación de Archivos
+export interface FileContext {
+  id: string;
+  fileId: string;
+  path: string;
+  language: string;
+  imports: string[];
+  exports: string[];
+  functions: string[];
+  classes: string[];
+  dependencies: string[];
+  description: string;
+  lastUpdated: number;
+}
+
+export interface FileObservation {
+  id: string;
+  fileId: string;
+  observation: string;
+  type: 'dependency' | 'structure' | 'pattern' | 'suggestion' | 'warning';
+  timestamp: number;
+  relatedFiles?: string[];
+}
+
+export interface FileObserverState {
+  observedFiles: string[];
+  fileContexts: FileContext[];
+  observations: FileObservation[];
+  isActive: boolean;
+  lastScan: number;
+}
+
+// Tipos para el Agente de Separación de Código
+export interface CodeSplitResult {
+  files: FileItem[];
+  message: string;
 }

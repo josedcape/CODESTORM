@@ -1,0 +1,295 @@
+/* CODESTORM Animations
+   Animaciones temáticas relacionadas con el concepto de "tormenta de código"
+   Incluye efectos que evocan electricidad, rayos y energía
+*/
+
+/* Efecto de destello eléctrico para botones y elementos interactivos */
+.electric-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.electric-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.2), transparent);
+  transform: translateX(-100%);
+}
+
+.electric-btn:hover::before {
+  animation: electric-wave 1.5s infinite;
+}
+
+@keyframes electric-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Efecto de destello para el botón "Enhance Prompt" */
+.enhance-btn-flash {
+  position: relative;
+}
+
+.enhance-btn-flash::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.6) 0%, rgba(251, 191, 36, 0) 70%);
+  opacity: 0;
+  z-index: -1;
+}
+
+.enhance-btn-flash.active::after {
+  animation: flash-pulse 0.8s ease-out;
+}
+
+@keyframes flash-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* Efecto de carga de energía para barras de progreso */
+.energy-loading {
+  background: linear-gradient(90deg, #050a14, #1e3a8a, #3b82f6, #1e3a8a, #050a14);
+  background-size: 400% 100%;
+  animation: energy-flow 3s ease infinite;
+}
+
+@keyframes energy-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Efecto de aparición con destello para componentes */
+.appear-with-flash {
+  animation: appear-flash 0.5s ease-out;
+}
+
+@keyframes appear-flash {
+  0% {
+    opacity: 0;
+    filter: brightness(2);
+  }
+  30% {
+    opacity: 1;
+    filter: brightness(1.5);
+  }
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+
+/* Efecto de código cayendo para fondos o decoraciones */
+.code-rain {
+  position: relative;
+  overflow: hidden;
+}
+
+.code-rain::before {
+  content: '10101010101010';
+  position: absolute;
+  top: -100px;
+  left: 0;
+  width: 100%;
+  height: 100px;
+  font-family: monospace;
+  font-size: 12px;
+  color: rgba(59, 130, 246, 0.2);
+  text-align: center;
+  animation: code-fall 10s linear infinite;
+}
+
+@keyframes code-fall {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(1000%);
+  }
+}
+
+/* Efecto de pulso eléctrico para iconos */
+.electric-pulse {
+  animation: electric-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes electric-pulse {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.8));
+  }
+  50% {
+    opacity: 0.7;
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.8));
+  }
+}
+
+/* Efecto de destello dorado para elementos destacados */
+.gold-flash {
+  animation: gold-flash 3s ease infinite;
+}
+
+@keyframes gold-flash {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(251, 191, 36, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.8));
+  }
+}
+
+/* Efecto de entrada para paneles y diálogos */
+.panel-enter {
+  animation: panel-enter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center top;
+}
+
+@keyframes panel-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Efecto de salida para paneles y diálogos */
+.panel-exit {
+  animation: panel-exit 0.2s ease-in;
+  transform-origin: center top;
+}
+
+@keyframes panel-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+}
+
+/* Transiciones suaves para elementos de la interfaz */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Efecto de hover para botones */
+.hover-effect {
+  transition: all 0.3s ease;
+}
+
+.hover-effect:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Efecto de clic para botones */
+.click-effect {
+  transition: all 0.1s ease;
+}
+
+.click-effect:active {
+  transform: scale(0.95);
+}
+
+/* Efecto de destello para notificaciones */
+.notification-flash {
+  animation: notification-flash 2s ease;
+}
+
+@keyframes notification-flash {
+  0% {
+    background-color: rgba(59, 130, 246, 0.2);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* Efecto de carga con rayos para indicadores de progreso */
+.lightning-loader {
+  position: relative;
+}
+
+.lightning-loader::before,
+.lightning-loader::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 10px;
+  background-color: #3b82f6;
+  transform: translate(-50%, -50%);
+}
+
+.lightning-loader::before {
+  animation: lightning-1 1.5s infinite;
+}
+
+.lightning-loader::after {
+  animation: lightning-2 1.5s infinite 0.2s;
+}
+
+@keyframes lightning-1 {
+  0%, 100% {
+    height: 0;
+    opacity: 0;
+  }
+  10%, 30% {
+    height: 20px;
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(20deg);
+  }
+}
+
+@keyframes lightning-2 {
+  0%, 100% {
+    height: 0;
+    opacity: 0;
+  }
+  10%, 30% {
+    height: 20px;
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-20deg);
+  }
+}

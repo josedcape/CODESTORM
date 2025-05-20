@@ -1,6 +1,6 @@
 import React from 'react';
 import { AgentTask, AgentType } from '../types';
-import { Brain, Code, RefreshCw, FileEdit, CheckCircle, Clock, AlertCircle, Circle } from 'lucide-react';
+import { Brain, Code, RefreshCw, FileEdit, CheckCircle, Clock, AlertCircle, Circle, Eye, Scissors } from 'lucide-react';
 
 interface AgentStatusProps {
   tasks: AgentTask[];
@@ -12,7 +12,9 @@ const AgentStatus: React.FC<AgentStatusProps> = ({ tasks }) => {
     planner: [],
     codeGenerator: [],
     fileSynchronizer: [],
-    codeModifier: []
+    codeModifier: [],
+    fileObserver: [],
+    codeSplitter: []
   };
 
   tasks.forEach(task => {
@@ -24,7 +26,9 @@ const AgentStatus: React.FC<AgentStatusProps> = ({ tasks }) => {
     planner: getAgentStatus(tasksByType.planner),
     codeGenerator: getAgentStatus(tasksByType.codeGenerator),
     fileSynchronizer: getAgentStatus(tasksByType.fileSynchronizer),
-    codeModifier: getAgentStatus(tasksByType.codeModifier)
+    codeModifier: getAgentStatus(tasksByType.codeModifier),
+    fileObserver: getAgentStatus(tasksByType.fileObserver),
+    codeSplitter: getAgentStatus(tasksByType.codeSplitter)
   };
 
   return (
@@ -59,6 +63,20 @@ const AgentStatus: React.FC<AgentStatusProps> = ({ tasks }) => {
           taskCount={tasksByType.codeModifier.length}
           icon={<FileEdit className="h-4 w-4" />}
         />
+
+        <AgentStatusItem
+          type="fileObserver"
+          status={agentStatus.fileObserver}
+          taskCount={tasksByType.fileObserver.length}
+          icon={<Eye className="h-4 w-4" />}
+        />
+
+        <AgentStatusItem
+          type="codeSplitter"
+          status={agentStatus.codeSplitter}
+          taskCount={tasksByType.codeSplitter.length}
+          icon={<Scissors className="h-4 w-4" />}
+        />
       </div>
     </div>
   );
@@ -82,6 +100,10 @@ const AgentStatusItem: React.FC<AgentStatusItemProps> = ({ type, status, taskCou
         return 'Agente de Sincronización de Archivos';
       case 'codeModifier':
         return 'Agente de Modificación de Código';
+      case 'fileObserver':
+        return 'Agente de Observación de Archivos';
+      case 'codeSplitter':
+        return 'Agente de Separación de Código';
     }
   };
 

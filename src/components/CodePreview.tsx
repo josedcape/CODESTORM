@@ -12,17 +12,17 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filtrar archivos por tipo
   const htmlFiles = files.filter(file => file.path.endsWith('.html'));
   const cssFiles = files.filter(file => file.path.endsWith('.css'));
   const jsFiles = files.filter(file => file.path.endsWith('.js'));
-  const otherFiles = files.filter(file => 
-    !file.path.endsWith('.html') && 
-    !file.path.endsWith('.css') && 
+  const otherFiles = files.filter(file =>
+    !file.path.endsWith('.html') &&
+    !file.path.endsWith('.css') &&
     !file.path.endsWith('.js')
   );
-  
+
   // Establecer el primer archivo HTML como activo por defecto
   useEffect(() => {
     if (htmlFiles.length > 0 && !activeTab) {
@@ -31,60 +31,99 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
       setActiveTab(files[0].id);
     }
   }, [files, htmlFiles, activeTab]);
-  
+
   // Generar una vista previa en tiempo real para proyectos web
   useEffect(() => {
     if (htmlFiles.length > 0) {
       generatePreview();
     }
   }, [activeTab]);
-  
+
   const generatePreview = () => {
     if (htmlFiles.length === 0) {
       setError('No hay archivos HTML para previsualizar');
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // Encontrar el archivo HTML activo o usar el primero
       const activeHtml = activeTab && files.find(f => f.id === activeTab && f.path.endsWith('.html'));
       const htmlFile = activeHtml || htmlFiles[0];
-      
+
       // Obtener el contenido HTML
       let htmlContent = htmlFile.content;
-      
+
+      // Corregir rutas de imágenes
+      htmlContent = fixImagePaths(htmlContent);
+
       // Inyectar CSS
       if (cssFiles.length > 0) {
-        const styleTag = cssFiles.map(css => 
+        const styleTag = cssFiles.map(css =>
           `<style>${css.content}</style>`
-        ).join('\\n');
-        
+        ).join('\n');
+
         // Insertar estilos antes de </head>
         htmlContent = htmlContent.replace('</head>', `${styleTag}</head>`);
       }
-      
-      // Inyectar JavaScript
+
+      // Inyectar JavaScript con manejo de errores
       if (jsFiles.length > 0) {
-        const scriptTag = jsFiles.map(js => 
-          `<script>${js.content}</script>`
-        ).join('\\n');
-        
+        const scriptTag = jsFiles.map(js =>
+          `<script>
+            try {
+              ${js.content}
+            } catch (error) {
+              console.error('Error en script:', error);
+            }
+          </script>`
+        ).join('\n');
+
         // Insertar scripts antes de </body>
         htmlContent = htmlContent.replace('</body>', `${scriptTag}</body>`);
       }
-      
+
+      // Añadir manejo de errores para imágenes
+      htmlContent = htmlContent.replace(/<img([^>]*)src=["']([^"']+)["']([^>]*)>/gi,
+        '<img$1src="$2"$3 onerror="this.onerror=null; this.src=\'data:image/svg+xml;utf8,<svg xmlns=\\\'http://www.w3.org/2000/svg\\\' width=\\\'100\\\' height=\\\'100\\\' viewBox=\\\'0 0 100 100\\\'><rect fill=\\\'%23f0f0f0\\\' width=\\\'100\\\' height=\\\'100\\\'/><path fill=\\\'%23cccccc\\\' d=\\\'M36.5,22.5h27v55h-27V22.5z\\\'/><text x=\\\'50\\\' y=\\\'50\\\' font-family=\\\'Arial\\\' font-size=\\\'8\\\' text-anchor=\\\'middle\\\' fill=\\\'%23999999\\\'>Imagen no disponible</text></svg>\\\'; this.style.padding=\'10px\'; this.style.boxSizing=\'border-box\';">');
+
+      // Añadir manejo global de errores
+      const errorHandling = `
+        <script>
+          window.addEventListener('error', function(e) {
+            console.error('Error en la página:', e.message);
+            const errorDiv = document.createElement('div');
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.bottom = '10px';
+            errorDiv.style.left = '10px';
+            errorDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
+            errorDiv.style.color = 'white';
+            errorDiv.style.padding = '5px 10px';
+            errorDiv.style.borderRadius = '3px';
+            errorDiv.style.fontSize = '12px';
+            errorDiv.style.zIndex = '9999';
+            errorDiv.textContent = 'Error: ' + e.message;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+            return false;
+          });
+        </script>
+      `;
+
+      // Insertar manejo de errores antes de </body>
+      htmlContent = htmlContent.replace('</body>', `${errorHandling}</body>`);
+
       // Crear un blob y generar URL
       const blob = new Blob([htmlContent], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
-      
+
       // Limpiar URL anterior si existe
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
       }
-      
+
       setPreviewUrl(url);
     } catch (err) {
       setError('Error al generar la vista previa');
@@ -93,9 +132,32 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
       setIsLoading(false);
     }
   };
-  
+
+  // Función para corregir rutas de imágenes
+  const fixImagePaths = (htmlContent: string) => {
+    // Reemplazar rutas relativas con un placeholder para imágenes
+    return htmlContent.replace(
+      /<img([^>]*)src=["'](?!data:|http|https|blob:)([^"']+)["']([^>]*)>/gi,
+      (match, before, src, after) => {
+        // Buscar si tenemos el archivo en nuestros archivos
+        const imagePath = src.startsWith('/') ? src : `/${src}`;
+        const imageFile = files.find(f => f.path === imagePath);
+
+        if (imageFile && imageFile.content) {
+          // Si es una imagen en base64, usarla directamente
+          if (imageFile.content.startsWith('data:image')) {
+            return `<img${before}src="${imageFile.content}"${after}>`;
+          }
+        }
+
+        // Si no encontramos la imagen, usar un placeholder
+        return `<img${before}src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect fill='%23f0f0f0' width='100' height='100'/><text x='50' y='50' font-family='Arial' font-size='8' text-anchor='middle' fill='%23999999'>Imagen no disponible</text></svg>"${after}>`;
+      }
+    );
+  };
+
   const activeFile = activeTab ? files.find(f => f.id === activeTab) : null;
-  
+
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
       <div className="bg-codestorm-darker rounded-lg shadow-xl w-full max-w-6xl h-[90vh] flex flex-col">
@@ -111,7 +173,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           {/* Barra lateral con pestañas de archivos */}
           <div className="w-full md:w-64 bg-codestorm-dark border-r border-codestorm-blue/30 overflow-y-auto">
@@ -135,7 +197,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
                 </div>
               </div>
             )}
-            
+
             {cssFiles.length > 0 && (
               <div className="p-2 border-t border-codestorm-blue/20">
                 <h3 className="text-xs font-medium text-gray-400 mb-1 uppercase">CSS</h3>
@@ -156,7 +218,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
                 </div>
               </div>
             )}
-            
+
             {jsFiles.length > 0 && (
               <div className="p-2 border-t border-codestorm-blue/20">
                 <h3 className="text-xs font-medium text-gray-400 mb-1 uppercase">JavaScript</h3>
@@ -177,7 +239,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
                 </div>
               </div>
             )}
-            
+
             {otherFiles.length > 0 && (
               <div className="p-2 border-t border-codestorm-blue/20">
                 <h3 className="text-xs font-medium text-gray-400 mb-1 uppercase">Otros Archivos</h3>
@@ -199,7 +261,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
               </div>
             )}
           </div>
-          
+
           {/* Área de previsualización */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Barra de herramientas */}
@@ -230,7 +292,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
                 )}
               </div>
             </div>
-            
+
             {/* Contenido */}
             <div className="flex-1 overflow-hidden">
               {activeFile && activeFile.path.endsWith('.html') && previewUrl ? (
@@ -254,7 +316,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
                   </div>
                 </div>
               )}
-              
+
               {error && (
                 <div className="absolute bottom-4 right-4 bg-red-500/80 text-white px-4 py-2 rounded shadow-lg">
                   {error}

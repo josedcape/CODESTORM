@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Constructor from './pages/Constructor';
 import Header from './components/Header';
 import ModelSelector from './components/ModelSelector';
 import InstructionInput from './components/InstructionInput';
@@ -11,23 +13,41 @@ import AgentStatus from './components/AgentStatus';
 import ChatInterface from './components/ChatInterface';
 import ProjectExporter from './components/ProjectExporter';
 import CodePreview from './components/CodePreview';
+import CollapsiblePanel from './components/CollapsiblePanel';
+import FloatingActionButtons from './components/FloatingActionButtons';
+import BrandLogo from './components/BrandLogo';
+import Footer from './components/Footer';
 import { availableModels } from './data/models';
 import {
   ProjectState,
   FileItem,
   Task,
-  TerminalOutput,
-  AgentTask
+  TerminalOutput
 } from './types';
 import { tryWithFallback } from './services/ai';
 import { parseTerminalCommand, applyFileSystemCommands } from './services/fileSystemService';
 import { AgentOrchestrator } from './agents/AgentOrchestrator';
+import { useUI } from './contexts/UIContext';
 
-function App() {
+// Componente principal que contiene la aplicación original
+const MainApp: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showChat, setShowChat] = useState(false);
+
+  // Usar el contexto de UI para la responsividad
+  const {
+    isSidebarVisible,
+    isFileExplorerVisible,
+    isTerminalVisible,
+    toggleSidebar,
+    toggleFileExplorer,
+    toggleTerminal,
+    isMobile,
+    isTablet,
+    expandedPanel
+  } = useUI();
 
   const [projectState, setProjectState] = useState<ProjectState>({
     phase: 'planning',
@@ -521,74 +541,137 @@ function App() {
       <Header
         onPreviewClick={handleTogglePreview}
         onChatClick={handleToggleChat}
+        showConstructorButton={true}
       />
 
-      <main className="flex-1 container mx-auto py-4 px-4 grid grid-cols-12 gap-4">
-        {/* Left sidebar */}
-        <div className="col-span-3 space-y-4">
-          <ModelSelector
-            models={availableModels}
-            selectedModel={availableModels.find(m => m.name === projectState.currentModel)?.id || ''}
-            onSelectModel={handleSelectModel}
-          />
-          <ProjectStatus projectState={projectState} />
+      <main className="flex-1 container mx-auto py-4 px-4">
+        <div className="grid grid-cols-12 gap-4">
+          {/* Left sidebar - colapsable en móvil y tablet */}
+          {isSidebarVisible && (
+            <div className={`${isMobile ? 'col-span-12' : isTablet ? 'col-span-4' : 'col-span-3'} space-y-4 ${
+              expandedPanel === 'sidebar' ? 'fixed inset-0 z-40 p-4 bg-codestorm-darker overflow-auto' : ''
+            }`}>
+              <CollapsiblePanel
+                title="Configuración"
+                type="sidebar"
+                isVisible={true}
+                onToggleVisibility={toggleSidebar}
+                showCollapseButton={!isMobile}
+              >
+                <div className="space-y-4 p-2">
+                  <ModelSelector
+                    models={availableModels}
+                    selectedModel={availableModels.find(m => m.name === projectState.currentModel)?.id || ''}
+                    onSelectModel={handleSelectModel}
+                  />
+                  <ProjectStatus projectState={projectState} />
 
-          {/* Mostrar el estado de los agentes si están activos */}
-          {projectState.orchestrator && (
-            <AgentStatus tasks={projectState.agentTasks} />
-          )}
+                  {/* Mostrar el estado de los agentes si están activos */}
+                  {projectState.orchestrator && (
+                    <AgentStatus tasks={projectState.agentTasks} />
+                  )}
 
-          {/* Mostrar el plan del proyecto si existe */}
-          {projectState.projectPlan && (
-            <ProjectPlan
-              plan={projectState.projectPlan}
-              onStepComplete={handleStepComplete}
-              onStepFailed={handleStepFailed}
-            />
-          )}
+                  {/* Mostrar el plan del proyecto si existe */}
+                  {projectState.projectPlan && (
+                    <ProjectPlan
+                      plan={projectState.projectPlan}
+                      onStepComplete={handleStepComplete}
+                      onStepFailed={handleStepFailed}
+                    />
+                  )}
 
-          {/* Exportador de proyecto */}
-          <ProjectExporter
-            files={projectState.files}
-            selectedFileId={selectedFileId}
-            projectName={projectState.projectPlan?.title || 'codestorm-project'}
-          />
-        </div>
-
-        {/* Main content area */}
-        <div className="col-span-9 space-y-4">
-          <InstructionInput
-            onSubmitInstruction={handleSubmitInstruction}
-            isProcessing={isProcessing}
-          />
-
-          <div className="grid grid-cols-12 gap-4 h-[600px]">
-            {/* File explorer */}
-            <div className="col-span-3 h-full">
-              <FileExplorer
-                files={projectState.files}
-                onSelectFile={setSelectedFileId}
-                selectedFileId={selectedFileId}
-              />
+                  {/* Exportador de proyecto */}
+                  <ProjectExporter
+                    files={projectState.files}
+                    selectedFileId={selectedFileId}
+                    projectName={projectState.projectPlan?.title || 'codestorm-project'}
+                  />
+                </div>
+              </CollapsiblePanel>
             </div>
+          )}
 
-            {/* Code editor and terminal/chat */}
-            <div className="col-span-9 grid grid-rows-2 gap-4 h-full">
-              <CodeEditor file={selectedFile} />
-              {showChat ? (
-                <ChatInterface
-                  onSendMessage={handleChatMessage}
-                  onModifyFile={handleModifyFile}
-                  isProcessing={isProcessing}
-                  files={projectState.files}
-                  selectedFileId={selectedFileId}
-                />
-              ) : (
-                <Terminal
-                  outputs={projectState.terminal}
-                  onCommandExecuted={handleTerminalCommand}
-                />
+          {/* Main content area - se ajusta según la visibilidad del sidebar */}
+          <div className={`${
+            isMobile
+              ? 'col-span-12'
+              : isTablet
+                ? isSidebarVisible ? 'col-span-8' : 'col-span-12'
+                : isSidebarVisible ? 'col-span-9' : 'col-span-12'
+          } space-y-4`}>
+            <InstructionInput
+              onSubmitInstruction={handleSubmitInstruction}
+              isProcessing={isProcessing}
+            />
+
+            <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-12'} gap-4 ${isMobile ? 'h-auto' : 'h-[600px]'}`}>
+              {/* File explorer - colapsable en móvil */}
+              {isFileExplorerVisible && (
+                <div className={`${
+                  isMobile
+                    ? 'col-span-1'
+                    : isTablet
+                      ? 'col-span-4'
+                      : 'col-span-3'
+                } h-full ${
+                  expandedPanel === 'explorer' ? 'fixed inset-0 z-40 p-4 bg-codestorm-darker overflow-auto' : ''
+                }`}>
+                  <CollapsiblePanel
+                    title="Explorador de Archivos"
+                    type="explorer"
+                    isVisible={true}
+                    onToggleVisibility={toggleFileExplorer}
+                    showCollapseButton={!isMobile}
+                  >
+                    <FileExplorer
+                      files={projectState.files}
+                      onSelectFile={setSelectedFileId}
+                      selectedFileId={selectedFileId}
+                    />
+                  </CollapsiblePanel>
+                </div>
               )}
+
+              {/* Code editor and terminal/chat - se ajusta según la visibilidad del explorador */}
+              <div className={`${
+                isMobile
+                  ? 'col-span-1'
+                  : isTablet
+                    ? isFileExplorerVisible ? 'col-span-8' : 'col-span-12'
+                    : isFileExplorerVisible ? 'col-span-9' : 'col-span-12'
+              } ${isMobile ? 'space-y-4' : 'grid grid-rows-2 gap-4 h-full'}`}>
+                <CollapsiblePanel
+                  title="Editor de Código"
+                  type="editor"
+                  isVisible={true}
+                  showCollapseButton={false}
+                >
+                  <CodeEditor file={selectedFile} />
+                </CollapsiblePanel>
+
+                <CollapsiblePanel
+                  title={showChat ? "Chat" : "Terminal"}
+                  type="terminal"
+                  isVisible={isTerminalVisible}
+                  onToggleVisibility={toggleTerminal}
+                  showCollapseButton={!isMobile}
+                >
+                  {showChat ? (
+                    <ChatInterface
+                      onSendMessage={handleChatMessage}
+                      onModifyFile={handleModifyFile}
+                      isProcessing={isProcessing}
+                      files={projectState.files}
+                      selectedFileId={selectedFileId}
+                    />
+                  ) : (
+                    <Terminal
+                      outputs={projectState.terminal}
+                      onCommandExecuted={handleTerminalCommand}
+                    />
+                  )}
+                </CollapsiblePanel>
+              </div>
             </div>
           </div>
         </div>
@@ -601,8 +684,38 @@ function App() {
           onClose={handleTogglePreview}
         />
       )}
+
+      {/* Botones flotantes para móvil y tablet */}
+      {(isMobile || isTablet) && (
+        <FloatingActionButtons
+          onToggleChat={handleToggleChat}
+          onTogglePreview={handleTogglePreview}
+          showChat={showChat}
+        />
+      )}
+
+      {/* Logo de BOTIDINAMIX */}
+      <BrandLogo size="md" showPulse={true} showGlow={true} />
+
+      {/* Pie de página */}
+      <Footer showLogo={true} />
     </div>
   );
+};
+
+// Componente principal que maneja el enrutamiento
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<MainApp />} />
+      <Route path="/constructor" element={<ConstructorPage />} />
+    </Routes>
+  );
 }
+
+// Página Constructor que utiliza el componente real
+const ConstructorPage: React.FC = () => {
+  return <Constructor />;
+};
 
 export default App;

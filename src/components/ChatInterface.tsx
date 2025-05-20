@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User, Trash, Code, FileEdit } from 'lucide-react';
+import { Send, Loader2, Bot, User, Trash, Code, FileEdit, Sparkles, History, Clock } from 'lucide-react';
 import { FileItem } from '../types';
+import { PromptEnhancerService, EnhancedPrompt } from '../services/PromptEnhancerService';
+import EnhancedPromptDialog from './EnhancedPromptDialog';
+import EnhancementHistoryPanel from './EnhancementHistoryPanel';
 
 interface Message {
   id: string;
@@ -35,6 +38,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isModifyingFile, setIsModifyingFile] = useState(false);
+
+  // Estado para la funcionalidad de mejora de prompts
+  const [enhancePromptEnabled, setEnhancePromptEnabled] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [currentEnhancedPrompt, setCurrentEnhancedPrompt] = useState<EnhancedPrompt | null>(null);
+  const [showEnhancedPromptDialog, setShowEnhancedPromptDialog] = useState(false);
+  const [showEnhancementHistory, setShowEnhancementHistory] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll al final de los mensajes cuando se añade uno nuevo
@@ -45,6 +56,35 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
 
+    // Si la mejora de prompts está habilitada, mejorar el prompt
+    if (enhancePromptEnabled && !isEnhancing && !isModifyingFile) {
+      setIsEnhancing(true);
+
+      try {
+        const result = await PromptEnhancerService.enhancePrompt(inputValue);
+
+        if (result.success && result.enhancedPrompt) {
+          setCurrentEnhancedPrompt(result.enhancedPrompt);
+          setShowEnhancedPromptDialog(true);
+        } else {
+          // Si hay un error, enviar el mensaje original
+          await sendOriginalMessage();
+        }
+      } catch (error) {
+        console.error('Error al mejorar el prompt:', error);
+        // En caso de error, enviar el mensaje original
+        await sendOriginalMessage();
+      } finally {
+        setIsEnhancing(false);
+      }
+    } else {
+      // Si la mejora de prompts está deshabilitada, enviar el mensaje original
+      await sendOriginalMessage();
+    }
+  };
+
+  // Función para enviar el mensaje original
+  const sendOriginalMessage = async () => {
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
       content: inputValue,
@@ -54,12 +94,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     };
 
     setMessages(prev => [...prev, newMessage]);
+    const currentInput = inputValue;
     setInputValue('');
 
     try {
       if (isModifyingFile && selectedFileId) {
-        await onModifyFile(selectedFileId, inputValue);
-        
+        await onModifyFile(selectedFileId, currentInput);
+
         // Añadir mensaje de confirmación
         setMessages(prev => [
           ...prev,
@@ -72,8 +113,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           }
         ]);
       } else {
-        await onSendMessage(inputValue);
-        
+        await onSendMessage(currentInput);
+
         // El mensaje de respuesta se añadirá desde el componente padre
       }
     } catch (error) {
@@ -87,9 +128,102 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           timestamp: Date.now()
         }
       ]);
-    } finally {
-      setIsModifyingFile(false);
     }
+  };
+
+  // Función para usar el prompt original
+  const handleUseOriginalPrompt = async () => {
+    if (currentEnhancedPrompt) {
+      const originalPrompt = currentEnhancedPrompt.originalPrompt;
+      setShowEnhancedPromptDialog(false);
+      setCurrentEnhancedPrompt(null);
+
+      // Establecer el valor del input y luego enviarlo
+      setInputValue(originalPrompt);
+
+      // Usar setTimeout para asegurar que el estado se actualice antes de enviar
+      setTimeout(async () => {
+        const newMessage: Message = {
+          id: `msg-${Date.now()}`,
+          content: originalPrompt,
+          sender: 'user',
+          timestamp: Date.now()
+        };
+
+        setMessages(prev => [...prev, newMessage]);
+
+        try {
+          await onSendMessage(originalPrompt);
+        } catch (error) {
+          // Añadir mensaje de error
+          setMessages(prev => [
+            ...prev,
+            {
+              id: `msg-error-${Date.now()}`,
+              content: `Lo siento, ocurrió un error: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+              sender: 'assistant',
+              timestamp: Date.now()
+            }
+          ]);
+        }
+      }, 0);
+    }
+  };
+
+  // Función para usar el prompt mejorado
+  const handleUseEnhancedPrompt = async () => {
+    if (currentEnhancedPrompt) {
+      const enhancedPrompt = currentEnhancedPrompt.enhancedPrompt;
+      setShowEnhancedPromptDialog(false);
+      setCurrentEnhancedPrompt(null);
+
+      // Establecer el valor del input y luego enviarlo
+      setInputValue(enhancedPrompt);
+
+      // Usar setTimeout para asegurar que el estado se actualice antes de enviar
+      setTimeout(async () => {
+        const newMessage: Message = {
+          id: `msg-${Date.now()}`,
+          content: enhancedPrompt,
+          sender: 'user',
+          timestamp: Date.now()
+        };
+
+        setMessages(prev => [...prev, newMessage]);
+
+        try {
+          await onSendMessage(enhancedPrompt);
+        } catch (error) {
+          // Añadir mensaje de error
+          setMessages(prev => [
+            ...prev,
+            {
+              id: `msg-error-${Date.now()}`,
+              content: `Lo siento, ocurrió un error: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+              sender: 'assistant',
+              timestamp: Date.now()
+            }
+          ]);
+        }
+      }, 0);
+    }
+  };
+
+  // Función para alternar la mejora de prompts
+  const toggleEnhancePrompt = () => {
+    setEnhancePromptEnabled(!enhancePromptEnabled);
+  };
+
+  // Función para usar un prompt del historial
+  const usePromptFromHistory = (prompt: string) => {
+    setInputValue(prompt);
+    setShowEnhancementHistory(false);
+  };
+
+  // Función para limpiar el historial de mejoras
+  const clearEnhancementHistory = () => {
+    PromptEnhancerService.clearEnhancementHistory();
+    setShowEnhancementHistory(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -156,29 +290,36 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   return (
-    <div className="bg-codestorm-dark rounded-lg shadow-md h-full border border-codestorm-blue/30 flex flex-col">
-      <div className="bg-codestorm-blue/20 p-3 border-b border-codestorm-blue/30 flex justify-between items-center">
+    <div className="flex flex-col h-full border rounded-lg shadow-md bg-codestorm-dark border-codestorm-blue/30">
+      <div className="flex items-center justify-between p-3 border-b bg-codestorm-blue/20 border-codestorm-blue/30">
         <h2 className="text-sm font-medium text-white">Asistente de CODESTORM</h2>
         <div className="flex space-x-2">
+          <button
+            onClick={() => setShowEnhancementHistory(true)}
+            className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white"
+            title="Historial de mejoras"
+          >
+            <History className="w-4 h-4" />
+          </button>
           <button
             onClick={startFileModification}
             className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white"
             title="Modificar archivo seleccionado"
             disabled={!selectedFileId || isProcessing}
           >
-            <FileEdit className="h-4 w-4" />
+            <FileEdit className="w-4 h-4" />
           </button>
           <button
             onClick={clearChat}
             className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white"
             title="Limpiar chat"
           >
-            <Trash className="h-4 w-4" />
+            <Trash className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-3 space-y-4">
+      <div className="flex-1 p-3 space-y-4 overflow-auto">
         {messages.map(message => (
           <div
             key={message.id}
@@ -193,18 +334,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             >
               <div className="flex items-center mb-1">
                 {message.sender === 'user' ? (
-                  <User className="h-4 w-4 mr-2" />
+                  <User className="w-4 h-4 mr-2" />
                 ) : (
-                  <Bot className="h-4 w-4 mr-2" />
+                  <Bot className="w-4 h-4 mr-2" />
                 )}
                 <span className="text-xs opacity-70">
                   {new Date(message.timestamp).toLocaleTimeString()}
                 </span>
               </div>
-              <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+              <div className="text-sm whitespace-pre-wrap">{message.content}</div>
               {message.relatedFileId && (
-                <div className="mt-1 text-xs flex items-center text-codestorm-gold">
-                  <Code className="h-3 w-3 mr-1" />
+                <div className="flex items-center mt-1 text-xs text-codestorm-gold">
+                  <Code className="w-3 h-3 mr-1" />
                   <span>
                     {files.find(f => f.id === message.relatedFileId)?.name || 'Archivo'}
                   </span>
@@ -217,45 +358,98 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       <div className="p-3 border-t border-codestorm-blue/30">
-        <div className="flex items-center space-x-2">
-          <textarea
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              isModifyingFile
-                ? "Describe los cambios que quieres hacer en el archivo..."
-                : "Escribe un mensaje..."
-            }
-            className="flex-1 bg-codestorm-darker border border-codestorm-blue/40 rounded-md p-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-codestorm-accent focus:border-codestorm-accent resize-none"
-            rows={2}
-            disabled={isProcessing}
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isProcessing}
-            className={`p-2 rounded-md ${
-              !inputValue.trim() || isProcessing
-                ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                : 'bg-codestorm-accent hover:bg-blue-600 text-white'
-            }`}
-          >
-            {isProcessing ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </button>
-        </div>
-        {isModifyingFile && (
-          <div className="mt-1 text-xs flex items-center text-codestorm-gold">
-            <FileEdit className="h-3 w-3 mr-1" />
-            <span>
-              Modificando: {files.find(f => f.id === selectedFileId)?.name || 'archivo seleccionado'}
-            </span>
+        <div className="flex flex-col space-y-2">
+          <div className="flex space-x-2">
+            <textarea
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                isModifyingFile
+                  ? "Describe los cambios que quieres hacer en el archivo..."
+                  : "Escribe un mensaje..."
+              }
+              className="flex-1 p-2 text-white placeholder-gray-400 border rounded-md resize-none bg-codestorm-darker border-codestorm-blue/40 focus:ring-2 focus:ring-codestorm-accent focus:border-codestorm-accent"
+              rows={2}
+              disabled={isProcessing || isEnhancing}
+            />
+            <div className="flex flex-col justify-between space-y-2">
+              <button
+                onClick={toggleEnhancePrompt}
+                className={`p-2 rounded-md ${
+                  enhancePromptEnabled
+                    ? 'bg-codestorm-gold text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+                }`}
+                title={enhancePromptEnabled ? 'Desactivar mejora de prompts' : 'Activar mejora de prompts'}
+                disabled={isModifyingFile}
+              >
+                <Sparkles className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() || isProcessing || isEnhancing}
+                className={`p-2 rounded-md ${
+                  !inputValue.trim() || isProcessing || isEnhancing
+                    ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                    : 'bg-codestorm-accent hover:bg-blue-600 text-white'
+                }`}
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : isEnhancing ? (
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+              </button>
+            </div>
           </div>
-        )}
+
+          {isModifyingFile && (
+            <div className="flex items-center text-xs text-codestorm-gold">
+              <FileEdit className="w-3 h-3 mr-1" />
+              <span>
+                Modificando: {files.find(f => f.id === selectedFileId)?.name || 'archivo seleccionado'}
+              </span>
+            </div>
+          )}
+
+          {enhancePromptEnabled && !isModifyingFile && (
+            <div className="flex items-center text-xs text-codestorm-gold">
+              <Sparkles className="w-3 h-3 mr-1" />
+              <span>Mejora de prompts activada</span>
+            </div>
+          )}
+
+          {isEnhancing && (
+            <div className="flex items-center text-xs text-codestorm-gold">
+              <Sparkles className="w-3 h-3 mr-1 animate-pulse" />
+              <span>Mejorando prompt...</span>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Diálogo de prompt mejorado */}
+      {currentEnhancedPrompt && (
+        <EnhancedPromptDialog
+          enhancedPrompt={currentEnhancedPrompt}
+          onClose={() => setShowEnhancedPromptDialog(false)}
+          onUseOriginal={handleUseOriginalPrompt}
+          onUseEnhanced={handleUseEnhancedPrompt}
+          isVisible={showEnhancedPromptDialog}
+        />
+      )}
+
+      {/* Panel de historial de mejoras */}
+      <EnhancementHistoryPanel
+        history={PromptEnhancerService.getEnhancementHistory()}
+        onClearHistory={clearEnhancementHistory}
+        onUsePrompt={usePromptFromHistory}
+        isVisible={showEnhancementHistory}
+        onClose={() => setShowEnhancementHistory(false)}
+      />
     </div>
   );
 };
