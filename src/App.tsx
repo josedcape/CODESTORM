@@ -8,6 +8,9 @@ import CodeEditor from './components/CodeEditor';
 import Terminal from './components/Terminal';
 import ProjectPlan from './components/ProjectPlan';
 import AgentStatus from './components/AgentStatus';
+import ChatInterface from './components/ChatInterface';
+import ProjectExporter from './components/ProjectExporter';
+import CodePreview from './components/CodePreview';
 import { availableModels } from './data/models';
 import {
   ProjectState,
@@ -23,6 +26,8 @@ import { AgentOrchestrator } from './agents/AgentOrchestrator';
 function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const [projectState, setProjectState] = useState<ProjectState>({
     phase: 'planning',
@@ -391,9 +396,132 @@ function App() {
     });
   };
 
+  // Función para manejar mensajes del chat
+  const handleChatMessage = async (message: string, fileId?: string) => {
+    setIsProcessing(true);
+
+    try {
+      // Si hay un archivo seleccionado, modificarlo
+      if (fileId) {
+        await handleModifyFile(fileId, message);
+      } else {
+        // Procesar como una instrucción normal
+        await handleSubmitInstruction(message);
+      }
+    } catch (error) {
+      console.error('Error al procesar mensaje del chat:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Función para modificar un archivo existente
+  const handleModifyFile = async (fileId: string, instruction: string) => {
+    setIsProcessing(true);
+
+    try {
+      const file = projectState.files.find(f => f.id === fileId);
+      if (!file) {
+        throw new Error(`No se encontró el archivo con ID ${fileId}`);
+      }
+
+      // Añadir mensaje a la terminal
+      const modifyCommand = `modify_file "${file.path}" "${instruction}"`;
+      const terminalOutput: TerminalOutput = {
+        id: `term-modify-${Date.now()}`,
+        command: modifyCommand,
+        output: `Modificando archivo ${file.path}...`,
+        timestamp: Date.now(),
+        status: 'info' as const,
+        analysis: {
+          isValid: true,
+          summary: 'Modificando archivo',
+          executionTime: 0
+        }
+      };
+
+      setProjectState(prev => ({
+        ...prev,
+        terminal: [...prev.terminal, terminalOutput]
+      }));
+
+      // Usar el orquestador para modificar el archivo
+      const result = await orchestrator.modifyFile(instruction, fileId);
+
+      // Actualizar el estado con el archivo modificado
+      setProjectState(prev => {
+        // Encontrar el índice del archivo original
+        const fileIndex = prev.files.findIndex(f => f.id === fileId);
+
+        if (fileIndex === -1) return prev;
+
+        // Crear una nueva lista de archivos con el archivo modificado
+        const updatedFiles = [...prev.files];
+        updatedFiles[fileIndex] = result.modifiedFile;
+
+        // Añadir mensaje de éxito a la terminal
+        const successOutput: TerminalOutput = {
+          id: `term-modify-success-${Date.now()}`,
+          command: `echo "Archivo ${file.path} modificado con éxito"`,
+          output: `Archivo ${file.path} modificado con éxito`,
+          timestamp: Date.now(),
+          status: 'success' as const,
+          analysis: {
+            isValid: true,
+            summary: 'Archivo modificado con éxito',
+            executionTime: Math.floor(Math.random() * 500) + 200
+          }
+        };
+
+        return {
+          ...prev,
+          files: updatedFiles,
+          terminal: [...prev.terminal, successOutput],
+          agentTasks: [...prev.agentTasks, ...result.tasks]
+        };
+      });
+    } catch (error) {
+      console.error('Error al modificar archivo:', error);
+
+      // Añadir mensaje de error a la terminal
+      const errorOutput: TerminalOutput = {
+        id: `term-modify-error-${Date.now()}`,
+        command: 'echo "Error al modificar archivo"',
+        output: `Error al modificar archivo: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        timestamp: Date.now(),
+        status: 'error' as const,
+        analysis: {
+          isValid: false,
+          summary: 'Error al modificar archivo',
+          executionTime: Math.floor(Math.random() * 300) + 100
+        }
+      };
+
+      setProjectState(prev => ({
+        ...prev,
+        terminal: [...prev.terminal, errorOutput]
+      }));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Función para manejar la previsualización del código
+  const handleTogglePreview = () => {
+    setShowPreview(prev => !prev);
+  };
+
+  // Función para manejar el chat
+  const handleToggleChat = () => {
+    setShowChat(prev => !prev);
+  };
+
   return (
     <div className="min-h-screen bg-codestorm-darker flex flex-col">
-      <Header />
+      <Header
+        onPreviewClick={handleTogglePreview}
+        onChatClick={handleToggleChat}
+      />
 
       <main className="flex-1 container mx-auto py-4 px-4 grid grid-cols-12 gap-4">
         {/* Left sidebar */}
@@ -418,6 +546,13 @@ function App() {
               onStepFailed={handleStepFailed}
             />
           )}
+
+          {/* Exportador de proyecto */}
+          <ProjectExporter
+            files={projectState.files}
+            selectedFileId={selectedFileId}
+            projectName={projectState.projectPlan?.title || 'codestorm-project'}
+          />
         </div>
 
         {/* Main content area */}
@@ -437,17 +572,35 @@ function App() {
               />
             </div>
 
-            {/* Code editor and terminal */}
+            {/* Code editor and terminal/chat */}
             <div className="col-span-9 grid grid-rows-2 gap-4 h-full">
               <CodeEditor file={selectedFile} />
-              <Terminal
-                outputs={projectState.terminal}
-                onCommandExecuted={handleTerminalCommand}
-              />
+              {showChat ? (
+                <ChatInterface
+                  onSendMessage={handleChatMessage}
+                  onModifyFile={handleModifyFile}
+                  isProcessing={isProcessing}
+                  files={projectState.files}
+                  selectedFileId={selectedFileId}
+                />
+              ) : (
+                <Terminal
+                  outputs={projectState.terminal}
+                  onCommandExecuted={handleTerminalCommand}
+                />
+              )}
             </div>
           </div>
         </div>
       </main>
+
+      {/* Vista previa del código */}
+      {showPreview && (
+        <CodePreview
+          files={projectState.files}
+          onClose={handleTogglePreview}
+        />
+      )}
     </div>
   );
 }
