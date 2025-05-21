@@ -29,6 +29,3 @@ autoprefixer==10.4.18
 postcss==8.4.35
 concurrently==8.2.2
 
-# Tipos TypeScript
-@types/react-syntax-highlighter==15.5.11
-@types/file-saver==2.0.7
