@@ -38,6 +38,7 @@ Una característica innovadora que mejora automáticamente las instrucciones del
 - Añade detalles técnicos relevantes
 - Optimiza la estructura de la solicitud
 - Mejora la precisión de los resultados generados
+- Proporciona retroalimentación visual durante el proceso de mejora
 
 ### 🏗️ Constructor con Sistema de Aprobación por Etapas
 
@@ -46,6 +47,17 @@ Un flujo de trabajo conversacional que otorga al usuario control total sobre el 
 - Chat interactivo avanzado para comunicación fluida con los agentes
 - Corrector de código inteligente que sugiere mejoras y soluciones
 - Visualización en tiempo real del progreso del proyecto
+- Métricas detalladas del avance por etapas y tipos de archivos
+
+### 🔧 Corrector de Código Avanzado
+
+Un potente sistema de análisis y corrección de código con características avanzadas:
+- Detección inteligente de errores de sintaxis, lógica, seguridad y rendimiento
+- Panel visual de resultados con diferenciación clara de cambios (adiciones, eliminaciones, modificaciones)
+- Resaltado de sintaxis adaptado al lenguaje de programación detectado
+- Opciones para copiar, descargar o aplicar los cambios directamente
+- Resumen estadístico de correcciones realizadas por tipo y severidad
+- Interfaz completamente responsive con animaciones sutiles
 
 ### ✂️ Separador de Código
 
@@ -78,6 +90,7 @@ Sistema de monitoreo que:
 - **Herramientas de Desarrollo**: Vite, ESLint, TypeScript
 - **Backend**: Express (servidor proxy para APIs)
 - **Utilidades**: JSZip, File-Saver, React Router, XTerm
+- **Análisis de Código**: Diff, SyntaxHighlighter, Prism
 
 ## 🚀 Instalación y Configuración
 
@@ -168,6 +181,9 @@ codestorm/
 
   <img src="https://i.imgur.com/example3.png" alt="Separador de Código" width="80%"/>
   <p><i>Separador de Código en Acción</i></p>
+
+  <img src="https://i.imgur.com/example4.png" alt="Corrector de Código" width="80%"/>
+  <p><i>Panel Visual de Resultados del Corrector de Código</i></p>
 </div>
 
 ## 🤝 Contribuir

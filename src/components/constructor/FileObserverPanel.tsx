@@ -3,7 +3,9 @@ import {
   FileItem,
   FileContext,
   FileObservation,
-  FileObserverState
+  FileObserverState,
+  FileAnalysis,
+  FileChangeAnalysis
 } from '../../types';
 import {
   Eye,
@@ -20,8 +22,11 @@ import {
   Link,
   Package,
   CodeSquare,
-  Layers
+  Layers,
+  Search,
+  ExternalLink
 } from 'lucide-react';
+import LectorSummary from '../lector/LectorSummary';
 
 interface FileObserverPanelProps {
   files: FileItem[];
@@ -29,6 +34,9 @@ interface FileObserverPanelProps {
   onToggleObserver: () => void;
   onScanFiles: () => void;
   isScanning: boolean;
+  fileAnalyses?: FileAnalysis[];
+  onAnalyzeFile?: (file: FileItem) => void;
+  onViewFileDetails?: (file: FileItem) => void;
 }
 
 const FileObserverPanel: React.FC<FileObserverPanelProps> = ({
@@ -36,10 +44,13 @@ const FileObserverPanel: React.FC<FileObserverPanelProps> = ({
   observerState,
   onToggleObserver,
   onScanFiles,
-  isScanning
+  isScanning,
+  fileAnalyses = [],
+  onAnalyzeFile,
+  onViewFileDetails
 }) => {
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'context' | 'observations'>('context');
+  const [activeTab, setActiveTab] = useState<'context' | 'observations' | 'analysis'>('context');
 
   // Si no hay estado del observador, mostrar mensaje
   if (!observerState) {
@@ -320,6 +331,22 @@ const FileObserverPanel: React.FC<FileObserverPanelProps> = ({
                       >
                         Observaciones {fileObservationsCount > 0 && `(${fileObservationsCount})`}
                       </button>
+                      <button
+                        className={`px-3 py-1 text-sm ${
+                          activeTab === 'analysis'
+                            ? 'text-white border-b-2 border-codestorm-accent'
+                            : 'text-gray-400 hover:text-white'
+                        }`}
+                        onClick={() => {
+                          setActiveTab('analysis');
+                          // Si no hay análisis para este archivo y existe la función para analizar, llamarla
+                          if (onAnalyzeFile && !fileAnalyses.some(analysis => analysis.fileId === file.id)) {
+                            onAnalyzeFile(file);
+                          }
+                        }}
+                      >
+                        Análisis Profundo
+                      </button>
                     </div>
 
                     {activeTab === 'context' ? (
@@ -328,8 +355,50 @@ const FileObserverPanel: React.FC<FileObserverPanelProps> = ({
                           No hay información de contexto disponible
                         </div>
                       )
-                    ) : (
+                    ) : activeTab === 'observations' ? (
                       renderFileObservations(file.id)
+                    ) : (
+                      // Pestaña de análisis
+                      <div>
+                        {fileAnalyses.some(analysis => analysis.fileId === file.id) ? (
+                          <div>
+                            <LectorSummary
+                              fileAnalysis={fileAnalyses.find(analysis => analysis.fileId === file.id) || null}
+                              changeAnalysis={null}
+                              onViewDetails={() => onViewFileDetails && onViewFileDetails(file)}
+                            />
+
+                            {onViewFileDetails && (
+                              <div className="mt-3 text-center">
+                                <button
+                                  onClick={() => onViewFileDetails(file)}
+                                  className="px-3 py-1.5 bg-codestorm-accent hover:bg-blue-600 text-white rounded-md text-xs flex items-center justify-center mx-auto transition-colors"
+                                >
+                                  <Search className="h-3 w-3 mr-1.5" />
+                                  <span>Ver análisis completo</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-4">
+                            {onAnalyzeFile ? (
+                              <>
+                                <FileText className="h-8 w-8 text-gray-500 mb-2" />
+                                <p className="text-gray-400 text-sm mb-3">Analizando archivo...</p>
+                                <div className="w-16 h-1 bg-gray-800 rounded-full overflow-hidden">
+                                  <div className="h-full bg-blue-500 animate-pulse"></div>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <FileText className="h-8 w-8 text-gray-500 mb-2" />
+                                <p className="text-gray-400 text-sm">No hay análisis disponible</p>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

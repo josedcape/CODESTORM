@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Constructor from './pages/Constructor';
+import CodeCorrector from './pages/CodeCorrector';
 import Header from './components/Header';
 import ModelSelector from './components/ModelSelector';
 import InstructionInput from './components/InstructionInput';
@@ -17,6 +18,8 @@ import CollapsiblePanel from './components/CollapsiblePanel';
 import FloatingActionButtons from './components/FloatingActionButtons';
 import BrandLogo from './components/BrandLogo';
 import Footer from './components/Footer';
+import IntroAnimation from './components/IntroAnimation';
+import useIntroAnimation from './hooks/useIntroAnimation';
 import { availableModels } from './data/models';
 import {
   ProjectState,
@@ -35,6 +38,15 @@ const MainApp: React.FC = () => {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showChat, setShowChat] = useState(false);
+
+  // Usar el hook personalizado para la animación de introducción
+  const { showIntro, completeIntro } = useIntroAnimation();
+
+  // Para propósitos de desarrollo, forzar la animación
+  // Comentar esta línea para producción
+  // useEffect(() => {
+  //   localStorage.removeItem('codestorm-intro-seen');
+  // }, []);
 
   // Usar el contexto de UI para la responsividad
   const {
@@ -538,6 +550,9 @@ const MainApp: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-codestorm-darker flex flex-col">
+      {/* Animación de introducción */}
+      {showIntro && <IntroAnimation onComplete={completeIntro} />}
+
       <Header
         onPreviewClick={handleTogglePreview}
         onChatClick={handleToggleChat}
@@ -709,6 +724,7 @@ function App() {
     <Routes>
       <Route path="/" element={<MainApp />} />
       <Route path="/constructor" element={<ConstructorPage />} />
+      <Route path="/codecorrector" element={<CodeCorrectorPage />} />
     </Routes>
   );
 }
@@ -716,6 +732,11 @@ function App() {
 // Página Constructor que utiliza el componente real
 const ConstructorPage: React.FC = () => {
   return <Constructor />;
+};
+
+// Página CodeCorrector que utiliza el componente real
+const CodeCorrectorPage: React.FC = () => {
+  return <CodeCorrector />;
 };
 
 export default App;

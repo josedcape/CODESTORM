@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage } from '../../types';
+import { ChatMessage, ApprovalStage } from '../../types';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
@@ -17,11 +17,14 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  History
+  History,
+  Info,
+  Layers
 } from 'lucide-react';
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
 import EnhancedPromptDialog from '../../components/EnhancedPromptDialog';
 import EnhancementHistoryPanel from '../../components/EnhancementHistoryPanel';
+import StageSidebar from './StageSidebar';
 
 interface InteractiveChatProps {
   messages: ChatMessage[];
@@ -29,6 +32,11 @@ interface InteractiveChatProps {
   onEditMessage?: (messageId: string, newContent: string) => void;
   onDeleteMessage?: (messageId: string) => void;
   isProcessing: boolean;
+  currentStage?: ApprovalStage | null;
+  onApproveStage?: (stageId: string, feedback?: string) => void;
+  onModifyStage?: (stageId: string, feedback: string) => void;
+  onRejectStage?: (stageId: string, feedback: string) => void;
+  isPaused?: boolean;
 }
 
 const InteractiveChat: React.FC<InteractiveChatProps> = ({
@@ -36,7 +44,12 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   onSendMessage,
   onEditMessage,
   onDeleteMessage,
-  isProcessing
+  isProcessing,
+  currentStage = null,
+  onApproveStage,
+  onModifyStage,
+  onRejectStage,
+  isPaused = false
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -50,6 +63,9 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   const [currentEnhancedPrompt, setCurrentEnhancedPrompt] = useState<EnhancedPrompt | null>(null);
   const [showEnhancedPromptDialog, setShowEnhancedPromptDialog] = useState(false);
   const [showEnhancementHistory, setShowEnhancementHistory] = useState(false);
+
+  // Estado para la ventana lateral de etapas
+  const [showStageSidebar, setShowStageSidebar] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -129,6 +145,11 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
     setShowEnhancementHistory(false);
   };
 
+  // Función para alternar la visibilidad de la ventana lateral de etapas
+  const toggleStageSidebar = () => {
+    setShowStageSidebar(prev => !prev);
+  };
+
   // Función para manejar el envío con Enter
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -174,34 +195,109 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
 
   // Función para renderizar el contenido de un mensaje
   const renderMessageContent = (message: ChatMessage) => {
+    // Detectar si el contenido es muy largo
+    const isLongContent = message.content.length > 500;
+
     if (message.type === 'code') {
       // Detectar el lenguaje del código
-      const language = message.metadata?.language || 'text';
+      const language = message.metadata?.language ||
+                      (message.content.includes('<html') ? 'html' :
+                       message.content.includes('function') ? 'javascript' :
+                       message.content.includes('import ') ? 'javascript' :
+                       message.content.includes('class ') ? 'javascript' :
+                       message.content.includes('def ') ? 'python' : 'text');
 
       return (
-        <SyntaxHighlighter
-          language={language}
-          style={vscDarkPlus}
-          customStyle={{
-            margin: 0,
-            padding: '0.75rem',
-            background: '#0a1120',
-            borderRadius: '0.375rem',
-          }}
-          showLineNumbers
-        >
-          {message.content}
-        </SyntaxHighlighter>
-      );
-    } else if (message.type === 'notification') {
-      return (
-        <div className="flex items-start">
-          <Bell className="h-4 w-4 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
-          <span className="whitespace-pre-wrap">{message.content}</span>
+        <div className="relative">
+          <div className="absolute top-0 right-0 z-10 bg-codestorm-darker text-xs text-gray-400 px-2 py-0.5 rounded-bl">
+            {language}
+          </div>
+          <SyntaxHighlighter
+            language={language}
+            style={vscDarkPlus}
+            customStyle={{
+              margin: 0,
+              padding: '0.75rem',
+              paddingTop: '1.5rem', // Espacio para la etiqueta de lenguaje
+              background: '#0a1120',
+              borderRadius: '0.375rem',
+              maxHeight: isLongContent ? '300px' : 'none',
+              overflowY: isLongContent ? 'auto' : 'visible',
+            }}
+            showLineNumbers
+            wrapLongLines={true}
+          >
+            {message.content}
+          </SyntaxHighlighter>
         </div>
       );
+    } else if (message.type === 'notification') {
+      // Detectar si la notificación está relacionada con una etapa
+      const isStageNotification =
+        message.content.includes('etapa') ||
+        message.content.includes('Etapa') ||
+        message.metadata?.stageId;
+
+      return (
+        <div className="flex items-start">
+          {isStageNotification ? (
+            <Bell className="h-4 w-4 text-codestorm-gold mr-2 flex-shrink-0 mt-0.5" />
+          ) : (
+            <Bell className="h-4 w-4 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
+          )}
+          <span className={`whitespace-pre-wrap ${isStageNotification ? 'text-codestorm-gold' : ''}`}>
+            {message.content}
+          </span>
+        </div>
+      );
+    } else if (message.type === 'proposal') {
+      // Intentar detectar si es JSON
+      let isJson = false;
+      try {
+        JSON.parse(message.content);
+        isJson = true;
+      } catch {
+        // No es JSON
+      }
+
+      if (isJson) {
+        return (
+          <div className="relative">
+            <div className="absolute top-0 right-0 z-10 bg-codestorm-darker text-xs text-gray-400 px-2 py-0.5 rounded-bl">
+              JSON
+            </div>
+            <SyntaxHighlighter
+              language="json"
+              style={vscDarkPlus}
+              customStyle={{
+                margin: 0,
+                padding: '0.75rem',
+                paddingTop: '1.5rem',
+                background: '#0a1120',
+                borderRadius: '0.375rem',
+                maxHeight: isLongContent ? '300px' : 'none',
+                overflowY: isLongContent ? 'auto' : 'visible',
+              }}
+              showLineNumbers
+            >
+              {message.content}
+            </SyntaxHighlighter>
+          </div>
+        );
+      } else {
+        return (
+          <div className="p-3 whitespace-pre-wrap rounded-md bg-codestorm-darker">
+            {message.content}
+          </div>
+        );
+      }
     } else {
-      return <span className="whitespace-pre-wrap">{message.content}</span>;
+      // Mensaje de texto normal
+      return (
+        <div className={`whitespace-pre-wrap ${isLongContent ? 'max-h-[300px] overflow-y-auto pr-2' : ''}`}>
+          {message.content}
+        </div>
+      );
     }
   };
 
@@ -243,17 +339,53 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
       );
     }
 
+    // Determinar el ancho máximo según el tipo de mensaje
+    const getMaxWidth = () => {
+      // Mensajes de código o con contenido largo necesitan más espacio
+      if (message.type === 'code') {
+        return 'max-w-[90%] sm:max-w-[85%]';
+      }
+
+      // Mensajes de notificación o sistema pueden ser más anchos
+      if (message.type === 'notification' || message.sender === 'system') {
+        return 'max-w-[90%] sm:max-w-[80%]';
+      }
+
+      // Mensajes normales
+      return 'max-w-[80%] sm:max-w-[70%]';
+    };
+
+    // Determinar el estilo según el tipo de mensaje
+    const getMessageStyle = () => {
+      // Estilo base para todos los mensajes
+      let baseStyle = 'rounded-lg p-3 break-words';
+
+      // Estilo según el remitente
+      if (message.sender === 'user') {
+        baseStyle += ' bg-codestorm-accent text-white';
+      } else if (message.sender === 'system') {
+        baseStyle += ' bg-codestorm-blue/10 text-gray-300 border border-codestorm-blue/20';
+      } else {
+        baseStyle += ' bg-codestorm-blue/20 text-white';
+      }
+
+      // Estilo adicional según el tipo de mensaje
+      if (message.type === 'notification') {
+        baseStyle += ' border-l-2 border-l-yellow-500';
+      } else if (message.type === 'code') {
+        baseStyle += ' font-mono';
+      } else if (message.metadata?.requiresAction) {
+        baseStyle += ' border-l-2 border-l-codestorm-gold';
+      }
+
+      return baseStyle;
+    };
+
     return (
       <div
-        className={`max-w-[85%] rounded-lg p-3 ${
-          message.sender === 'user'
-            ? 'bg-codestorm-accent text-white'
-            : message.sender === 'system'
-              ? 'bg-codestorm-blue/10 text-gray-300 border border-codestorm-blue/20'
-              : 'bg-codestorm-blue/20 text-white'
-        }`}
+        className={`${getMaxWidth()} ${getMessageStyle()} shadow-sm`}
       >
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
             {message.sender === 'user' ? (
               <User className="w-4 h-4 mr-2 text-white" />
@@ -265,9 +397,18 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
             <span className="text-xs opacity-70">
               {new Date(message.timestamp).toLocaleTimeString()}
             </span>
+
+            {/* Etiqueta para el tipo de mensaje */}
+            {message.type !== 'text' && (
+              <span className="ml-2 text-xs px-1.5 py-0.5 rounded-sm bg-black/20 text-gray-300">
+                {message.type === 'code' ? 'código' :
+                 message.type === 'notification' ? 'notificación' :
+                 message.type === 'proposal' ? 'propuesta' : ''}
+              </span>
+            )}
           </div>
 
-          <div className="flex space-x-1">
+          <div className="flex ml-2 space-x-1">
             {message.sender === 'user' && onEditMessage && (
               <button
                 onClick={() => startEditing(message)}
@@ -302,7 +443,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           </div>
         </div>
 
-        <div className="text-sm">
+        <div className={`text-sm ${message.type === 'code' ? 'overflow-x-auto' : ''}`}>
           {renderMessageContent(message)}
         </div>
 
@@ -310,6 +451,14 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           <div className="mt-2 text-xs bg-yellow-500/20 text-yellow-400 p-1.5 rounded flex items-center">
             <Bell className="w-3 h-3 mr-1" />
             <span>Requiere tu acción</span>
+          </div>
+        )}
+
+        {/* Referencia a etapa si existe */}
+        {message.metadata?.stageId && (
+          <div className="mt-2 text-xs bg-codestorm-blue/20 text-blue-300 p-1.5 rounded flex items-center">
+            <Info className="w-3 h-3 mr-1" />
+            <span>Relacionado con una etapa del proyecto</span>
           </div>
         )}
       </div>
@@ -342,6 +491,16 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
             <History className="w-4 h-4" />
           </button>
 
+          {currentStage && onApproveStage && onModifyStage && onRejectStage && (
+            <button
+              onClick={toggleStageSidebar}
+              className={`p-1.5 rounded ${showStageSidebar ? 'bg-codestorm-accent text-white' : 'text-gray-400 hover:bg-codestorm-blue/20 hover:text-white'}`}
+              title={showStageSidebar ? 'Ocultar etapa actual' : 'Mostrar etapa actual'}
+            >
+              <Layers className="w-4 h-4" />
+            </button>
+          )}
+
           {onDeleteMessage && (
             <button
               onClick={() => {
@@ -364,17 +523,74 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
 
       <div
         ref={chatContainerRef}
-        className="flex-1 p-3 space-y-3 overflow-y-auto"
+        className="flex-1 p-3 space-y-4 overflow-y-auto"
         style={{ display: showHistory ? 'block' : 'none' }}
       >
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {renderMessage(message)}
-          </div>
-        ))}
+        {/* Agrupar mensajes por día */}
+        {(() => {
+          const messagesByDay: { [key: string]: ChatMessage[] } = {};
+
+          // Agrupar mensajes por día
+          messages.forEach(message => {
+            const date = new Date(message.timestamp);
+            const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
+            if (!messagesByDay[dateKey]) {
+              messagesByDay[dateKey] = [];
+            }
+
+            messagesByDay[dateKey].push(message);
+          });
+
+          // Renderizar mensajes agrupados por día
+          return Object.entries(messagesByDay).map(([dateKey, dayMessages], index) => {
+            const date = new Date(dayMessages[0].timestamp);
+            const dateStr = date.toLocaleDateString();
+
+            return (
+              <div key={dateKey} className="mb-6">
+                {/* Separador de fecha */}
+                {index > 0 && (
+                  <div className="flex items-center justify-center my-4">
+                    <div className="flex-grow h-px bg-codestorm-blue/30"></div>
+                    <div className="px-3 text-xs text-gray-400">{dateStr}</div>
+                    <div className="flex-grow h-px bg-codestorm-blue/30"></div>
+                  </div>
+                )}
+
+                {/* Mensajes del día */}
+                <div className="space-y-4">
+                  {dayMessages.map((message) => {
+                    // Determinar si este mensaje es parte de una etapa
+                    const isStageMessage = message.metadata?.stageId ||
+                                          message.content.includes('Etapa aprobada') ||
+                                          message.content.includes('siguiente etapa');
+
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        {/* Contenedor especial para mensajes de etapas */}
+                        <div className={isStageMessage ? 'relative w-full max-w-[95%]' : ''}>
+                          {/* Indicador visual para mensajes de etapas */}
+                          {isStageMessage && (
+                            <div className="absolute top-0 bottom-0 left-0 w-1 rounded-full bg-codestorm-gold"></div>
+                          )}
+
+                          {/* Mensaje con padding adicional si es de etapa */}
+                          <div className={`${isStageMessage ? 'pl-3' : ''} ${message.sender === 'user' ? 'flex justify-end' : 'flex justify-start'}`}>
+                            {renderMessage(message)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          });
+        })()}
 
         {messages.length === 0 && (
           <div className="py-4 text-center text-gray-400">
@@ -393,21 +609,25 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Escribe un mensaje..."
-              className="flex-1 p-2 text-white placeholder-gray-500 border rounded-md resize-none bg-codestorm-darker border-codestorm-blue/30"
+              className={`flex-1 p-2 text-white placeholder-gray-500 border rounded-md resize-none bg-codestorm-darker ${
+                isEnhancing
+                  ? 'border-codestorm-accent shadow-glow-blue animate-pulse-subtle'
+                  : 'border-codestorm-blue/30'
+              }`}
               rows={2}
               disabled={isProcessing || isEnhancing}
             />
             <div className="flex flex-col justify-between space-y-2">
               <button
                 onClick={toggleEnhancePrompt}
-                className={`p-2 rounded-md ${
+                className={`p-2 rounded-md transition-all duration-300 ${
                   enhancePromptEnabled
-                    ? 'bg-codestorm-gold text-white'
+                    ? 'bg-purple-600 text-white shadow-glow-blue'
                     : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
                 }`}
                 title={enhancePromptEnabled ? 'Desactivar mejora de prompts' : 'Activar mejora de prompts'}
               >
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className={`w-4 h-4 ${enhancePromptEnabled ? 'animate-pulse' : ''}`} />
               </button>
               <button
                 onClick={handleSendMessage}
@@ -429,9 +649,18 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           </div>
 
           {enhancePromptEnabled && (
-            <div className="flex items-center text-xs text-codestorm-gold">
-              <Sparkles className="w-3 h-3 mr-1" />
-              <span>Mejora de prompts activada</span>
+            <div className="flex items-center justify-between px-2 py-1 text-xs border rounded-md bg-purple-900/30 border-purple-500/30">
+              <div className="flex items-center">
+                <Sparkles className="w-3 h-3 mr-1 text-purple-400" />
+                <span className="text-purple-300">Mejora de prompts activada</span>
+              </div>
+              <button
+                onClick={showEnhancementHistoryPanel}
+                className="text-purple-300 transition-colors hover:text-white"
+                title="Ver historial de mejoras"
+              >
+                <History className="w-3 h-3" />
+              </button>
             </div>
           )}
 
@@ -443,9 +672,14 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           )}
 
           {isEnhancing && (
-            <div className="flex items-center text-xs text-codestorm-gold">
-              <Sparkles className="w-3 h-3 mr-1 animate-pulse" />
-              <span>Mejorando prompt...</span>
+            <div className="flex items-center px-2 py-1 text-xs border rounded-md bg-purple-900/30 border-purple-500/30 animate-pulse-subtle shadow-glow-blue">
+              <Sparkles className="w-3 h-3 mr-1 text-purple-400 animate-pulse" />
+              <span className="text-purple-300">Mejorando prompt...</span>
+              <div className="flex ml-2 space-x-1">
+                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
             </div>
           )}
         </div>
@@ -470,6 +704,19 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
         isVisible={showEnhancementHistory}
         onClose={() => setShowEnhancementHistory(false)}
       />
+
+      {/* Ventana lateral de etapas */}
+      {currentStage && onApproveStage && onModifyStage && onRejectStage && (
+        <StageSidebar
+          stage={currentStage}
+          onApprove={onApproveStage}
+          onModify={onModifyStage}
+          onReject={onRejectStage}
+          isPaused={isPaused}
+          isOpen={showStageSidebar}
+          onToggle={toggleStageSidebar}
+        />
+      )}
     </div>
   );
 };
