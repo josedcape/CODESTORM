@@ -30,7 +30,7 @@ postcss==8.4.35
 concurrently==8.2.2
 
 # Tipos TypeScript
-@types/react==19.1.4
+@types/react==19.1.5
 @types/react-dom==19.1.4
 @types/react-syntax-highlighter==15.5.11
 @types/file-saver==2.0.7
