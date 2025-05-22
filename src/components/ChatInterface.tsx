@@ -4,6 +4,7 @@ import { FileItem } from '../types';
 import { PromptEnhancerService, EnhancedPrompt } from '../services/PromptEnhancerService';
 import EnhancedPromptDialog from './EnhancedPromptDialog';
 import EnhancementHistoryPanel from './EnhancementHistoryPanel';
+import { generateUniqueId } from '../utils/idGenerator';
 
 interface Message {
   id: string;
@@ -86,7 +87,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Función para enviar el mensaje original
   const sendOriginalMessage = async () => {
     const newMessage: Message = {
-      id: `msg-${Date.now()}`,
+      id: generateUniqueId('msg'),
       content: inputValue,
       sender: 'user',
       timestamp: Date.now(),
@@ -105,7 +106,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         setMessages(prev => [
           ...prev,
           {
-            id: `msg-response-${Date.now()}`,
+            id: generateUniqueId('msg-response'),
             content: `He modificado el archivo según tus instrucciones. Puedes ver los cambios en el editor.`,
             sender: 'assistant',
             timestamp: Date.now(),
@@ -122,7 +123,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setMessages(prev => [
         ...prev,
         {
-          id: `msg-error-${Date.now()}`,
+          id: generateUniqueId('msg-error'),
           content: `Lo siento, ocurrió un error: ${error instanceof Error ? error.message : 'Error desconocido'}`,
           sender: 'assistant',
           timestamp: Date.now()
@@ -144,7 +145,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       // Usar setTimeout para asegurar que el estado se actualice antes de enviar
       setTimeout(async () => {
         const newMessage: Message = {
-          id: `msg-${Date.now()}`,
+          id: generateUniqueId('msg'),
           content: originalPrompt,
           sender: 'user',
           timestamp: Date.now()
@@ -159,7 +160,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           setMessages(prev => [
             ...prev,
             {
-              id: `msg-error-${Date.now()}`,
+              id: generateUniqueId('msg-error'),
               content: `Lo siento, ocurrió un error: ${error instanceof Error ? error.message : 'Error desconocido'}`,
               sender: 'assistant',
               timestamp: Date.now()
@@ -183,7 +184,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       // Usar setTimeout para asegurar que el estado se actualice antes de enviar
       setTimeout(async () => {
         const newMessage: Message = {
-          id: `msg-${Date.now()}`,
+          id: generateUniqueId('msg'),
           content: enhancedPrompt,
           sender: 'user',
           timestamp: Date.now()
@@ -198,7 +199,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           setMessages(prev => [
             ...prev,
             {
-              id: `msg-error-${Date.now()}`,
+              id: generateUniqueId('msg-error'),
               content: `Lo siento, ocurrió un error: ${error instanceof Error ? error.message : 'Error desconocido'}`,
               sender: 'assistant',
               timestamp: Date.now()
@@ -238,7 +239,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setMessages(prev => [
         ...prev,
         {
-          id: `msg-error-${Date.now()}`,
+          id: generateUniqueId('msg-error'),
           content: 'Por favor, selecciona primero un archivo para modificar.',
           sender: 'assistant',
           timestamp: Date.now()
@@ -254,7 +255,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setMessages(prev => [
       ...prev,
       {
-        id: `msg-file-mod-${Date.now()}`,
+        id: generateUniqueId('msg-file-mod'),
         content: `¿Qué cambios te gustaría hacer en el archivo "${selectedFile.name}"?`,
         sender: 'assistant',
         timestamp: Date.now(),
@@ -280,7 +281,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setMessages(prev => [
       ...prev,
       {
-        id: `msg-assistant-${Date.now()}`,
+        id: generateUniqueId('msg-assistant'),
         content,
         sender: 'assistant',
         timestamp: Date.now(),

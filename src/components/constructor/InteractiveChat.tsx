@@ -17,7 +17,7 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
-  Sparkles,
+  Sparkles, 
   History,
   Info,
   Layers

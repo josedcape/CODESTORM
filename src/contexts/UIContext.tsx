@@ -6,6 +6,7 @@ interface UIContextType {
   isSidebarVisible: boolean;
   isFileExplorerVisible: boolean;
   isTerminalVisible: boolean;
+  isCodeModifierVisible: boolean;
 
   // Tamaño de pantalla
   isMobile: boolean;
@@ -16,15 +17,17 @@ interface UIContextType {
   toggleSidebar: () => void;
   toggleFileExplorer: () => void;
   toggleTerminal: () => void;
+  toggleCodeModifier: () => void;
 
   // Métodos para establecer el estado
   setSidebarVisible: (visible: boolean) => void;
   setFileExplorerVisible: (visible: boolean) => void;
   setTerminalVisible: (visible: boolean) => void;
+  setCodeModifierVisible: (visible: boolean) => void;
 
   // Estado de panel expandido (para vista móvil)
-  expandedPanel: 'sidebar' | 'explorer' | 'editor' | 'terminal' | null;
-  setExpandedPanel: (panel: 'sidebar' | 'explorer' | 'editor' | 'terminal' | null) => void;
+  expandedPanel: 'sidebar' | 'explorer' | 'editor' | 'terminal' | 'codeModifier' | null;
+  setExpandedPanel: (panel: 'sidebar' | 'explorer' | 'editor' | 'terminal' | 'codeModifier' | null) => void;
 }
 
 // Crear el contexto con un valor por defecto
@@ -36,9 +39,10 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [isFileExplorerVisible, setIsFileExplorerVisible] = useState(true);
   const [isTerminalVisible, setIsTerminalVisible] = useState(true);
+  const [isCodeModifierVisible, setIsCodeModifierVisible] = useState(false);
 
   // Estado para el panel expandido en vista móvil
-  const [expandedPanel, setExpandedPanel] = useState<'sidebar' | 'explorer' | 'editor' | 'terminal' | null>(null);
+  const [expandedPanel, setExpandedPanel] = useState<'sidebar' | 'explorer' | 'editor' | 'terminal' | 'codeModifier' | null>(null);
 
   // Estado para el tamaño de pantalla
   const [isMobile, setIsMobile] = useState(false);
@@ -85,21 +89,25 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const toggleSidebar = () => setIsSidebarVisible(!isSidebarVisible);
   const toggleFileExplorer = () => setIsFileExplorerVisible(!isFileExplorerVisible);
   const toggleTerminal = () => setIsTerminalVisible(!isTerminalVisible);
+  const toggleCodeModifier = () => setIsCodeModifierVisible(!isCodeModifierVisible);
 
   // Valor del contexto
   const value: UIContextType = {
     isSidebarVisible,
     isFileExplorerVisible,
     isTerminalVisible,
+    isCodeModifierVisible,
     isMobile,
     isTablet,
     isDesktop,
     toggleSidebar,
     toggleFileExplorer,
     toggleTerminal,
+    toggleCodeModifier,
     setSidebarVisible: setIsSidebarVisible,
     setFileExplorerVisible: setIsFileExplorerVisible,
     setTerminalVisible: setIsTerminalVisible,
+    setCodeModifierVisible: setIsCodeModifierVisible,
     expandedPanel,
     setExpandedPanel
   };

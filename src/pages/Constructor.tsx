@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import CollapsiblePanel from '../components/CollapsiblePanel';
 import BrandLogo from '../components/BrandLogo';
 import Footer from '../components/Footer';
+import CodeModifierPanel from '../components/codemodifier/CodeModifierPanel';
 import { Loader, AlertTriangle, FileText, Folder, Sparkles, Layers, CheckCircle, XCircle } from 'lucide-react';
 import {
   FileItem,
@@ -108,7 +109,7 @@ const setupAIOrchestrator = (setChatMessages: React.Dispatch<React.SetStateActio
 
 const Constructor: React.FC = () => {
   const navigate = useNavigate();
-  const { isMobile, isTablet } = useUI();
+  const { isMobile, isTablet, isCodeModifierVisible, toggleCodeModifier } = useUI();
 
   const [aiConstructorState, setAIConstructorState] = useState<AIConstructorState>({
     currentAIAction: 'awaitingInput',
@@ -552,7 +553,7 @@ ${content}`);
 
     try {
       // Llamar al método de aprobación del orquestrador
-      aiIterativeOrchestrator.handleApproval(pendingApproval.id, true, feedback);
+      aiIterativeOrchestrator.handleApproval(pendingApproval.id, true, feedback, approvedItems);
 
       console.log('Solicitud de aprobación enviada correctamente');
     } catch (error) {
@@ -634,7 +635,7 @@ ${content}`);
     addChatMessage({
       id: generateUniqueId('partial-approval'),
       sender: 'user',
-      content: `He aprobado parcialmente el plan (${approvedItems.length} de ${pendingApproval.items.length} elementos)${feedback ? `: ${feedback}` : '.'}`,
+      content: `He aprobado parcialmente ${pendingApproval.type === 'batch' ? 'los archivos' : 'el plan'} (${approvedItems.length} de ${pendingApproval.items.length} elementos)${feedback ? `: ${feedback}` : '.'}`,
       timestamp: Date.now(),
       type: 'approval-response',
       metadata: {
@@ -822,6 +823,35 @@ ${content}`);
           }}
         />
       )}
+
+      {/* Panel de modificación de código */}
+      <CodeModifierPanel
+        isVisible={isCodeModifierVisible}
+        onClose={toggleCodeModifier}
+        files={aiConstructorState.projectFiles}
+        onApplyChanges={(originalFile: FileItem, modifiedFile: FileItem) => {
+          // Actualizar el archivo en el estado
+          setAIConstructorState(prev => ({
+            ...prev,
+            projectFiles: prev.projectFiles.map(f =>
+              f.id === originalFile.id ? modifiedFile : f
+            )
+          }));
+
+          // Añadir mensaje de confirmación
+          addChatMessage({
+            id: generateUniqueId('file-modified'),
+            sender: 'ai',
+            content: `Archivo '${modifiedFile.path}' modificado con éxito mediante el Agente Modificador de Código.`,
+            timestamp: Date.now(),
+            type: 'success',
+            senderType: 'ai'
+          });
+
+          toggleCodeModifier();
+        }}
+      />
+
       <Footer showLogo={true} />
     </div>
   );

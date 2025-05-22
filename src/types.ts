@@ -8,6 +8,87 @@ export interface AIModel {
 
 export type ProjectPhase = 'planning' | 'development' | 'testing' | 'documentation';
 
+// Tipos para el flujo de trabajo iterativo guiado por IA
+export type AIPhase =
+  | 'planning'
+  | 'generatingCode'
+  | 'modifyingFile'
+  | 'analyzingCode'
+  | 'awaitingInput'
+  | 'complete'
+  | 'awaitingApproval'
+  | 'designingUI'
+  | 'designing'
+  | 'paused';
+
+export interface AILogEntry {
+  id: string;
+  timestamp: number;
+  phase: AIPhase;
+  agentType: string;
+  action: string;
+  details: string;
+  relatedFiles?: string[];
+}
+
+export interface AIWorkflowState {
+  currentPhase: AIPhase;
+  lastInstruction: string;
+  currentAgentType: string | null;
+  log: AILogEntry[];
+  isProcessing: boolean;
+  requiresApproval?: boolean;
+  approvalData?: ApprovalData;
+  progress?: ProgressData;
+}
+
+export interface ApprovalData {
+  id: string;
+  title: string;
+  description: string;
+  type: 'plan' | 'code' | 'design' | 'modification' | 'batch' | 'file';
+  items: ApprovalItem[];
+  feedback?: string;
+  timestamp: number;
+  approved?: boolean;
+  rejected?: boolean;
+  partiallyApproved?: boolean;
+  metadata?: any;
+}
+
+export interface ApprovalItem {
+  id: string;
+  title: string;
+  description: string;
+  type: 'file' | 'component' | 'feature' | 'dependency';
+  path?: string;
+  content?: string;
+  language?: string;
+  approved?: boolean;
+  rejected?: boolean;
+  feedback?: string;
+  estimatedTime?: number; // en minutos
+  priority?: 'high' | 'medium' | 'low';
+  dependencies?: string[]; // IDs de otros items de los que depende
+}
+
+export interface ProgressData {
+  percentage: number;
+  currentPhase: string;
+  estimatedTimeRemaining?: number; // en minutos
+  startTime: number;
+  completedItems: number;
+  totalItems: number;
+  itemsProgress: {
+    [key: string]: {
+      id: string;
+      title: string;
+      percentage: number;
+      status: 'pending' | 'in-progress' | 'completed' | 'failed';
+    }
+  };
+}
+
 export interface Task {
   id: string;
   description: string;
@@ -80,7 +161,7 @@ export interface ProjectPlan {
 }
 
 // Tipos para el sistema multi-agente
-export type AgentType = 'planner' | 'codeGenerator' | 'fileSynchronizer' | 'codeModifier' | 'fileObserver' | 'codeSplitter' | 'codeCorrector' | 'seguimiento' | 'lector';
+export type AgentType = 'planner' | 'codeGenerator' | 'fileSynchronizer' | 'codeModifier' | 'fileObserver' | 'codeSplitter' | 'codeCorrector' | 'seguimiento' | 'lector' | 'designArchitect';
 
 export type AgentStatus = 'idle' | 'working' | 'completed' | 'failed';
 
@@ -130,7 +211,8 @@ export interface PlannerResult extends AgentResult {
 // Resultado específico del Agente de Generación de Código
 export interface CodeGeneratorResult extends AgentResult {
   data?: {
-    file: FileItem;
+    file?: FileItem;
+    files?: FileItem[];
   };
 }
 
@@ -188,10 +270,17 @@ export interface ApprovalStage {
 }
 
 export interface ConstructorState extends ProjectState {
+  // Estado del flujo de trabajo tradicional (por etapas)
   stages: ApprovalStage[];
   currentStageId: string | null;
-  sessionId: string;
   isPaused: boolean;
+
+  // Estado del flujo de trabajo iterativo guiado por IA
+  aiWorkflow: AIWorkflowState;
+  useIterativeWorkflow: boolean; // Indica si se usa el flujo iterativo o el tradicional
+
+  // Datos comunes
+  sessionId: string;
   lastModified: number;
   fileObserver?: FileObserverState;
   seguimiento?: SeguimientoState;
@@ -200,15 +289,32 @@ export interface ConstructorState extends ProjectState {
 // Tipos para el chat interactivo del Constructor
 export interface ChatMessage {
   id: string;
-  sender: 'user' | 'assistant' | 'system';
+  sender: 'user' | 'assistant' | 'system' | 'ai-agent' | 'design-agent';
   content: string;
   timestamp: number;
-  type: 'text' | 'code' | 'proposal' | 'notification';
+  type: 'text' | 'code' | 'proposal' | 'notification' | 'ai-log' | 'file-creation' | 'file-modification' | 'approval-request' | 'approval-response' | 'design-proposal' | 'progress-update' | 'error' | 'warning' | 'success' | 'system';
   metadata?: {
     language?: string;
     stageId?: string;
     requiresAction?: boolean;
     fileId?: string;
+    agentType?: string;
+    phase?: AIPhase;
+    files?: string[];
+    reasoning?: string;
+    action?: string;
+    approvalId?: string;
+    approvalType?: 'plan' | 'code' | 'design' | 'modification';
+    approvalStatus?: 'pending' | 'approved' | 'rejected' | 'partially-approved';
+    progressPercentage?: number;
+    estimatedTimeRemaining?: number;
+    designPreview?: string; // URL o base64 de la imagen
+    diffView?: {
+      original: string;
+      modified: string;
+      path: string;
+    };
+    icon?: React.ComponentType<any>;
   };
 }
 
@@ -313,6 +419,25 @@ export interface CodeCorrectorResult extends AgentResult {
     analysis: CodeCorrectionResult;
     originalFile?: FileItem;
     correctedFile?: FileItem;
+  };
+}
+
+// Resultado específico del Agente de Diseño
+export interface DesignArchitectResult extends AgentResult {
+  data?: {
+    files: {
+      path: string;
+      content: string;
+      language: string;
+      type: 'html' | 'css' | 'js';
+      description?: string;
+    }[];
+    designSummary?: string;
+    styleGuide?: {
+      colors: string[];
+      fonts: string[];
+      components: string[];
+    };
   };
 }
 
@@ -462,6 +587,84 @@ export interface LectorState {
   pendingChanges: FileChangeAnalysis[];
   isActive: boolean;
   lastAnalysis: number;
+}
+
+// Tipos para el Agente de Diseño Arquitectónico
+export type DesignComponentType = 'page' | 'layout' | 'component' | 'form' | 'navigation' | 'modal' | 'card' | 'button' | 'input' | 'table';
+export type DesignStyle = 'minimal' | 'modern' | 'corporate' | 'playful' | 'dark' | 'light' | 'custom';
+
+export interface DesignComponent {
+  id: string;
+  name: string;
+  type: DesignComponentType;
+  description: string;
+  properties: {
+    [key: string]: any;
+  };
+  children?: string[]; // IDs de componentes hijos
+  parentId?: string;
+  styles?: {
+    [key: string]: string;
+  };
+  events?: {
+    [key: string]: string;
+  };
+  previewImage?: string; // URL o base64 de la imagen
+  htmlTemplate?: string;
+  cssStyles?: string;
+  jsCode?: string;
+}
+
+export interface DesignProposal {
+  id: string;
+  title: string;
+  description: string;
+  components: DesignComponent[];
+  style: DesignStyle;
+  colorPalette: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    text: string;
+    [key: string]: string;
+  };
+  typography: {
+    headingFont: string;
+    bodyFont: string;
+    baseSize: string;
+    scale: number;
+  };
+  responsive: boolean;
+  accessibility: {
+    level: 'A' | 'AA' | 'AAA';
+    features: string[];
+  };
+  previewImages: string[]; // URLs o base64 de las imágenes
+  htmlPreview?: string;
+  cssPreview?: string;
+}
+
+export interface DesignArchitectResult extends AgentResult {
+  data?: {
+    proposal?: DesignProposal;
+    components?: DesignComponent[];
+    files?: any[];
+    designSummary?: string;
+    styleGuide?: {
+      colors: string[];
+      fonts: string[];
+      components: string[];
+    };
+  };
+}
+
+export interface DesignArchitectState {
+  currentProposal?: DesignProposal;
+  approvedComponents: DesignComponent[];
+  generatedFiles: string[];
+  isActive: boolean;
+  lastUpdate: number;
 }
 
 export interface LectorResult extends AgentResult {

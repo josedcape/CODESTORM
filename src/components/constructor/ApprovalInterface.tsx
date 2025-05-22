@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CheckCircle, XCircle, ChevronDown, ChevronUp, Clock, AlertTriangle, Info, Edit, Check, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle, XCircle, ChevronDown, ChevronUp, Clock, AlertTriangle, Info, Edit, Check, X, FileText } from 'lucide-react';
 import { ApprovalData, ApprovalItem } from '../../types';
 
 interface ApprovalInterfaceProps {
@@ -22,6 +22,14 @@ const ApprovalInterface: React.FC<ApprovalInterfaceProps> = ({
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showFeedbackInput, setShowFeedbackInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(initialLoading);
+
+  // Inicializar todos los elementos seleccionados para aprobación por lotes
+  useEffect(() => {
+    if (approvalData.type === 'batch') {
+      // Seleccionar todos los elementos por defecto para aprobación por lotes
+      setSelectedItems(approvalData.items.map(item => item.id));
+    }
+  }, [approvalData]);
 
   const toggleSection = (id: string) => {
     setExpandedSections(prev => ({

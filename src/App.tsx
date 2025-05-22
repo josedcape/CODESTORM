@@ -18,6 +18,7 @@ import CollapsiblePanel from './components/CollapsiblePanel';
 import FloatingActionButtons from './components/FloatingActionButtons';
 import BrandLogo from './components/BrandLogo';
 import Footer from './components/Footer';
+import CodeModifierPanel from './components/codemodifier/CodeModifierPanel';
 import IntroAnimation from './components/IntroAnimation';
 import useIntroAnimation from './hooks/useIntroAnimation';
 import { availableModels } from './data/models';
@@ -25,7 +26,8 @@ import {
   ProjectState,
   FileItem,
   Task,
-  TerminalOutput
+  TerminalOutput,
+  CodeModifierResult
 } from './types';
 import { tryWithFallback } from './services/ai';
 import { parseTerminalCommand, applyFileSystemCommands } from './services/fileSystemService';
@@ -53,9 +55,11 @@ const MainApp: React.FC = () => {
     isSidebarVisible,
     isFileExplorerVisible,
     isTerminalVisible,
+    isCodeModifierVisible,
     toggleSidebar,
     toggleFileExplorer,
     toggleTerminal,
+    toggleCodeModifier,
     isMobile,
     isTablet,
     expandedPanel
@@ -548,6 +552,41 @@ const MainApp: React.FC = () => {
     setShowChat(prev => !prev);
   };
 
+  // Función para aplicar cambios del modificador de código
+  const handleApplyCodeModifications = (originalFile: FileItem, modifiedFile: FileItem) => {
+    // Actualizar el estado con el archivo modificado
+    setProjectState(prev => {
+      // Encontrar el índice del archivo original
+      const fileIndex = prev.files.findIndex(f => f.id === originalFile.id);
+
+      if (fileIndex === -1) return prev;
+
+      // Crear una nueva lista de archivos con el archivo modificado
+      const updatedFiles = [...prev.files];
+      updatedFiles[fileIndex] = modifiedFile;
+
+      // Añadir mensaje de éxito a la terminal
+      const successOutput: TerminalOutput = {
+        id: `term-modify-success-${Date.now()}`,
+        command: `echo "Archivo ${modifiedFile.path} modificado con éxito"`,
+        output: `Archivo ${modifiedFile.path} modificado con éxito mediante el Agente Modificador de Código`,
+        timestamp: Date.now(),
+        status: 'success' as const,
+        analysis: {
+          isValid: true,
+          summary: 'Archivo modificado con éxito',
+          executionTime: Math.floor(Math.random() * 300) + 100
+        }
+      };
+
+      return {
+        ...prev,
+        files: updatedFiles,
+        terminal: [...prev.terminal, successOutput]
+      };
+    });
+  };
+
   return (
     <div className="min-h-screen bg-codestorm-darker flex flex-col">
       {/* Animación de introducción */}
@@ -700,14 +739,22 @@ const MainApp: React.FC = () => {
         />
       )}
 
-      {/* Botones flotantes para móvil y tablet */}
-      {(isMobile || isTablet) && (
-        <FloatingActionButtons
-          onToggleChat={handleToggleChat}
-          onTogglePreview={handleTogglePreview}
-          showChat={showChat}
-        />
-      )}
+      {/* Panel de modificación de código */}
+      <CodeModifierPanel
+        isVisible={isCodeModifierVisible}
+        onClose={toggleCodeModifier}
+        files={projectState.files}
+        onApplyChanges={handleApplyCodeModifications}
+      />
+
+      {/* Botones flotantes */}
+      <FloatingActionButtons
+        onToggleChat={handleToggleChat}
+        onTogglePreview={handleTogglePreview}
+        onToggleCodeModifier={toggleCodeModifier}
+        showChat={showChat}
+        showCodeModifier={isCodeModifierVisible}
+      />
 
       {/* Logo de BOTIDINAMIX */}
       <BrandLogo size="md" showPulse={true} showGlow={true} />

@@ -5,6 +5,7 @@ import CollapsiblePanel from '../components/CollapsiblePanel';
 import FloatingActionButtons from '../components/FloatingActionButtons';
 import BrandLogo from '../components/BrandLogo';
 import Footer from '../components/Footer';
+import CodeModifierPanel from '../components/codemodifier/CodeModifierPanel';
 import {
   Zap,
   AlertCircle,
@@ -20,7 +21,8 @@ import {
   AgentTask,
   CodeError,
   CodeCorrectionResult,
-  CorrectionHistoryItem
+  CorrectionHistoryItem,
+  FileItem
 } from '../types';
 import { useUI } from '../contexts/UIContext';
 
@@ -37,7 +39,7 @@ import { CodeCorrectorAgent } from '../agents/CodeCorrectorAgent';
 
 const CodeCorrector: React.FC = () => {
   const navigate = useNavigate();
-  const { isMobile, isTablet, expandedPanel } = useUI();
+  const { isMobile, isTablet, expandedPanel, isCodeModifierVisible, toggleCodeModifier } = useUI();
 
   // Estado para el código y análisis
   const [originalCode, setOriginalCode] = useState('');
@@ -437,17 +439,40 @@ const CodeCorrector: React.FC = () => {
         </div>
       </main>
 
-      {/* Botones flotantes para móvil y tablet */}
-      {(isMobile || isTablet) && (
-        <FloatingActionButtons
-          onToggleChat={handleToggleChat}
-          onTogglePreview={handleTogglePreview}
-          showChat={showChat}
-        />
-      )}
+      {/* Botones flotantes */}
+      <FloatingActionButtons
+        onToggleChat={handleToggleChat}
+        onTogglePreview={handleTogglePreview}
+        onToggleCodeModifier={toggleCodeModifier}
+        showChat={showChat}
+        showCodeModifier={isCodeModifierVisible}
+      />
 
       {/* Logo de BOTIDINAMIX */}
       <BrandLogo size="md" showPulse={true} showGlow={true} />
+
+      {/* Panel de modificación de código */}
+      <CodeModifierPanel
+        isVisible={isCodeModifierVisible}
+        onClose={toggleCodeModifier}
+        files={[
+          {
+            id: 'sample-file-1',
+            name: 'index.html',
+            path: '/index.html',
+            content: originalCode || '<!DOCTYPE html>\n<html>\n<head>\n  <title>Mi Página</title>\n</head>\n<body>\n  <h1>Contenido Inicial</h1>\n</body>\n</html>',
+            language: 'html',
+            type: 'file',
+            isNew: true,
+            timestamp: Date.now(),
+            lastModified: Date.now()
+          }
+        ]}
+        onApplyChanges={(originalFile: FileItem, modifiedFile: FileItem) => {
+          setOriginalCode(modifiedFile.content);
+          toggleCodeModifier();
+        }}
+      />
 
       {/* Pie de página */}
       <Footer showLogo={true} />

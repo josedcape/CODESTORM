@@ -9,20 +9,25 @@ import {
   MessageSquare,
   Eye,
   Download,
-  ChevronUp
+  ChevronUp,
+  Edit
 } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
 
 interface FloatingActionButtonsProps {
   onToggleChat: () => void;
   onTogglePreview: () => void;
+  onToggleCodeModifier?: () => void;
   showChat: boolean;
+  showCodeModifier?: boolean;
 }
 
 const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
   onToggleChat,
   onTogglePreview,
-  showChat
+  onToggleCodeModifier,
+  showChat,
+  showCodeModifier = false
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const {
@@ -56,7 +61,7 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
       {/* Botón principal flotante */}
       <button
         onClick={toggleMenu}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-codestorm-accent shadow-lg flex items-center justify-center z-50 hover:bg-blue-600 transition-colors transform hover:scale-105 active:scale-95"
+        className="fixed bottom-6 left-6 w-14 h-14 rounded-full bg-codestorm-accent shadow-lg flex items-center justify-center z-50 hover:bg-blue-600 transition-colors transform hover:scale-105 active:scale-95"
         aria-label="Menú de acciones"
       >
         {isMenuOpen ? (
@@ -68,7 +73,7 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
 
       {/* Menú de acciones */}
       {isMenuOpen && (
-        <div className="fixed bottom-24 right-6 flex flex-col-reverse space-y-reverse space-y-3 z-50 animate-fadeIn">
+        <div className="fixed bottom-24 left-6 flex flex-col-reverse space-y-reverse space-y-3 z-50 animate-fadeIn">
           {/* Botón para mostrar/ocultar sidebar */}
           <button
             onClick={toggleSidebar}
@@ -126,6 +131,20 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
           >
             <Eye className="h-5 w-5" />
           </button>
+
+          {/* Botón para modificador de código */}
+          {onToggleCodeModifier && (
+            <button
+              onClick={onToggleCodeModifier}
+              className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transform hover:scale-105 active:scale-95 transition-all ${
+                showCodeModifier ? 'bg-codestorm-accent text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+              aria-label="Modificar código"
+              style={{ animationDelay: '300ms' }}
+            >
+              <Edit className="h-5 w-5" />
+            </button>
+          )}
         </div>
       )}
 
@@ -133,7 +152,7 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
       {isMobile && expandedPanel && (
         <button
           onClick={() => setExpandedPanel(null)}
-          className="fixed top-20 right-4 w-10 h-10 rounded-full bg-codestorm-blue/80 shadow-lg flex items-center justify-center z-50"
+          className="fixed top-20 left-4 w-10 h-10 rounded-full bg-codestorm-blue/80 shadow-lg flex items-center justify-center z-50"
           aria-label="Contraer panel"
         >
           <ChevronUp className="h-5 w-5 text-white" />
