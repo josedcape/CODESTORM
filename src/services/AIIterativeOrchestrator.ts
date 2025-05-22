@@ -760,6 +760,25 @@ export class AIIterativeOrchestrator {
       try {
         console.log(`Continuando con el flujo según el tipo de aprobación: ${approvalType}`);
 
+        // Verificar que el plan de proyecto esté disponible
+        if (approvalType === 'plan' && !this.projectPlan) {
+          console.error('Error: Se intentó continuar con la generación de código pero no hay un plan de proyecto disponible');
+
+          // Añadir mensaje informativo al chat
+          this.addChatMessage({
+            id: generateUniqueId('msg-no-plan-error'),
+            sender: 'system',
+            content: 'Error: No se encontró un plan de proyecto. Por favor, intenta generar un nuevo plan.',
+            timestamp: Date.now(),
+            type: 'error'
+          });
+
+          // Actualizar el estado para permitir al usuario intentar de nuevo
+          this.updatePhase('awaitingInput', null);
+          this.notifyStateListeners();
+          return;
+        }
+
         if (approvalType === 'plan') {
           console.log('Iniciando generación de código después de aprobación del plan');
           await this.continueWithCodeGeneration(approvedItems);
@@ -783,13 +802,27 @@ export class AIIterativeOrchestrator {
             timestamp: Date.now(),
             type: 'warning'
           });
+
+          // Actualizar el estado para permitir al usuario intentar de nuevo
+          this.updatePhase('awaitingInput', null);
+          this.notifyStateListeners();
         }
       } catch (error) {
         console.error(`Error al procesar la aprobación de tipo ${approvalType}:`, error);
         this.handleError(error);
 
+        // Añadir mensaje informativo al chat con detalles del error
+        this.addChatMessage({
+          id: generateUniqueId('msg-approval-error'),
+          sender: 'system',
+          content: `Error al procesar la aprobación: ${error instanceof Error ? error.message : 'Error desconocido'}. Por favor, intenta generar un nuevo plan.`,
+          timestamp: Date.now(),
+          type: 'error'
+        });
+
         // Intentar recuperar el flujo
         this.updatePhase('awaitingInput', null);
+        this.notifyStateListeners();
       }
 
       // Limpiar el estado de aprobación
@@ -845,19 +878,39 @@ export class AIIterativeOrchestrator {
       console.log(`Total de archivos en el plan: ${this.projectPlan.files.length}`);
       console.log('Archivos en el plan:', this.projectPlan.files);
 
+      // Verificar que el plan tenga archivos
+      if (!filesToGenerate || filesToGenerate.length === 0) {
+        console.error('Error: El plan no contiene archivos');
+        throw new Error('El plan no contiene archivos para generar. Por favor, intenta generar un nuevo plan.');
+      }
+
       if (approvedItems && this.approvalData) {
         console.log(`Aprobación parcial con ${approvedItems.length} elementos aprobados`);
 
-        const approvedFiles = this.approvalData.items
-          .filter(item => approvedItems.includes(item.id) && item.type === 'file')
-          .map(item => item.path);
+        // Verificar que los elementos aprobados existan en los datos de aprobación
+        if (!this.approvalData.items || this.approvalData.items.length === 0) {
+          console.error('Error: No hay elementos en los datos de aprobación');
+          console.log('Datos de aprobación:', this.approvalData);
 
-        console.log(`Archivos aprobados parcialmente: ${approvedFiles.length}`);
-        console.log('Rutas de archivos aprobados:', approvedFiles);
+          // Usar todos los archivos del plan en este caso
+          console.log('Usando todos los archivos del plan debido a datos de aprobación incompletos');
+        } else {
+          const approvedFiles = this.approvalData.items
+            .filter(item => approvedItems.includes(item.id) && item.type === 'file')
+            .map(item => item.path);
 
-        filesToGenerate = filesToGenerate.filter(file => approvedFiles.includes(file));
+          console.log(`Archivos aprobados parcialmente: ${approvedFiles.length}`);
+          console.log('Rutas de archivos aprobados:', approvedFiles);
 
-        console.log(`Archivos filtrados para generar: ${filesToGenerate.length}`);
+          // Solo filtrar si hay archivos aprobados
+          if (approvedFiles.length > 0) {
+            filesToGenerate = filesToGenerate.filter(file => approvedFiles.includes(file));
+            console.log(`Archivos filtrados para generar: ${filesToGenerate.length}`);
+          } else {
+            console.warn('No se encontraron archivos aprobados en la selección parcial');
+            console.log('Usando todos los archivos del plan debido a que no se encontraron archivos aprobados');
+          }
+        }
       } else {
         console.log('Todos los archivos fueron aprobados, generando el plan completo');
       }
@@ -909,7 +962,19 @@ export class AIIterativeOrchestrator {
 
       // Crear un plan adaptado para el generador de código
       const adaptedPlan = {
-        files: filesToGenerate,
+        files: filesToGenerate.map(filePath => {
+          // Verificar si es un string (ruta de archivo) o un objeto de archivo
+          if (typeof filePath === 'string') {
+            // Convertir la ruta de archivo en un objeto de archivo
+            return {
+              path: filePath,
+              description: `Archivo para ${filePath}`,
+              content: null
+            };
+          }
+          // Si ya es un objeto, devolverlo tal cual
+          return filePath;
+        }),
         description: this.projectPlan.description,
         name: this.projectPlan.title,
         implementationSteps: this.projectPlan.steps.map(step => ({
@@ -920,13 +985,53 @@ export class AIIterativeOrchestrator {
         }))
       };
 
+      console.log('Plan adaptado para generación de código:', {
+        name: adaptedPlan.name,
+        description: adaptedPlan.description,
+        fileCount: adaptedPlan.files.length,
+        files: adaptedPlan.files.map(f => f.path)
+      });
+
       // Crear una cola de archivos para procesar uno por uno
-      const fileQueue = [...adaptedPlan.files].filter(file => file && file.path);
+      let fileQueue = [...adaptedPlan.files].filter(file => file && file.path);
       const generatedFiles: FileItem[] = [];
 
       // Verificar que haya archivos válidos en la cola
       if (fileQueue.length === 0) {
-        throw new Error('No hay archivos válidos para generar en el plan');
+        console.error('Error: No se encontraron archivos válidos en el plan adaptado');
+        console.log('Plan adaptado:', adaptedPlan);
+
+        // Intentar recuperar archivos del plan original
+        if (this.projectPlan && this.projectPlan.files && this.projectPlan.files.length > 0) {
+          console.log('Intentando recuperar archivos del plan original...');
+
+          // Convertir las rutas de archivo en objetos de archivo
+          fileQueue = this.projectPlan.files.map(filePath => {
+            return {
+              path: filePath,
+              description: `Archivo para ${filePath}`,
+              content: null
+            };
+          });
+
+          console.log(`Recuperados ${fileQueue.length} archivos del plan original`);
+
+          // Añadir mensaje informativo al chat
+          this.addChatMessage({
+            id: generateUniqueId('msg-recovery'),
+            sender: 'system',
+            content: `Se encontró un problema con los archivos del plan. Se intentará generar los archivos usando información del plan original.`,
+            timestamp: Date.now(),
+            type: 'warning'
+          });
+
+          // Si aún no hay archivos, lanzar error
+          if (fileQueue.length === 0) {
+            throw new Error('No hay archivos válidos para generar en el plan');
+          }
+        } else {
+          throw new Error('No hay archivos válidos para generar en el plan');
+        }
       }
 
       // Inicializar el progreso
