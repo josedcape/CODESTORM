@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, ApprovalStage } from '../../types';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { generateUniqueId } from '../../utils/idGenerator';
 import {
   Send,
   User,
@@ -568,7 +569,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
 
                     return (
                       <div
-                        key={message.id}
+                        key={`${message.id}-${Math.random().toString(36).substring(2, 9)}`}
                         className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         {/* Contenedor especial para mensajes de etapas */}
