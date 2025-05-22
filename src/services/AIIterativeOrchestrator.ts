@@ -1061,6 +1061,27 @@ export class AIIterativeOrchestrator {
           continue;
         }
 
+        // Verificar si el archivo ya existe
+        const fileExists = this.files.some(f => f.path === currentFile.path);
+        if (fileExists) {
+          console.log(`El archivo ${currentFile.path} ya existe. Verificando si se debe actualizar...`);
+
+          // Añadir mensaje informativo al chat
+          this.addChatMessage({
+            id: generateUniqueId('msg-file-exists'),
+            sender: 'ai-agent',
+            content: `ℹ️ **AgenteLector**: El archivo ${currentFile.path} ya existe en el proyecto. Se solicitará aprobación para actualizarlo.`,
+            timestamp: Date.now(),
+            type: 'agent-report',
+            metadata: {
+              agentType: 'lector',
+              phase: 'generatingCode',
+              status: 'info',
+              filePath: currentFile.path
+            }
+          });
+        }
+
         // Actualizar el progreso
         this.updateItemProgress(
           currentFile.path,
@@ -1653,34 +1674,67 @@ export class AIIterativeOrchestrator {
       // Asegurarse de que file.path no sea undefined
       const filePath = file.path || 'archivo-sin-ruta';
 
+      // Verificar si el archivo ya existe
+      const existingFile = this.files.find(f => f.path === filePath);
+      const fileExists = !!existingFile;
+
+      console.log(`Solicitando aprobación para archivo ${filePath} (${fileExists ? 'ya existe' : 'nuevo archivo'})`);
+
       // Generar contenido para el archivo si no lo tiene
       if (!file.content) {
         console.log(`Generando contenido para archivo ${filePath}`);
         file.content = `// Contenido generado para ${filePath}\n// Este es un archivo de ejemplo`;
       }
 
+      // Si el archivo ya existe, mostrar el contenido actual
+      let existingContent = '';
+      if (fileExists && existingFile) {
+        existingContent = existingFile.content || '';
+        console.log(`El archivo ${filePath} ya existe con ${existingContent.length} caracteres`);
+      }
+
       // Crear los elementos de aprobación
       const approvalItem: ApprovalItem = {
         id: generateUniqueId('approval-item'),
-        title: filePath,
-        description: file.description || `Archivo generado para ${filePath}. Revisa el contenido y aprueba si es correcto.`,
+        title: fileExists ? `Actualizar: ${filePath}` : filePath,
+        description: fileExists
+          ? `Este archivo ya existe en el proyecto. Revisa el contenido nuevo y aprueba si deseas actualizarlo.`
+          : file.description || `Archivo generado para ${filePath}. Revisa el contenido y aprueba si es correcto.`,
         type: 'file',
         path: filePath,
         language: this.detectLanguageFromPath(filePath),
         estimatedTime: this.estimateFileGenerationTime(file),
-        priority: 'high',
+        priority: fileExists ? 'medium' : 'high',
         dependencies: [],
-        content: file.content // Añadir el contenido del archivo para previsualización
+        content: file.content, // Añadir el contenido del archivo para previsualización
+        metadata: fileExists ? {
+          fileExists: true,
+          existingContent: existingContent,
+          action: 'update'
+        } : {
+          fileExists: false,
+          action: 'create'
+        }
       };
 
       // Crear la solicitud de aprobación
       const approvalData: ApprovalData = {
         id: generateUniqueId('approval'),
-        title: `Archivo ${currentIndex} de ${totalFiles}: ${filePath}`,
-        description: `Por favor, revisa y aprueba la generación de este archivo.`,
+        title: fileExists
+          ? `Actualizar archivo ${currentIndex} de ${totalFiles}: ${filePath}`
+          : `Archivo ${currentIndex} de ${totalFiles}: ${filePath}`,
+        description: fileExists
+          ? `Este archivo ya existe en el proyecto. Por favor, revisa y aprueba si deseas actualizarlo con el nuevo contenido.`
+          : `Por favor, revisa y aprueba la generación de este archivo.`,
         type: 'file',
         items: [approvalItem],
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        metadata: {
+          fileIndex: currentIndex,
+          totalFiles: totalFiles,
+          fileExists: fileExists,
+          action: fileExists ? 'update' : 'create'
+        }
       };
 
       // Registrar en consola para depuración
@@ -1719,14 +1773,18 @@ export class AIIterativeOrchestrator {
       this.addChatMessage({
         id: generateUniqueId('msg-file-approval'),
         sender: 'assistant',
-        content: `Necesito tu aprobación para generar el archivo ${file.path} (${currentIndex} de ${totalFiles}).`,
+        content: fileExists
+          ? `Necesito tu aprobación para actualizar el archivo ${file.path} (${currentIndex} de ${totalFiles}). Este archivo ya existe en el proyecto.`
+          : `Necesito tu aprobación para generar el archivo ${file.path} (${currentIndex} de ${totalFiles}).`,
         timestamp: Date.now(),
         type: 'approval-request',
         metadata: {
           approvalId: approvalData.id,
           filePath: file.path,
           currentIndex,
-          totalFiles
+          totalFiles,
+          fileExists,
+          action: fileExists ? 'update' : 'create'
         }
       });
 
@@ -1735,26 +1793,70 @@ export class AIIterativeOrchestrator {
         if (approvalId === approvalData.id) {
           console.log(`Aprobación recibida para archivo: ${filePath}, aprobado: ${approved}`);
 
-          // Si fue aprobado, crear el archivo en el sistema
+          // Si fue aprobado, crear o actualizar el archivo en el sistema
           if (approved && approvalItem.content) {
-            // Crear el archivo en el sistema usando la función importada
-            const result = createFile(
-              {
-                path: filePath,
-                content: approvalItem.content,
-                language: approvalItem.language || this.detectLanguageFromPath(filePath)
-              },
-              this.files,
-              this.fileListeners,
-              this.addChatMessage.bind(this),
-              generateUniqueId
-            );
+            try {
+              // Verificar si el archivo ya existe y si el contenido es diferente
+              const existingFile = this.files.find(f => f.path === filePath);
 
-            // Actualizar la lista de archivos con el resultado
-            if (result) {
-              console.log(`Archivo creado exitosamente: ${filePath}`);
-            } else {
-              console.error(`Error al crear archivo: ${filePath}`);
+              if (existingFile && existingFile.content === approvalItem.content) {
+                console.log(`El archivo ${filePath} ya existe con el mismo contenido. No se realizarán cambios.`);
+
+                // Añadir mensaje informativo al chat
+                this.addChatMessage({
+                  id: generateUniqueId('msg-file-unchanged'),
+                  sender: 'ai-agent',
+                  content: `ℹ️ **AgenteLector**: El archivo ${filePath} ya existe con el mismo contenido. No se realizaron cambios.`,
+                  timestamp: Date.now(),
+                  type: 'agent-report',
+                  metadata: {
+                    agentType: 'lector',
+                    phase: 'generatingCode',
+                    status: 'unchanged',
+                    filePath: filePath
+                  }
+                });
+              } else {
+                // Crear o actualizar el archivo en el sistema usando la función importada
+                const result = createFile(
+                  {
+                    path: filePath,
+                    content: approvalItem.content,
+                    language: approvalItem.language || this.detectLanguageFromPath(filePath)
+                  },
+                  this.files,
+                  this.fileListeners,
+                  this.addChatMessage.bind(this),
+                  generateUniqueId
+                );
+
+                // Actualizar la lista de archivos con el resultado
+                if (result) {
+                  console.log(`Archivo ${existingFile ? 'actualizado' : 'creado'} exitosamente: ${filePath}`);
+                } else {
+                  console.error(`Error al ${existingFile ? 'actualizar' : 'crear'} archivo: ${filePath}`);
+
+                  // Añadir mensaje de error al chat
+                  this.addChatMessage({
+                    id: generateUniqueId('msg-file-error'),
+                    sender: 'system',
+                    content: `Error al ${existingFile ? 'actualizar' : 'crear'} el archivo ${filePath}. Por favor, intenta nuevamente.`,
+                    timestamp: Date.now(),
+                    type: 'error'
+                  });
+                }
+              }
+            } catch (error) {
+              console.error(`Error al procesar el archivo ${filePath}:`, error);
+
+              // Añadir mensaje de error al chat
+              this.addChatMessage({
+                id: generateUniqueId('msg-file-error'),
+                sender: 'system',
+                content: `Error al procesar el archivo ${filePath}: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+                timestamp: Date.now(),
+                type: 'error'
+              });
             }
           }
 
