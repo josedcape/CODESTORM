@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Constructor from './pages/Constructor';
 import CodeCorrector from './pages/CodeCorrector';
+import WebAI from './pages/WebAI';
 import Header from './components/Header';
 import ModelSelector from './components/ModelSelector';
 import InstructionInput from './components/InstructionInput';
@@ -772,6 +773,7 @@ function App() {
       <Route path="/" element={<MainApp />} />
       <Route path="/constructor" element={<ConstructorPage />} />
       <Route path="/codecorrector" element={<CodeCorrectorPage />} />
+      <Route path="/webai" element={<WebAIPage />} />
     </Routes>
   );
 }
@@ -784,6 +786,11 @@ const ConstructorPage: React.FC = () => {
 // Página CodeCorrector que utiliza el componente real
 const CodeCorrectorPage: React.FC = () => {
   return <CodeCorrector />;
+};
+
+// Página WebAI que utiliza el componente real
+const WebAIPage: React.FC = () => {
+  return <WebAI />;
 };
 
 export default App;

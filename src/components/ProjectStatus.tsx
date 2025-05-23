@@ -3,10 +3,19 @@ import { ProjectState, Task, ProjectPhase } from '../types';
 import { CheckCircle2, Clock, AlertCircle, List } from 'lucide-react';
 
 interface ProjectStatusProps {
-  projectState: ProjectState;
+  projectState?: ProjectState;
+  phase?: ProjectPhase;
+  currentTask?: Task | null;
+  isGeneratingProject?: boolean;
+  tasks?: Task[];
 }
 
-const ProjectStatus: React.FC<ProjectStatusProps> = ({ projectState }) => {
+const ProjectStatus: React.FC<ProjectStatusProps> = ({ projectState, phase, currentTask, isGeneratingProject, tasks }) => {
+  // Si se proporciona projectState, usar sus propiedades, de lo contrario usar las props individuales
+  const currentPhase = projectState?.phase || phase || 'planning';
+  const currentTaskData = projectState?.currentTask || currentTask;
+  const isGenerating = projectState?.isGeneratingProject || isGeneratingProject || false;
+  const tasksList = projectState?.tasks || tasks || [];
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
@@ -44,16 +53,16 @@ const ProjectStatus: React.FC<ProjectStatusProps> = ({ projectState }) => {
       <div className="p-3">
         <div className="mb-3">
           <div className="text-xs text-gray-400 mb-1">Fase Actual</div>
-          <div className={`text-sm px-2 py-1 rounded border ${getPhaseColor(projectState.phase)}`}>
-            {projectState.phase.charAt(0).toUpperCase() + projectState.phase.slice(1)}
+          <div className={`text-sm px-2 py-1 rounded border ${getPhaseColor(currentPhase)}`}>
+            {currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1)}
           </div>
         </div>
-        
+
         <div className="mb-3">
           <div className="text-xs text-gray-400 mb-1">Tarea Actual</div>
-          {projectState.currentTask ? (
+          {currentTaskData ? (
             <div className="text-sm text-white">
-              {projectState.currentTask.description}
+              {currentTaskData.description}
             </div>
           ) : (
             <div className="text-sm text-gray-500 italic">
@@ -61,12 +70,12 @@ const ProjectStatus: React.FC<ProjectStatusProps> = ({ projectState }) => {
             </div>
           )}
         </div>
-        
+
         <div>
           <div className="text-xs text-gray-400 mb-1">Historial de Tareas</div>
-          {projectState.tasks.length > 0 ? (
+          {tasksList.length > 0 ? (
             <ul className="space-y-2">
-              {projectState.tasks.map((task: Task) => (
+              {tasksList.map((task: Task) => (
                 <li key={task.id} className="flex items-start">
                   <div className="mt-0.5 mr-2">
                     {getStatusIcon(task.status)}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Terminal, Code, Settings, Eye, MessageSquare, Hammer, ArrowLeft, Menu, X, AlertCircle } from 'lucide-react';
+import { Terminal, Code, Settings, Eye, MessageSquare, Hammer, ArrowLeft, Menu, X, AlertCircle, Globe, Home } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUI } from '../contexts/UIContext';
 
@@ -14,6 +14,7 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
   const location = useLocation();
   const isConstructorPage = location.pathname === '/constructor';
   const isCodeCorrectorPage = location.pathname === '/codecorrector';
+  const isWebAIPage = location.pathname === '/webai';
   const { isMobile, isTablet } = useUI();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -44,6 +45,7 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
             <p className="text-xs text-blue-300 transition-all duration-300 group-hover:text-blue-200">
               {isConstructorPage ? 'Modo Constructor' :
                isCodeCorrectorPage ? 'Corrector de Código' :
+               isWebAIPage ? 'Web AI' :
                'Agente Desarrollador Autónomo'}
             </p>
           </div>
@@ -55,14 +57,14 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
             {/* Componentes hijos (botones adicionales) */}
             {children}
 
-            {isConstructorPage || isCodeCorrectorPage ? (
+            {isConstructorPage || isCodeCorrectorPage || isWebAIPage ? (
               <Link
                 to="/"
                 className="flex items-center space-x-1 bg-blue-900/30 hover:bg-blue-800/40 border border-blue-500/30 rounded-md px-3 py-1.5 transition-all duration-300 hover:shadow-[0_0_10px_rgba(59,130,246,0.3)] transform hover:-translate-y-0.5 active:translate-y-0"
-                title="Volver a la página principal"
+                title="Ir a la página principal"
               >
-                <ArrowLeft className="h-4 w-4 text-blue-400" />
-                <span className="text-blue-300">Volver</span>
+                <Home className="h-4 w-4 text-blue-400" />
+                <span className="text-blue-300">Inicio</span>
               </Link>
             ) : (
               <>
@@ -91,6 +93,14 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
                     >
                       <Hammer className="h-4 w-4 transition-transform duration-300 hover:scale-110" />
                       <span className={isTablet ? 'hidden' : ''}>Constructor</span>
+                    </Link>
+                    <Link
+                      to="/webai"
+                      className="flex items-center space-x-1 bg-green-500/20 hover:bg-green-500/30 rounded-md px-3 py-1.5 transition-all duration-300 text-green-400 hover:shadow-md hover:shadow-green-500/20 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                      title="Ir a Web AI"
+                    >
+                      <Globe className="h-4 w-4 transition-transform duration-300 hover:scale-110" />
+                      <span className={isTablet ? 'hidden' : ''}>Web AI</span>
                     </Link>
                     <Link
                       to="/codecorrector"
@@ -151,14 +161,14 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
               return child;
             })}
 
-            {isConstructorPage || isCodeCorrectorPage ? (
+            {isConstructorPage || isCodeCorrectorPage || isWebAIPage ? (
               <Link
                 to="/"
                 className="flex items-center space-x-2 p-2 rounded-md bg-blue-900/30 hover:bg-blue-800/40 border border-blue-500/30 transition-all duration-300"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <ArrowLeft className="h-5 w-5 text-blue-400" />
-                <span className="text-blue-300">Volver a la página principal</span>
+                <Home className="h-5 w-5 text-blue-400" />
+                <span className="text-blue-300">Ir a la página principal</span>
               </Link>
             ) : (
               <>
@@ -199,6 +209,14 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
                     >
                       <AlertCircle className="h-5 w-5" />
                       <span>Corrector de Código</span>
+                    </Link>
+                    <Link
+                      to="/webai"
+                      className="flex items-center space-x-2 p-2 rounded-md bg-green-500/20 hover:bg-green-500/30 text-green-400"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Globe className="h-5 w-5" />
+                      <span>Web AI</span>
                     </Link>
                   </>
                 )}
