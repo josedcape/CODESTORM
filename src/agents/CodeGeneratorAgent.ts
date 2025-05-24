@@ -242,6 +242,12 @@ Usa el formato de bloque de código con el lenguaje apropiado:
    * @returns Contenido del código extraído
    */
   private static extractCodeContent(responseContent: string, filePath: string): string {
+    // Verificar que responseContent no sea undefined o null
+    if (!responseContent) {
+      console.warn(`extractCodeContent: responseContent es ${responseContent} para ${filePath}`);
+      return this.generateDefaultContent(filePath);
+    }
+
     const fileExtension = filePath.split('.').pop() || '';
     const language = this.getLanguageFromExtension(fileExtension);
 
@@ -249,12 +255,384 @@ Usa el formato de bloque de código con el lenguaje apropiado:
     const codeBlockRegex = new RegExp(`\`\`\`(?:${language})?\\s*([\\s\\S]*?)\\s*\`\`\``, 'i');
     const match = responseContent.match(codeBlockRegex);
 
-    if (match && match[1]) {
+    if (match && match[1] && match[1].trim()) {
       return match[1].trim();
     }
 
-    // Si no hay bloque de código, usar todo el contenido
-    return responseContent.trim();
+    // Si no hay bloque de código o está vacío, intentar usar todo el contenido
+    const trimmedContent = responseContent.trim();
+    if (trimmedContent) {
+      return trimmedContent;
+    }
+
+    // Si todo lo anterior falla, generar un contenido por defecto
+    console.warn(`No se pudo extraer contenido válido para ${filePath}, generando contenido por defecto`);
+    return this.generateDefaultContent(filePath);
+  }
+
+  /**
+   * Genera un contenido por defecto para un archivo basado en su extensión
+   * @param filePath Ruta del archivo
+   * @returns Contenido por defecto
+   */
+  private static generateDefaultContent(filePath: string): string {
+    const fileExtension = filePath.split('.').pop() || '';
+    const fileName = filePath.split('/').pop() || '';
+
+    switch (fileExtension.toLowerCase()) {
+      case 'html':
+        return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CODESTORM - ${fileName.replace('.html', '')}</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Estilos integrados para vista previa inmediata */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 40px;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      margin: 20px;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      background: linear-gradient(45deg, #64b5f6, #42a5f5);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    p {
+      font-size: 1.2em;
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+    .feature {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .cta-button {
+      background: linear-gradient(45deg, #42a5f5, #1976d2);
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 25px;
+      font-size: 1.1em;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: transform 0.3s ease;
+    }
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(66, 165, 245, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌩️ CODESTORM</h1>
+    <p>Tu proyecto está listo para ser desarrollado</p>
+    <p>Esta página fue generada automáticamente por el sistema de IA de CODESTORM</p>
+
+    <div class="features">
+      <div class="feature">
+        <h3>⚡ Rápido</h3>
+        <p>Desarrollo acelerado con IA</p>
+      </div>
+      <div class="feature">
+        <h3>🎨 Moderno</h3>
+        <p>Diseño contemporáneo y responsive</p>
+      </div>
+      <div class="feature">
+        <h3>🔧 Personalizable</h3>
+        <p>Fácil de modificar y extender</p>
+      </div>
+    </div>
+
+    <button class="cta-button" onclick="alert('¡Funcionalidad lista para implementar!')">
+      Comenzar
+    </button>
+  </div>
+
+  <script>
+    // Animación de entrada
+    document.addEventListener('DOMContentLoaded', function() {
+      const container = document.querySelector('.container');
+      container.style.opacity = '0';
+      container.style.transform = 'translateY(30px)';
+
+      setTimeout(() => {
+        container.style.transition = 'all 0.8s ease';
+        container.style.opacity = '1';
+        container.style.transform = 'translateY(0)';
+      }, 100);
+
+      console.log('🌩️ CODESTORM - Página cargada correctamente');
+    });
+  </script>
+</body>
+</html>`;
+
+      case 'css':
+        return `/* Estilos principales para ${filePath} - Generado por CODESTORM */
+
+/* Reset y configuración base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  min-height: 100vh;
+}
+
+/* Contenedor principal */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Tipografía */
+h1, h2, h3, h4, h5, h6 {
+  margin-bottom: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(45deg, #64b5f6, #42a5f5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+  font-size: 2rem;
+  color: #1976d2;
+}
+
+h3 {
+  font-size: 1.5rem;
+  color: #42a5f5;
+}
+
+p {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+/* Enlaces */
+a {
+  color: #42a5f5;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #1976d2;
+  text-decoration: underline;
+}
+
+/* Botones */
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  background: linear-gradient(45deg, #42a5f5, #1976d2);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(66, 165, 245, 0.4);
+}
+
+.btn-secondary {
+  background: linear-gradient(45deg, #78909c, #546e7a);
+}
+
+.btn-secondary:hover {
+  box-shadow: 0 5px 15px rgba(120, 144, 156, 0.4);
+}
+
+/* Tarjetas */
+.card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+/* Grid system */
+.grid {
+  display: grid;
+  gap: 20px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.grid-4 {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* Utilidades */
+.text-center {
+  text-align: center;
+}
+
+.text-white {
+  color: white;
+}
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Animaciones */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.8s ease;
+}
+
+/* Efectos especiales */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gradient-text {
+  background: linear-gradient(45deg, #64b5f6, #42a5f5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Tema CODESTORM */
+.codestorm-primary {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+}
+
+.codestorm-accent {
+  background: linear-gradient(45deg, #42a5f5, #1976d2);
+}
+
+.codestorm-dark {
+  background: #0d1421;
+  color: white;
+}
+
+.codestorm-blue {
+  color: #42a5f5;
+}`;
+
+      case 'js':
+      case 'jsx':
+      case 'ts':
+      case 'tsx':
+        return `// Contenido por defecto generado para ${filePath}
+// El generador de código no pudo crear contenido válido para este archivo
+
+function init() {
+  console.log("Archivo ${fileName} cargado correctamente");
+}
+
+// Inicializar cuando el documento esté listo
+document.addEventListener('DOMContentLoaded', init);`;
+
+      default:
+        return `// Contenido por defecto generado para ${filePath}
+// El generador de código no pudo crear contenido válido para este archivo
+// Tipo de archivo: ${fileExtension}`;
+    }
   }
 
   /**

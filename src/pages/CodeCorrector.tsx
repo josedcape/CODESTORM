@@ -6,6 +6,7 @@ import FloatingActionButtons from '../components/FloatingActionButtons';
 import BrandLogo from '../components/BrandLogo';
 import Footer from '../components/Footer';
 import CodeModifierPanel from '../components/codemodifier/CodeModifierPanel';
+import LoadingOverlay from '../components/LoadingOverlay';
 import {
   Zap,
   AlertCircle,
@@ -55,6 +56,15 @@ const CodeCorrector: React.FC = () => {
   const [showResultPanel, setShowResultPanel] = useState(false);
   const [correctionResult, setCorrectionResult] = useState<CodeCorrectionResult | null>(null);
 
+  // Estados para el LoadingOverlay
+  const [loadingState, setLoadingState] = useState({
+    isLoading: false,
+    currentAgent: '',
+    progress: 0,
+    message: '',
+    canCancel: false
+  });
+
   // Opciones de corrección
   const [correctionOptions, setCorrectionOptions] = useState({
     analyzeSecurity: true,
@@ -62,6 +72,64 @@ const CodeCorrector: React.FC = () => {
     generateTests: false,
     explainChanges: true
   });
+
+  // Funciones para manejar el LoadingOverlay
+  const startLoading = (agent: string, message: string, canCancel: boolean = false) => {
+    setLoadingState({
+      isLoading: true,
+      currentAgent: agent,
+      progress: 0,
+      message,
+      canCancel
+    });
+    setIsProcessing(true);
+  };
+
+  const updateLoadingProgress = (progress: number, message?: string) => {
+    setLoadingState(prev => ({
+      ...prev,
+      progress,
+      message: message || prev.message
+    }));
+  };
+
+  const stopLoading = () => {
+    setLoadingState({
+      isLoading: false,
+      currentAgent: '',
+      progress: 0,
+      message: '',
+      canCancel: false
+    });
+    setIsProcessing(false);
+  };
+
+  const cancelLoading = () => {
+    stopLoading();
+    // Aquí se podría añadir lógica adicional para cancelar procesos en curso
+  };
+
+  // Inicializar reconocimiento de voz global para CodeCorrector
+  useEffect(() => {
+    console.log('Inicializando reconocimiento de voz en CodeCorrector...');
+    import('../utils/voiceInitializer').then(({ initializeVoiceRecognition, cleanupVoiceRecognition }) => {
+      initializeVoiceRecognition({
+        onStormCommand: (command: string) => {
+          console.log('Comando STORM recibido en CodeCorrector:', command);
+          // Aquí se puede procesar el comando como una instrucción de corrección
+          setOriginalCode(prev => prev + `\n// Comando STORM: ${command}`);
+        },
+        enableDebug: true,
+        autoStart: true
+      });
+    });
+
+    return () => {
+      import('../utils/voiceInitializer').then(({ cleanupVoiceRecognition }) => {
+        cleanupVoiceRecognition();
+      });
+    };
+  }, []);
 
   // Función para manejar el chat
   const handleToggleChat = () => {
@@ -77,7 +145,8 @@ const CodeCorrector: React.FC = () => {
   const analyzeCode = async () => {
     if (!originalCode.trim() || isProcessing) return;
 
-    setIsProcessing(true);
+    // Iniciar el LoadingOverlay
+    startLoading('Agente Corrector', 'Preparando análisis de código...', true);
     setErrors([]);
     setCorrectedCode('');
     setSelectedError(null);
@@ -89,6 +158,15 @@ const CodeCorrector: React.FC = () => {
         options: correctionOptions
       });
 
+      // Progreso: Preparación
+      updateLoadingProgress(10, 'Validando código de entrada...');
+
+      // Simular validación
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Progreso: Análisis de sintaxis
+      updateLoadingProgress(25, 'Analizando sintaxis y estructura...');
+
       // Crear tarea para el agente de corrección
       const correctorTask: AgentTask = {
         id: `task-corrector-${Date.now()}`,
@@ -98,6 +176,23 @@ const CodeCorrector: React.FC = () => {
         startTime: Date.now()
       };
 
+      // Progreso: Análisis de seguridad (si está habilitado)
+      if (correctionOptions.analyzeSecurity) {
+        updateLoadingProgress(40, 'Analizando problemas de seguridad...');
+      } else {
+        updateLoadingProgress(40, 'Analizando lógica del código...');
+      }
+
+      // Progreso: Análisis de rendimiento (si está habilitado)
+      if (correctionOptions.analyzePerformance) {
+        updateLoadingProgress(55, 'Analizando rendimiento...');
+      } else {
+        updateLoadingProgress(55, 'Verificando mejores prácticas...');
+      }
+
+      // Progreso: Enviando al modelo de IA
+      updateLoadingProgress(70, 'Enviando código al modelo de IA...');
+
       // Ejecutar el agente de corrección
       const result = await CodeCorrectorAgent.execute(
         correctorTask,
@@ -105,6 +200,9 @@ const CodeCorrector: React.FC = () => {
         selectedLanguage,
         correctionOptions
       );
+
+      // Progreso: Procesando respuesta
+      updateLoadingProgress(85, 'Procesando respuesta del modelo...');
 
       console.log('Resultado del análisis:', {
         success: result.success,
@@ -179,6 +277,27 @@ const CodeCorrector: React.FC = () => {
 
           setErrors([genericError]);
         }
+
+        // Completar el progreso con información específica
+        const errorsCount = analysis.errors.length;
+        const hasCorrections = analysis.correctedCode !== originalCode;
+        let finalMessage = 'Análisis completado';
+
+        if (errorsCount > 0) {
+          finalMessage = `Análisis completado: ${errorsCount} error${errorsCount > 1 ? 'es' : ''} encontrado${errorsCount > 1 ? 's' : ''}`;
+        } else if (hasCorrections) {
+          finalMessage = 'Análisis completado: código optimizado';
+        } else {
+          finalMessage = 'Análisis completado: código sin errores';
+        }
+
+        updateLoadingProgress(100, finalMessage);
+
+        // Esperar un momento antes de ocultar el loading
+        setTimeout(() => {
+          stopLoading();
+        }, 1500);
+
       } else if (!result.success) {
         console.error('Error al analizar el código:', result.error);
 
@@ -199,6 +318,9 @@ const CodeCorrector: React.FC = () => {
 
         setErrors([genericError]);
         setCorrectedCode(originalCode);
+
+        // Detener el loading en caso de error
+        stopLoading();
       }
     } catch (error) {
       console.error('Error en el proceso de corrección:', error);
@@ -220,8 +342,9 @@ const CodeCorrector: React.FC = () => {
 
       setErrors([genericError]);
       setCorrectedCode(originalCode);
-    } finally {
-      setIsProcessing(false);
+
+      // Detener el loading en caso de error
+      stopLoading();
     }
   };
 
@@ -486,6 +609,16 @@ const CodeCorrector: React.FC = () => {
           isVisible={showResultPanel}
         />
       )}
+
+      {/* LoadingOverlay */}
+      <LoadingOverlay
+        isVisible={loadingState.isLoading}
+        currentAgent={loadingState.currentAgent}
+        progress={loadingState.progress}
+        message={loadingState.message}
+        canCancel={loadingState.canCancel}
+        onCancel={cancelLoading}
+      />
     </div>
   );
 };

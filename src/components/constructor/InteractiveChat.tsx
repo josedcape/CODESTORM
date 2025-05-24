@@ -1,8 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChatMessage, ApprovalStage } from '../../types';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { generateUniqueId } from '../../utils/idGenerator';
+import { useUI } from '../../contexts/UIContext';
+import { useAudioIntegration } from '../../hooks/useAudioIntegration';
+import VoiceInputButton from '../audio/VoiceInputButton';
+import StormIndicator from '../audio/StormIndicator';
+import AudioControls from '../audio/AudioControls';
 import {
   Send,
   User,
@@ -17,15 +22,24 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
-  Sparkles, 
+  Sparkles,
   History,
   Info,
-  Layers
+  Layers,
+  MessageSquare,
+  Eye,
+  EyeOff,
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  Code
 } from 'lucide-react';
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
+import { voiceRecognitionService } from '../../services/VoiceRecognitionService';
 import EnhancedPromptDialog from '../../components/EnhancedPromptDialog';
 import EnhancementHistoryPanel from '../../components/EnhancementHistoryPanel';
 import StageSidebar from './StageSidebar';
+import TypingIndicator from '../ui/TypingIndicator';
 
 interface InteractiveChatProps {
   messages: ChatMessage[];
@@ -38,7 +52,13 @@ interface InteractiveChatProps {
   onModifyStage?: (stageId: string, feedback: string) => void;
   onRejectStage?: (stageId: string, feedback: string) => void;
   isPaused?: boolean;
+  isDisabled?: boolean;
+  currentAgent?: string;
+  processingMessage?: string;
 }
+
+// Número de mensajes recientes que se mostrarán expandidos por defecto
+const DEFAULT_EXPANDED_MESSAGES = 4;
 
 const InteractiveChat: React.FC<InteractiveChatProps> = ({
   messages,
@@ -50,7 +70,10 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   onApproveStage,
   onModifyStage,
   onRejectStage,
-  isPaused = false
+  isPaused = false,
+  isDisabled = false,
+  currentAgent,
+  processingMessage
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -68,23 +91,102 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   // Estado para la ventana lateral de etapas
   const [showStageSidebar, setShowStageSidebar] = useState(false);
 
+  // Estados para el sistema de colapso de mensajes
+  const [collapsedMessageIds, setCollapsedMessageIds] = useState<Set<string>>(new Set());
+  const [expandAllMessages, setExpandAllMessages] = useState(false);
+  const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set());
+
+  // Hook para responsividad
+  const { isMobile, isTablet } = useUI();
+
+  // Hook para integración de audio
+  const audio = useAudioIntegration({
+    enableSpeechSynthesis: true,
+    enableSoundEffects: true,
+    enableVoiceRecognition: true,
+    autoSpeakResponses: false,
+    playMessageSounds: true
+  });
+
+  // Estados adicionales para audio
+  const [showAudioControls, setShowAudioControls] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Scroll al final de los mensajes cuando se añade uno nuevo
   useEffect(() => {
-    if (showHistory) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (showHistory && chatContainerRef.current) {
+      // Solo hacer scroll automático si el usuario está cerca del final
+      const container = chatContainerRef.current;
+      const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100;
+
+      if (isNearBottom) {
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 100);
+      }
     }
-  }, [messages, showHistory]);
+  }, [messages.length, showHistory]);
+
+  // Efecto para marcar nuevos mensajes con animación
+  useEffect(() => {
+    if (messages.length > 0) {
+      const latestMessage = messages[messages.length - 1];
+
+      // Verificar si este mensaje ya fue procesado
+      if (!newMessageIds.has(latestMessage.id)) {
+        setNewMessageIds(prev => {
+          const newSet = new Set(prev);
+          newSet.add(latestMessage.id);
+          return newSet;
+        });
+
+        // Reproducir sonido y síntesis de voz para respuestas del asistente
+        if (latestMessage.sender === 'assistant' || latestMessage.sender === 'ai-agent') {
+          audio.playMessageReceived();
+
+          // Síntesis de voz para respuestas del asistente
+          if (latestMessage.type === 'text' && latestMessage.content.length < 300) {
+            audio.speakResponse(latestMessage.content);
+          }
+        }
+
+        // Eliminar la marca de "nuevo" después de 2 segundos
+        setTimeout(() => {
+          setNewMessageIds(current => {
+            const updatedSet = new Set(current);
+            updatedSet.delete(latestMessage.id);
+            return updatedSet;
+          });
+        }, 2000);
+      }
+    }
+  }, [messages.length]);
+
+  // Efecto para auto-colapsar mensajes antiguos cuando hay nuevos mensajes
+  useEffect(() => {
+    if (messages.length > DEFAULT_EXPANDED_MESSAGES && !expandAllMessages) {
+      const messageIdsToCollapse = messages
+        .slice(0, messages.length - DEFAULT_EXPANDED_MESSAGES)
+        .map(msg => msg.id);
+
+      setCollapsedMessageIds(new Set(messageIdsToCollapse));
+    }
+  }, [messages.length, expandAllMessages]);
 
   // Función para enviar un mensaje
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
 
+    // Reproducir sonido de envío
+    audio.playMessageSent();
+
     // Si la mejora de prompts está habilitada, mejorar el prompt
     if (enhancePromptEnabled && !isEnhancing) {
       setIsEnhancing(true);
+      audio.playProcessStart();
 
       try {
         const result = await PromptEnhancerService.enhancePrompt(inputValue);
@@ -92,16 +194,19 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
         if (result.success && result.enhancedPrompt) {
           setCurrentEnhancedPrompt(result.enhancedPrompt);
           setShowEnhancedPromptDialog(true);
+          audio.playProcessComplete();
         } else {
           // Si hay un error, enviar el mensaje original
           onSendMessage(inputValue);
           setInputValue('');
+          audio.playError();
         }
       } catch (error) {
         console.error('Error al mejorar el prompt:', error);
         // En caso de error, enviar el mensaje original
         onSendMessage(inputValue);
         setInputValue('');
+        audio.playError();
       } finally {
         setIsEnhancing(false);
       }
@@ -135,6 +240,38 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
     setEnhancePromptEnabled(!enhancePromptEnabled);
   };
 
+  // Funciones para reconocimiento de voz
+  const handleVoiceTranscript = (transcript: string) => {
+    setVoiceTranscript(transcript);
+    setInputValue(transcript);
+  };
+
+  const handleVoiceFinalTranscript = (transcript: string) => {
+    setInputValue(transcript);
+    setVoiceTranscript('');
+  };
+
+  const handleStormCommand = (command: string) => {
+    setInputValue(command);
+    // Auto-enviar comando STORM inmediatamente
+    setTimeout(() => {
+      if (command.trim()) {
+        onSendMessage(command);
+        setInputValue('');
+        audio.playMessageSent();
+      }
+    }, 100);
+  };
+
+  // Configurar callback automático para STORM
+  useEffect(() => {
+    voiceRecognitionService.setStormCommandCallback(handleStormCommand);
+
+    return () => {
+      voiceRecognitionService.removeStormCommandCallback();
+    };
+  }, []);
+
   // Función para mostrar el historial de mejoras
   const showEnhancementHistoryPanel = () => {
     setShowEnhancementHistory(true);
@@ -149,6 +286,34 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   // Función para alternar la visibilidad de la ventana lateral de etapas
   const toggleStageSidebar = () => {
     setShowStageSidebar(prev => !prev);
+  };
+
+  // Función para alternar el colapso de un mensaje específico
+  const toggleMessageCollapse = (messageId: string) => {
+    setCollapsedMessageIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  // Función para alternar el colapso de todos los mensajes
+  const toggleAllMessagesCollapse = () => {
+    setExpandAllMessages(prev => !prev);
+    if (!expandAllMessages) {
+      // Si estamos expandiendo todos, vaciar el conjunto de mensajes colapsados
+      setCollapsedMessageIds(new Set());
+    } else {
+      // Si estamos colapsando todos, colapsar todos excepto los últimos DEFAULT_EXPANDED_MESSAGES
+      const messageIdsToCollapse = messages
+        .slice(0, Math.max(0, messages.length - DEFAULT_EXPANDED_MESSAGES))
+        .map(msg => msg.id);
+      setCollapsedMessageIds(new Set(messageIdsToCollapse));
+    }
   };
 
   // Función para manejar el envío con Enter
@@ -358,25 +523,40 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
 
     // Determinar el estilo según el tipo de mensaje
     const getMessageStyle = () => {
-      // Estilo base para todos los mensajes
-      let baseStyle = 'rounded-lg p-3 break-words';
+      // Estilo base para todos los mensajes con animación de pulso
+      let baseStyle = 'rounded-lg p-3 break-words transition-smooth';
 
-      // Estilo según el remitente
+      // Estilo según el remitente con animaciones específicas
       if (message.sender === 'user') {
-        baseStyle += ' bg-codestorm-accent text-white';
+        baseStyle += ' bg-codestorm-accent text-white chat-message-pulse-user';
       } else if (message.sender === 'system') {
-        baseStyle += ' bg-codestorm-blue/10 text-gray-300 border border-codestorm-blue/20';
+        baseStyle += ' bg-codestorm-blue/10 text-gray-300 chat-message-pulse-system';
       } else {
-        baseStyle += ' bg-codestorm-blue/20 text-white';
+        baseStyle += ' bg-codestorm-blue/20 text-white chat-message-pulse';
       }
 
       // Estilo adicional según el tipo de mensaje
       if (message.type === 'notification') {
-        baseStyle += ' border-l-2 border-l-yellow-500';
+        baseStyle += ' border-l-2 border-l-yellow-500 chat-message-pulse-warning';
+        // Remover animaciones anteriores para usar la específica
+        baseStyle = baseStyle.replace('chat-message-pulse-user', '').replace('chat-message-pulse-system', '').replace('chat-message-pulse ', '');
       } else if (message.type === 'code') {
         baseStyle += ' font-mono';
+        // Remover la animación de usuario/sistema para código y usar la específica
+        baseStyle = baseStyle.replace('chat-message-pulse-user', '').replace('chat-message-pulse-system', '').replace('chat-message-pulse ', '');
+        baseStyle += ' chat-message-pulse-code';
+      } else if (message.type === 'error') {
+        baseStyle += ' chat-message-pulse-error';
+        // Remover animaciones anteriores para usar la específica
+        baseStyle = baseStyle.replace('chat-message-pulse-user', '').replace('chat-message-pulse-system', '').replace('chat-message-pulse ', '');
+      } else if (message.type === 'success') {
+        baseStyle += ' chat-message-pulse-success';
+        // Remover animaciones anteriores para usar la específica
+        baseStyle = baseStyle.replace('chat-message-pulse-user', '').replace('chat-message-pulse-system', '').replace('chat-message-pulse ', '');
       } else if (message.metadata?.requiresAction) {
-        baseStyle += ' border-l-2 border-l-codestorm-gold';
+        baseStyle += ' border-l-2 border-l-codestorm-gold chat-message-pulse-important';
+        // Remover animaciones anteriores para usar la específica
+        baseStyle = baseStyle.replace('chat-message-pulse-user', '').replace('chat-message-pulse-system', '').replace('chat-message-pulse ', '');
       }
 
       return baseStyle;
@@ -467,20 +647,53 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full border rounded-lg shadow-md bg-codestorm-dark border-codestorm-blue/30">
-      <div className="flex items-center justify-between p-3 border-b border-codestorm-blue/30">
-        <h2 className="text-sm font-medium text-white">Chat Interactivo</h2>
+    <div className={`
+      flex flex-col h-full border rounded-lg shadow-md bg-codestorm-dark border-codestorm-blue/30 overflow-hidden
+      ${isMobile ? 'mobile-chat-container mobile-safe-area' : ''}
+    `}>
+      <div className={`
+        flex items-center justify-between border-b border-codestorm-blue/30 flex-shrink-0
+        ${isMobile ? 'p-2' : 'p-3'}
+      `}>
+        <h2 className={`font-medium text-white ${isMobile ? 'text-xs' : 'text-sm'}`}>Chat Interactivo</h2>
 
-        <div className="flex space-x-2">
+        <div className={`flex ${isMobile ? 'space-x-1' : 'space-x-2'}`}>
+          {/* Controles de audio compactos */}
+          <AudioControls
+            compact={true}
+            className={isMobile ? 'scale-90' : ''}
+          />
+
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white"
+            className={`
+              rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white
+              transition-all duration-200 -webkit-tap-highlight-color: transparent
+              ${isMobile ? 'p-1 min-w-[32px] min-h-[32px]' : 'p-1.5'}
+            `}
             title={showHistory ? 'Ocultar historial' : 'Mostrar historial'}
           >
             {showHistory ? (
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
             ) : (
-              <ChevronUp className="w-4 h-4" />
+              <ChevronUp className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
+            )}
+          </button>
+
+          <button
+            onClick={toggleAllMessagesCollapse}
+            className={`
+              rounded hover:bg-codestorm-blue/20 hover:text-white
+              transition-all duration-200 -webkit-tap-highlight-color: transparent
+              ${isMobile ? 'p-1 min-w-[32px] min-h-[32px]' : 'p-1.5'}
+              ${expandAllMessages ? 'text-codestorm-gold' : 'text-gray-400'}
+            `}
+            title={expandAllMessages ? 'Colapsar mensajes antiguos' : 'Expandir todos los mensajes'}
+          >
+            {expandAllMessages ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Eye className="w-4 h-4" />
             )}
           </button>
 
@@ -524,8 +737,15 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
 
       <div
         ref={chatContainerRef}
-        className="flex-1 p-3 space-y-4 overflow-y-auto"
-        style={{ display: showHistory ? 'block' : 'none' }}
+        className={`
+          flex-1 overflow-y-auto min-h-0 mobile-chat-messages
+          ${isMobile ? 'p-2 space-y-2' : 'p-3 space-y-4'}
+        `}
+        style={{
+          display: showHistory ? 'block' : 'none',
+          scrollBehavior: 'smooth',
+          WebkitOverflowScrolling: 'touch'
+        }}
       >
         {/* Agrupar mensajes por día */}
         {(() => {
@@ -581,7 +801,50 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
 
                           {/* Mensaje con padding adicional si es de etapa */}
                           <div className={`${isStageMessage ? 'pl-3' : ''} ${message.sender === 'user' ? 'flex justify-end' : 'flex justify-start'}`}>
-                            {renderMessage(message)}
+                            {/* Verificar si el mensaje está colapsado */}
+                            {collapsedMessageIds.has(message.id) ? (
+                              <div
+                                className={`rounded-lg p-2 cursor-pointer transition-all duration-300 ${
+                                  message.sender === 'user' ? 'bg-codestorm-accent/50' : 'bg-codestorm-blue/10'
+                                } hover:bg-codestorm-blue/30 flex items-center space-x-2`}
+                                onClick={() => toggleMessageCollapse(message.id)}
+                              >
+                                <ChevronDown className="w-3 h-3" />
+                                <div className="flex items-center text-xs">
+                                  {message.sender === 'user' ? (
+                                    <User className="w-3 h-3 mr-1" />
+                                  ) : message.sender === 'system' ? (
+                                    <Bell className="w-3 h-3 mr-1" />
+                                  ) : message.sender === 'ai-agent' ? (
+                                    <Code className="w-3 h-3 mr-1" />
+                                  ) : message.sender === 'design-agent' ? (
+                                    <FileText className="w-3 h-3 mr-1" />
+                                  ) : (
+                                    <Bot className="w-3 h-3 mr-1" />
+                                  )}
+                                  <span>
+                                    {message.type === 'code' ? 'Código' :
+                                     message.type === 'notification' ? 'Notificación' :
+                                     message.type === 'file-creation' ? 'Creación de archivo' :
+                                     message.type === 'file-modification' ? 'Modificación de archivo' :
+                                     message.content.length > 30 ? `${message.content.substring(0, 30)}...` : message.content}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className={`${newMessageIds.has(message.id) ? 'chat-message-appear' : 'animate-fadeIn'}`}>
+                                {renderMessage(message)}
+                                <div className="flex justify-end mt-1">
+                                  <button
+                                    onClick={() => toggleMessageCollapse(message.id)}
+                                    className="p-1 text-xs text-gray-400 rounded hover:bg-codestorm-blue/20 hover:text-white transition-smooth"
+                                    title="Colapsar mensaje"
+                                  >
+                                    <ChevronUp className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -593,57 +856,93 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           });
         })()}
 
-        {messages.length === 0 && (
+        {messages.length === 0 && !isProcessing && (
           <div className="py-4 text-center text-gray-400">
             No hay mensajes aún
+          </div>
+        )}
+
+        {/* Indicador de escritura cuando está procesando */}
+        {isProcessing && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%]">
+              <TypingIndicator
+                agent={currentAgent || 'ai'}
+                message={processingMessage || 'Procesando tu solicitud...'}
+                variant="default"
+              />
+            </div>
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-3 border-t border-codestorm-blue/30">
-        <div className="flex flex-col space-y-2">
-          <div className="flex space-x-2">
+      <div className={`border-t border-codestorm-blue/30 flex-shrink-0 mobile-chat-input ${isMobile ? 'p-2' : 'p-3'}`}>
+        <div className={`flex flex-col ${isMobile ? 'space-y-1' : 'space-y-2'}`}>
+          <div className={`flex ${isMobile ? 'space-x-1' : 'space-x-2'}`}>
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Escribe un mensaje..."
-              className={`flex-1 p-2 text-white placeholder-gray-500 border rounded-md resize-none bg-codestorm-darker ${
-                isEnhancing
+              placeholder={isDisabled ? "Selecciona una plantilla para continuar..." : "Escribe un mensaje..."}
+              className={`
+                flex-1 text-white placeholder-gray-500 border rounded-md resize-none bg-codestorm-darker transition-smooth
+                -webkit-tap-highlight-color: transparent
+                ${isMobile ? 'p-2 text-sm' : 'p-2'}
+                ${isEnhancing
                   ? 'border-codestorm-accent shadow-glow-blue animate-pulse-subtle'
-                  : 'border-codestorm-blue/30'
-              }`}
-              rows={2}
-              disabled={isProcessing || isEnhancing}
+                  : isDisabled
+                  ? 'border-gray-600 bg-gray-800 cursor-not-allowed'
+                  : 'border-codestorm-blue/30 hover:border-codestorm-blue/50 focus:border-codestorm-blue focus:ring-1 focus:ring-codestorm-blue/50'
+                }
+              `}
+              rows={isMobile ? 1 : 2}
+              disabled={isProcessing || isEnhancing || isDisabled}
             />
-            <div className="flex flex-col justify-between space-y-2">
+            <div className={`flex ${isMobile ? 'flex-row space-x-1' : 'flex-col justify-between space-y-2'}`}>
+              {/* Botón de micrófono */}
+              <VoiceInputButton
+                onTranscript={handleVoiceTranscript}
+                onFinalTranscript={handleVoiceFinalTranscript}
+                disabled={isProcessing || isEnhancing || isDisabled}
+                size={isMobile ? 'sm' : 'md'}
+                autoSend={false}
+                showTranscript={false}
+                className="relative"
+              />
+
               <button
                 onClick={toggleEnhancePrompt}
-                className={`p-2 rounded-md transition-all duration-300 ${
-                  enhancePromptEnabled
+                className={`
+                  rounded-md transition-all duration-200 -webkit-tap-highlight-color: transparent
+                  ${isMobile ? 'p-2 min-w-[40px] min-h-[40px]' : 'p-2'}
+                  ${enhancePromptEnabled
                     ? 'bg-purple-600 text-white shadow-glow-blue'
                     : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
-                }`}
+                  }
+                `}
                 title={enhancePromptEnabled ? 'Desactivar mejora de prompts' : 'Activar mejora de prompts'}
               >
-                <Sparkles className={`w-4 h-4 ${enhancePromptEnabled ? 'animate-pulse' : ''}`} />
+                <Sparkles className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'} ${enhancePromptEnabled ? 'animate-pulse' : ''}`} />
               </button>
               <button
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isProcessing || isEnhancing}
-                className={`p-2 rounded-md ${
-                  !inputValue.trim() || isProcessing || isEnhancing
+                disabled={!inputValue.trim() || isProcessing || isEnhancing || isDisabled}
+                className={`
+                  rounded-md transition-smooth -webkit-tap-highlight-color: transparent
+                  ${isMobile ? 'p-2 min-w-[40px] min-h-[40px]' : 'p-2'}
+                  ${!inputValue.trim() || isProcessing || isEnhancing || isDisabled
                     ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    : 'bg-codestorm-accent hover:bg-blue-600 text-white'
-                }`}
-                title="Enviar mensaje"
+                    : 'bg-codestorm-accent hover:bg-blue-600 text-white btn-hover-glow'
+                  }
+                `}
+                title={isDisabled ? "Selecciona una plantilla para continuar" : "Enviar mensaje"}
               >
                 {isEnhancing ? (
-                  <Sparkles className="w-5 h-5 animate-pulse" />
+                  <Sparkles className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} animate-pulse`} />
                 ) : (
-                  <Send className="w-5 h-5" />
+                  <Send className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                 )}
               </button>
             </div>
@@ -718,6 +1017,9 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           onToggle={toggleStageSidebar}
         />
       )}
+
+      {/* Indicador de comando STORM */}
+      <StormIndicator onCommand={handleStormCommand} />
     </div>
   );
 };

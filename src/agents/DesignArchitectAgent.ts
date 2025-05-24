@@ -150,39 +150,69 @@ export class DesignArchitectAgent {
    * @returns Prompt para la API de Gemini
    */
   private buildDesignProposalPrompt(instruction: string, plan?: any): string {
-    return `
-    Eres un experto diseñador de interfaces de usuario y arquitecto de frontend. Tu tarea es crear una propuesta de diseño detallada basada en la siguiente instrucción:
+    const projectName = plan?.name || 'Proyecto Web';
+    const projectDescription = plan?.description || instruction;
 
-    INSTRUCCIÓN: ${instruction}
+    // Analizar la instrucción del usuario para extraer información específica
+    const analysisPrompt = this.buildInstructionAnalysisPrompt(instruction);
+
+    return `
+    Eres un experto diseñador de interfaces de usuario y arquitecto de frontend especializado en crear páginas web completamente personalizadas. Tu tarea es analizar cuidadosamente la instrucción del usuario y crear una página web que se adapte EXACTAMENTE a lo que solicita.
+
+    INSTRUCCIÓN DEL USUARIO: ${instruction}
+
+    NOMBRE DEL PROYECTO: ${projectName}
+    DESCRIPCIÓN: ${projectDescription}
 
     ${plan ? `PLAN DEL PROYECTO: ${JSON.stringify(plan, null, 2)}` : ''}
 
-    Genera una propuesta de diseño completa que incluya:
-    1. Un estilo visual coherente con paleta de colores
-    2. Tipografía y escala de tamaños
-    3. Componentes principales de la interfaz
-    4. Consideraciones de accesibilidad y responsive design
-    5. Mockups o wireframes conceptuales (descritos en HTML/CSS)
+    ANÁLISIS REQUERIDO:
+    Antes de generar el código, analiza la instrucción para identificar:
+    1. ¿Qué tipo específico de negocio, producto o servicio se menciona?
+    2. ¿Cuál es el propósito principal de la página web?
+    3. ¿Qué industria o sector está involucrado?
+    4. ¿Qué características específicas o funcionalidades se solicitan?
+    5. ¿Hay algún público objetivo mencionado?
+    6. ¿Se mencionan colores, estilos o preferencias de diseño específicas?
+    7. ¿Qué secciones o contenido específico se requiere?
+
+    REQUISITOS OBLIGATORIOS:
+    1. PERSONALIZACIÓN TOTAL: Todo el contenido debe ser específico para la solicitud del usuario
+    2. CONTENIDO REALISTA: Generar texto, títulos y descripciones relevantes al negocio/producto mencionado
+    3. ESTRUCTURA ADAPTADA: Crear secciones y funcionalidades según las necesidades expresadas
+    4. HTML COMPLETO: Estructura DOCTYPE, head, body con contenido visual específico
+    5. CSS COMPLETO: Estilos modernos, responsive y coherentes con la solicitud
+    6. SIN PLACEHOLDERS: Evitar contenido genérico como "Lorem ipsum" o "Empresa XYZ"
+    7. DISEÑO COHERENTE: Mantener estilo futurista azul oscuro de CODESTORM pero adaptado al contexto
 
     Responde ÚNICAMENTE con un objeto JSON con la siguiente estructura:
 
     {
+      "analysis": {
+        "businessType": "string (tipo específico de negocio/producto/servicio identificado)",
+        "purpose": "string (propósito principal de la página web)",
+        "industry": "string (industria o sector)",
+        "targetAudience": "string (público objetivo identificado)",
+        "requestedFeatures": ["string (características específicas solicitadas)"],
+        "contentRequirements": ["string (secciones o contenido específico requerido)"],
+        "designPreferences": "string (colores, estilos o preferencias mencionadas)"
+      },
       "proposal": {
         "id": "string (identificador único)",
-        "title": "string (título descriptivo)",
-        "description": "string (descripción detallada)",
-        "style": "string (minimal, modern, corporate, playful, dark, light, custom)",
+        "title": "string (título específico basado en la solicitud del usuario)",
+        "description": "string (descripción detallada del proyecto específico)",
+        "style": "string (estilo adaptado a la solicitud)",
         "colorPalette": {
-          "primary": "string (código hexadecimal)",
+          "primary": "string (código hexadecimal adaptado al contexto)",
           "secondary": "string (código hexadecimal)",
           "accent": "string (código hexadecimal)",
           "background": "string (código hexadecimal)",
           "text": "string (código hexadecimal)"
         },
         "typography": {
-          "headingFont": "string (nombre de fuente)",
-          "bodyFont": "string (nombre de fuente)",
-          "baseSize": "string (tamaño base, ej: '16px')",
+          "headingFont": "string (fuente apropiada para el contexto)",
+          "bodyFont": "string (fuente apropiada para el contexto)",
+          "baseSize": "string (tamaño base)",
           "scale": "number (factor de escala)"
         },
         "responsive": true,
@@ -193,61 +223,139 @@ export class DesignArchitectAgent {
         "components": [
           {
             "id": "string (identificador único)",
-            "name": "string (nombre descriptivo)",
-            "type": "string (page, layout, component, form, navigation, etc.)",
-            "description": "string (descripción detallada)",
-            "htmlTemplate": "string (código HTML)",
-            "cssStyles": "string (código CSS)",
-            "jsCode": "string (código JavaScript, si es necesario)"
+            "name": "string (nombre específico del componente)",
+            "type": "string (tipo de componente)",
+            "description": "string (descripción específica del componente)",
+            "htmlTemplate": "string (código HTML específico)",
+            "cssStyles": "string (código CSS específico)",
+            "jsCode": "string (código JavaScript si es necesario)"
           }
         ],
-        "htmlPreview": "string (código HTML completo de la página principal)",
-        "cssPreview": "string (código CSS completo)"
+        "htmlPreview": "string (código HTML COMPLETO Y PERSONALIZADO basado en la solicitud específica del usuario - OBLIGATORIO)",
+        "cssPreview": "string (código CSS COMPLETO Y PERSONALIZADO con estilos específicos para la solicitud - OBLIGATORIO)"
       }
     }
+
+    EJEMPLOS DE PERSONALIZACIÓN SEGÚN LA SOLICITUD:
+
+    Si el usuario solicita "página de ventas para software de contabilidad":
+    - Título: "Software de Contabilidad Profesional"
+    - Secciones: Hero con beneficios contables, características del software, testimonios de contadores, precios, demo
+    - Contenido: Específico sobre contabilidad, reportes, facturación, etc.
+
+    Si el usuario solicita "sitio web para restaurante italiano":
+    - Título: "Restaurante Italiano [Nombre]"
+    - Secciones: Hero con ambiente, menú italiano auténtico, historia del restaurante, reservas, ubicación
+    - Contenido: Platos italianos específicos, tradición culinaria, etc.
+
+    ESTRUCTURA HTML BÁSICA (PERSONALIZAR SEGÚN SOLICITUD):
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>[TÍTULO ESPECÍFICO BASADO EN LA SOLICITUD]</title>
+        <link rel="stylesheet" href="styles.css">
+    </head>
+    <body>
+        <header>
+            <h1>[NOMBRE/TÍTULO ESPECÍFICO DEL NEGOCIO/PRODUCTO]</h1>
+            <nav>[NAVEGACIÓN RELEVANTE AL CONTEXTO]</nav>
+        </header>
+        <main>
+            [SECCIONES ESPECÍFICAS SEGÚN LA SOLICITUD DEL USUARIO]
+        </main>
+        <footer>
+            [INFORMACIÓN DE CONTACTO Y DETALLES ESPECÍFICOS]
+        </footer>
+    </body>
+    </html>
+
+    VALIDACIÓN FINAL:
+    - ¿El contenido refleja exactamente lo que pidió el usuario?
+    - ¿Hay información específica del negocio/producto mencionado?
+    - ¿Las secciones son relevantes para la solicitud?
+    - ¿El diseño es apropiado para el contexto solicitado?
+    - ¿Se evitaron completamente los placeholders genéricos?
     `;
   }
 
   /**
-   * Construye el prompt para generar componentes de UI
+   * Construye un prompt de análisis para la instrucción del usuario
+   * @param instruction Instrucción del usuario
+   * @returns Prompt de análisis
+   */
+  private buildInstructionAnalysisPrompt(instruction: string): string {
+    return `
+    ANÁLISIS DE LA INSTRUCCIÓN DEL USUARIO:
+    "${instruction}"
+
+    Este análisis ayudará a generar contenido completamente personalizado.
+    `;
+  }
+
+  /**
+   * Construye el prompt para generar componentes de UI personalizados
    * @param instruction Instrucción del usuario
    * @param plan Plan del proyecto (opcional)
    * @returns Prompt para la API de Gemini
    */
   private buildUIComponentsPrompt(instruction: string, plan?: any): string {
-    return `
-    Eres un experto desarrollador frontend especializado en crear componentes de UI reutilizables y accesibles. Tu tarea es crear componentes basados en la siguiente instrucción:
+    const projectName = plan?.name || 'Proyecto Web';
+    const projectDescription = plan?.description || instruction;
 
-    INSTRUCCIÓN: ${instruction}
+    return `
+    Eres un experto desarrollador frontend especializado en crear componentes de UI completamente personalizados. Tu tarea es analizar la instrucción específica del usuario y crear componentes que se adapten EXACTAMENTE a lo que solicita.
+
+    INSTRUCCIÓN DEL USUARIO: ${instruction}
+
+    NOMBRE DEL PROYECTO: ${projectName}
+    DESCRIPCIÓN: ${projectDescription}
 
     ${plan ? `PLAN DEL PROYECTO: ${JSON.stringify(plan, null, 2)}` : ''}
 
-    Genera componentes de UI que:
-    1. Sean reutilizables y modulares
-    2. Sigan las mejores prácticas de accesibilidad
-    3. Tengan un diseño responsive
-    4. Incluyan HTML, CSS y JavaScript (si es necesario)
+    ANÁLISIS REQUERIDO:
+    Antes de crear los componentes, analiza:
+    1. ¿Qué tipo específico de negocio, producto o servicio se menciona?
+    2. ¿Qué componentes específicos necesita esta solicitud?
+    3. ¿Qué funcionalidades particulares se requieren?
+    4. ¿Hay algún estilo o diseño específico mencionado?
+
+    REQUISITOS PARA LOS COMPONENTES:
+    1. PERSONALIZACIÓN TOTAL: Cada componente debe ser específico para la solicitud
+    2. CONTENIDO REALISTA: Usar texto y datos relevantes al contexto solicitado
+    3. FUNCIONALIDAD ESPECÍFICA: Adaptar la funcionalidad a las necesidades expresadas
+    4. DISEÑO COHERENTE: Mantener consistencia con el contexto del negocio/producto
+    5. SIN PLACEHOLDERS: Evitar contenido genérico o de ejemplo
+    6. ACCESIBILIDAD: Seguir mejores prácticas de accesibilidad web
+    7. RESPONSIVE: Diseño adaptable a diferentes dispositivos
 
     Responde ÚNICAMENTE con un objeto JSON con la siguiente estructura:
 
     {
+      "analysis": {
+        "businessContext": "string (contexto específico del negocio/producto)",
+        "requiredComponents": ["string (componentes específicos identificados)"],
+        "functionalRequirements": ["string (funcionalidades específicas requeridas)"]
+      },
       "components": [
         {
           "id": "string (identificador único)",
-          "name": "string (nombre descriptivo)",
-          "type": "string (button, card, form, navigation, etc.)",
-          "description": "string (descripción detallada)",
+          "name": "string (nombre específico del componente)",
+          "type": "string (tipo específico del componente)",
+          "description": "string (descripción específica del componente)",
+          "businessRelevance": "string (cómo este componente es relevante para la solicitud)",
           "properties": {
-            "prop1": "value1",
+            "prop1": "value1 (valores específicos para el contexto)",
             "prop2": "value2"
           },
           "styles": {
-            "style1": "value1",
+            "style1": "value1 (estilos apropiados para el contexto)",
             "style2": "value2"
           },
-          "htmlTemplate": "string (código HTML)",
-          "cssStyles": "string (código CSS)",
-          "jsCode": "string (código JavaScript, si es necesario)"
+          "htmlTemplate": "string (código HTML específico y personalizado)",
+          "cssStyles": "string (código CSS específico y personalizado)",
+          "jsCode": "string (código JavaScript específico si es necesario)"
         }
       ]
     }
@@ -272,11 +380,19 @@ export class DesignArchitectAgent {
       const jsonString = jsonMatch[0].replace(/```json\n|```/g, '');
       const parsedResponse = JSON.parse(jsonString);
 
+      // Verificar si hay análisis en la respuesta
+      if (parsedResponse.analysis) {
+        console.log('Análisis de la instrucción:', parsedResponse.analysis);
+      }
+
       const proposal = parsedResponse.proposal;
 
       if (!proposal) {
         throw new Error('La respuesta no contiene una propuesta de diseño válida');
       }
+
+      // Validar que el contenido sea personalizado
+      this.validatePersonalizedContent(proposal, parsedResponse.analysis);
 
       // Asegurarse de que la propuesta tenga un ID único
       if (!proposal.id) {
@@ -295,6 +411,43 @@ export class DesignArchitectAgent {
     } catch (error) {
       console.error('Error al extraer la propuesta de diseño:', error);
       throw new Error('No se pudo extraer la propuesta de diseño de la respuesta');
+    }
+  }
+
+  /**
+   * Valida que el contenido generado sea personalizado y no genérico
+   * @param proposal Propuesta de diseño
+   * @param analysis Análisis de la instrucción
+   */
+  private validatePersonalizedContent(proposal: any, analysis?: any): void {
+    const genericTerms = ['lorem ipsum', 'empresa xyz', 'tu empresa', 'ejemplo', 'placeholder', 'demo'];
+    const content = JSON.stringify(proposal).toLowerCase();
+
+    // Verificar si hay términos genéricos
+    const hasGenericContent = genericTerms.some(term => content.includes(term));
+
+    if (hasGenericContent) {
+      console.warn('Advertencia: Se detectó contenido genérico en la propuesta generada');
+    }
+
+    // Verificar que hay contenido HTML y CSS
+    if (!proposal.htmlPreview || !proposal.cssPreview) {
+      throw new Error('La propuesta debe incluir código HTML y CSS completo');
+    }
+
+    // Verificar que el HTML tiene contenido sustancial
+    if (proposal.htmlPreview.length < 500) {
+      console.warn('Advertencia: El HTML generado parece ser muy básico');
+    }
+
+    // Log del análisis para debugging
+    if (analysis) {
+      console.log('Validación de personalización:', {
+        businessType: analysis.businessType,
+        purpose: analysis.purpose,
+        industry: analysis.industry,
+        hasGenericContent
+      });
     }
   }
 
@@ -343,16 +496,22 @@ export class DesignArchitectAgent {
   }
 
   /**
-   * Crea una propuesta de diseño basada en los componentes
+   * Crea una propuesta de diseño básica cuando no se puede generar desde la API
    * @param components Array de componentes
    * @param instruction Instrucción original
-   * @returns Propuesta de diseño
+   * @returns Propuesta de diseño básica
    */
   private createProposalFromComponents(components: DesignComponent[], instruction: string): DesignProposal {
+    const projectTitle = instruction.length > 50 ? `${instruction.substring(0, 50)}...` : instruction;
+
+    // Generar HTML básico personalizado basado en la instrucción
+    const basicHtml = this.generateBasicPersonalizedHTML(projectTitle, instruction);
+    const basicCss = this.generateBasicPersonalizedCSS(projectTitle);
+
     return {
       id: generateUniqueId('design-proposal'),
-      title: `Propuesta de UI basada en: ${instruction.substring(0, 50)}...`,
-      description: `Propuesta generada automáticamente basada en la instrucción: ${instruction}`,
+      title: projectTitle,
+      description: `Propuesta generada como respaldo basada en la instrucción: ${instruction}`,
       components,
       style: 'modern',
       colorPalette: {
@@ -373,8 +532,295 @@ export class DesignArchitectAgent {
         level: 'AA',
         features: ['Contraste adecuado', 'Etiquetas ARIA', 'Navegación por teclado']
       },
-      previewImages: []
+      previewImages: [],
+      htmlPreview: basicHtml,
+      cssPreview: basicCss
     };
+  }
+
+  /**
+   * Genera HTML básico personalizado cuando la API falla
+   * @param projectTitle Título del proyecto
+   * @param instruction Instrucción original
+   * @returns HTML básico personalizado
+   */
+  private generateBasicPersonalizedHTML(projectTitle: string, instruction: string): string {
+    // Extraer palabras clave de la instrucción para personalizar el contenido
+    const keywords = this.extractKeywordsFromInstruction(instruction);
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${projectTitle}</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="header-title">${projectTitle}</h1>
+            <nav class="nav">
+                <ul class="nav-list">
+                    <li><a href="#inicio" class="nav-link">Inicio</a></li>
+                    <li><a href="#informacion" class="nav-link">Información</a></li>
+                    <li><a href="#contacto" class="nav-link">Contacto</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <section id="inicio" class="hero">
+            <div class="container">
+                <h2 class="hero-title">${projectTitle}</h2>
+                <p class="hero-description">Basado en su solicitud: ${instruction}</p>
+                <p class="hero-note">Esta es una versión básica. Para obtener contenido completamente personalizado, por favor proporcione más detalles específicos sobre su negocio o proyecto.</p>
+                <button class="btn btn-primary">Más Información</button>
+            </div>
+        </section>
+
+        <section id="informacion" class="info">
+            <div class="container">
+                <h2 class="section-title">Información del Proyecto</h2>
+                <div class="info-content">
+                    <p>Palabras clave identificadas: ${keywords.join(', ')}</p>
+                    <p>Para generar contenido más específico y personalizado, proporcione detalles adicionales sobre:</p>
+                    <ul>
+                        <li>Tipo específico de negocio o industria</li>
+                        <li>Productos o servicios ofrecidos</li>
+                        <li>Público objetivo</li>
+                        <li>Características deseadas para la página web</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer id="contacto" class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>Proyecto generado por CODESTORM</p>
+                <p>Para personalización completa, proporcione más detalles específicos</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>`;
+  }
+
+  /**
+   * Extrae palabras clave de la instrucción del usuario
+   * @param instruction Instrucción del usuario
+   * @returns Array de palabras clave
+   */
+  private extractKeywordsFromInstruction(instruction: string): string[] {
+    const stopWords = ['el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'es', 'se', 'no', 'te', 'lo', 'le', 'da', 'su', 'por', 'son', 'con', 'para', 'una', 'crear', 'generar', 'hacer', 'página', 'web', 'sitio'];
+    const words = instruction.toLowerCase().split(/\s+/);
+    return words.filter(word => word.length > 3 && !stopWords.includes(word)).slice(0, 5);
+  }
+
+  /**
+   * Genera CSS básico personalizado cuando la API falla
+   * @param projectTitle Título del proyecto
+   * @returns CSS básico personalizado
+   */
+  private generateBasicPersonalizedCSS(projectTitle: string): string {
+    return `/* Estilos básicos para ${projectTitle} */
+:root {
+  --color-primary: #3b82f6;
+  --color-secondary: #10b981;
+  --color-accent: #8b5cf6;
+  --color-background: #ffffff;
+  --color-text: #1f2937;
+  --color-dark: #0f172a;
+  --color-light: #f8fafc;
+
+  --font-heading: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-base-size: 16px;
+  --font-scale: 1.25;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--font-base-size);
+  color: var(--color-text);
+  background-color: var(--color-background);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, var(--color-dark), var(--color-primary));
+  color: white;
+  padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.nav-list {
+  display: flex;
+  list-style: none;
+  gap: 2rem;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+  color: var(--color-accent);
+}
+
+/* Hero Section */
+.hero {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: white;
+  padding: 4rem 0;
+  text-align: center;
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  animation: fadeInUp 1s ease;
+}
+
+.hero-description {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  animation: fadeInUp 1s ease 0.2s both;
+}
+
+.hero-note {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-bottom: 2rem;
+  animation: fadeInUp 1s ease 0.3s both;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  animation: fadeInUp 1s ease 0.4s both;
+}
+
+.btn-primary {
+  background-color: var(--color-accent);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #7c3aed;
+  transform: translateY(-2px);
+}
+
+/* Info Section */
+.info {
+  padding: 4rem 0;
+  background-color: var(--color-light);
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: var(--color-dark);
+}
+
+.info-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.info-content ul {
+  text-align: left;
+  margin: 2rem 0;
+  padding-left: 2rem;
+}
+
+.info-content li {
+  margin-bottom: 0.5rem;
+}
+
+/* Footer */
+.footer {
+  background-color: var(--color-dark);
+  color: white;
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.footer-content p {
+  margin-bottom: 0.5rem;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header .container {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .nav-list {
+    gap: 1rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-description {
+    font-size: 1rem;
+  }
+}`;
   }
 
   /**
@@ -640,7 +1086,7 @@ ${proposal.cssPreview || ''}
     files.push({
       id: generateUniqueId('file'),
       name: 'styles.css',
-      path: 'src/styles/styles.css',
+      path: 'styles.css',
       content: mainCssContent,
       language: 'css',
       timestamp,
@@ -652,7 +1098,7 @@ ${proposal.cssPreview || ''}
       files.push({
         id: generateUniqueId('file'),
         name: 'index.html',
-        path: 'src/index.html',
+        path: 'index.html',
         content: proposal.htmlPreview,
         language: 'html',
         timestamp,
@@ -666,7 +1112,7 @@ ${proposal.cssPreview || ''}
         files.push({
           id: generateUniqueId('file'),
           name: `${component.name.toLowerCase().replace(/\s+/g, '-')}.html`,
-          path: `src/components/${component.name.toLowerCase().replace(/\s+/g, '-')}.html`,
+          path: `components/${component.name.toLowerCase().replace(/\s+/g, '-')}.html`,
           content: component.htmlTemplate,
           language: 'html',
           timestamp,
@@ -678,7 +1124,7 @@ ${proposal.cssPreview || ''}
         files.push({
           id: generateUniqueId('file'),
           name: `${component.name.toLowerCase().replace(/\s+/g, '-')}.css`,
-          path: `src/styles/components/${component.name.toLowerCase().replace(/\s+/g, '-')}.css`,
+          path: `components/${component.name.toLowerCase().replace(/\s+/g, '-')}.css`,
           content: component.cssStyles,
           language: 'css',
           timestamp,
@@ -690,7 +1136,7 @@ ${proposal.cssPreview || ''}
         files.push({
           id: generateUniqueId('file'),
           name: `${component.name.toLowerCase().replace(/\s+/g, '-')}.js`,
-          path: `src/scripts/${component.name.toLowerCase().replace(/\s+/g, '-')}.js`,
+          path: `scripts/${component.name.toLowerCase().replace(/\s+/g, '-')}.js`,
           content: component.jsCode,
           language: 'javascript',
           timestamp,

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User, Sparkles, Zap, Code, Monitor, Smartphone, Tablet, X, Palette, Cpu, Split } from 'lucide-react';
+import { Send, Loader2, Bot, User, Sparkles, Zap, Code, Monitor, Smartphone, Tablet, X, Palette, Cpu, Split, Eye } from 'lucide-react';
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
 import EnhancedPromptDialog from '../EnhancedPromptDialog';
 import { WebTemplate } from './WebTemplateSelector';
@@ -579,12 +579,12 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
                 className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg p-3 ${
+                  className={`max-w-[85%] rounded-lg p-3 transition-smooth ${
                     message.sender === 'user'
-                      ? 'bg-codestorm-accent text-white'
+                      ? 'bg-codestorm-accent text-white chat-message-pulse-user'
                       : message.type === 'suggestion'
-                        ? 'bg-codestorm-blue/30 text-white border border-codestorm-blue/50'
-                        : 'bg-codestorm-blue/20 text-white'
+                        ? 'bg-codestorm-blue/30 text-white border border-codestorm-blue/50 chat-message-pulse-system'
+                        : 'bg-codestorm-blue/20 text-white chat-message-pulse'
                   }`}
                 >
                   <div className="flex items-center mb-1">

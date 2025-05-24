@@ -30,6 +30,8 @@ export default {
         'glow': 'glow 2s ease-in-out infinite',
         'float': 'float 3s ease-in-out infinite',
         'shake': 'shake 0.5s ease-in-out',
+        'collapse': 'collapse 0.3s ease-out',
+        'expand': 'expand 0.3s ease-out',
       },
       keyframes: {
         fadeIn: {
@@ -51,6 +53,14 @@ export default {
         slideInDown: {
           '0%': { transform: 'translateY(-100%)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        collapse: {
+          '0%': { height: 'auto', opacity: '1' },
+          '100%': { height: '0', opacity: '0' },
+        },
+        expand: {
+          '0%': { height: '0', opacity: '0' },
+          '100%': { height: 'auto', opacity: '1' },
         },
         'bounce-light': {
           '0%, 100%': {

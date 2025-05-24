@@ -2,9 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Bot, User, Trash, Code, FileEdit, Sparkles, History, Clock } from 'lucide-react';
 import { FileItem } from '../types';
 import { PromptEnhancerService, EnhancedPrompt } from '../services/PromptEnhancerService';
+import { voiceRecognitionService } from '../services/VoiceRecognitionService';
 import EnhancedPromptDialog from './EnhancedPromptDialog';
 import EnhancementHistoryPanel from './EnhancementHistoryPanel';
 import { generateUniqueId } from '../utils/idGenerator';
+import { useAudioIntegration } from '../hooks/useAudioIntegration';
+import VoiceInputButton from './audio/VoiceInputButton';
+import StormIndicator from './audio/StormIndicator';
+import AudioControls from './audio/AudioControls';
 
 interface Message {
   id: string;
@@ -47,6 +52,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [showEnhancedPromptDialog, setShowEnhancedPromptDialog] = useState(false);
   const [showEnhancementHistory, setShowEnhancementHistory] = useState(false);
 
+  // Hook para integración de audio
+  const audio = useAudioIntegration({
+    enableSpeechSynthesis: true,
+    enableSoundEffects: true,
+    enableVoiceRecognition: true,
+    autoSpeakResponses: true,
+    playMessageSounds: true
+  });
+
+  // Estados adicionales para audio
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll al final de los mensajes cuando se añade uno nuevo
@@ -54,12 +71,33 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Efecto para síntesis de voz en respuestas del asistente
+  useEffect(() => {
+    if (messages.length > 0) {
+      const latestMessage = messages[messages.length - 1];
+
+      // Reproducir sonido y síntesis de voz para respuestas del asistente
+      if (latestMessage.sender === 'assistant' && latestMessage.id !== 'welcome') {
+        audio.playMessageReceived();
+
+        // Síntesis de voz para respuestas del asistente
+        if (latestMessage.content.length < 300) {
+          audio.speakResponse(latestMessage.content);
+        }
+      }
+    }
+  }, [messages.length]);
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
+
+    // Reproducir sonido de envío
+    audio.playMessageSent();
 
     // Si la mejora de prompts está habilitada, mejorar el prompt
     if (enhancePromptEnabled && !isEnhancing && !isModifyingFile) {
       setIsEnhancing(true);
+      audio.playProcessStart();
 
       try {
         const result = await PromptEnhancerService.enhancePrompt(inputValue);
@@ -67,14 +105,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         if (result.success && result.enhancedPrompt) {
           setCurrentEnhancedPrompt(result.enhancedPrompt);
           setShowEnhancedPromptDialog(true);
+          audio.playProcessComplete();
         } else {
           // Si hay un error, enviar el mensaje original
           await sendOriginalMessage();
+          audio.playError();
         }
       } catch (error) {
         console.error('Error al mejorar el prompt:', error);
         // En caso de error, enviar el mensaje original
         await sendOriginalMessage();
+        audio.playError();
       } finally {
         setIsEnhancing(false);
       }
@@ -227,6 +268,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setShowEnhancementHistory(false);
   };
 
+  // Funciones para reconocimiento de voz
+  const handleVoiceTranscript = (transcript: string) => {
+    setVoiceTranscript(transcript);
+    setInputValue(transcript);
+  };
+
+  const handleVoiceFinalTranscript = (transcript: string) => {
+    setInputValue(transcript);
+    setVoiceTranscript('');
+  };
+
+  const handleStormCommand = (command: string) => {
+    setInputValue(command);
+    // Auto-enviar comando STORM inmediatamente
+    setTimeout(() => {
+      if (command.trim()) {
+        // Enviar mensaje directamente
+        onSendMessage(command);
+        setInputValue('');
+        audio.playMessageSent();
+      }
+    }, 100);
+  };
+
+  // Configurar callback automático para STORM
+  useEffect(() => {
+    voiceRecognitionService.setStormCommandCallback(handleStormCommand);
+
+    return () => {
+      voiceRecognitionService.removeStormCommandCallback();
+    };
+  }, []);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -295,6 +369,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div className="flex items-center justify-between p-3 border-b bg-codestorm-blue/20 border-codestorm-blue/30">
         <h2 className="text-sm font-medium text-white">Asistente de CODESTORM</h2>
         <div className="flex space-x-2">
+          {/* Controles de audio compactos */}
+          <AudioControls compact={true} className="scale-90" />
+
           <button
             onClick={() => setShowEnhancementHistory(true)}
             className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white"
@@ -327,11 +404,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-lg p-3 ${
+              className={`max-w-[80%] rounded-lg p-3 transition-smooth ${
                 message.sender === 'user'
-                  ? 'bg-codestorm-accent text-white'
-                  : 'bg-codestorm-blue/20 text-white'
-              } ${message.relatedFileId ? 'border-l-2 border-codestorm-gold' : ''}`}
+                  ? 'bg-codestorm-accent text-white chat-message-pulse-user'
+                  : message.content.toLowerCase().includes('error') || message.content.toLowerCase().includes('problema')
+                    ? 'bg-red-900/20 text-white chat-message-pulse-error'
+                    : message.content.toLowerCase().includes('éxito') || message.content.toLowerCase().includes('completado')
+                      ? 'bg-green-900/20 text-white chat-message-pulse-success'
+                      : 'bg-codestorm-blue/20 text-white chat-message-pulse'
+              } ${message.relatedFileId ? 'border-l-2 border-codestorm-gold chat-message-pulse-important' : ''}`}
             >
               <div className="flex items-center mb-1">
                 {message.sender === 'user' ? (
@@ -375,6 +456,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               disabled={isProcessing || isEnhancing}
             />
             <div className="flex flex-col justify-between space-y-2">
+              {/* Botón de micrófono */}
+              <VoiceInputButton
+                onTranscript={handleVoiceTranscript}
+                onFinalTranscript={handleVoiceFinalTranscript}
+                disabled={isProcessing || isEnhancing}
+                size="md"
+                autoSend={false}
+                showTranscript={false}
+                className="relative"
+              />
+
               <button
                 onClick={toggleEnhancePrompt}
                 className={`p-2 rounded-md ${
@@ -451,6 +543,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         isVisible={showEnhancementHistory}
         onClose={() => setShowEnhancementHistory(false)}
       />
+
+      {/* Indicador de comando STORM */}
+      <StormIndicator onCommand={handleStormCommand} />
     </div>
   );
 };
