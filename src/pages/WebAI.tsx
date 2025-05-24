@@ -16,6 +16,7 @@ import BrandLogo from '../components/BrandLogo';
 import Footer from '../components/Footer';
 import CodeModifierPanel from '../components/codemodifier/CodeModifierPanel';
 import IntroAnimation from '../components/IntroAnimation';
+import LoadingOverlay from '../components/LoadingOverlay';
 import WebTemplateSelector, { WebTemplate } from '../components/webbuilder/WebTemplateSelector';
 import ComponentPalette, { WebComponent } from '../components/webbuilder/ComponentPalette';
 import VisualEditor from '../components/webbuilder/VisualEditor';
@@ -27,9 +28,10 @@ import { useUI } from '../contexts/UIContext';
 import { FileItem, TerminalOutput, ProjectState, AgentTask } from '../types';
 import { Menu, Layout, Image, ClipboardEdit, ShoppingCart, Eye } from 'lucide-react';
 import AgentCoordinatorService from '../services/AgentCoordinatorService';
+import { mergeFilesWithoutDuplicates, removeDuplicateFiles } from '../utils/fileUtils';
 import '../styles/WebAI.css';
 
-// Componente WebAI especializado en construcción de sitios web
+// Componente WebAI especializado en construcción de sitios web estáticos
 const WebAI: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
@@ -55,10 +57,55 @@ const WebAI: React.FC = () => {
   // Estado para la animación de introducción
   const [showIntro, setShowIntro] = useState<boolean>(false);
 
+  // Estados para el LoadingOverlay
+  const [loadingState, setLoadingState] = useState({
+    isLoading: false,
+    currentAgent: '',
+    progress: 0,
+    message: '',
+    canCancel: false
+  });
+
   // Función para completar la animación de introducción
   const completeIntro = () => {
     setShowIntro(false);
     localStorage.setItem('codestorm-intro-seen', 'true');
+  };
+
+  // Funciones para manejar el LoadingOverlay
+  const startLoading = (agent: string, message: string, canCancel: boolean = false) => {
+    setLoadingState({
+      isLoading: true,
+      currentAgent: agent,
+      progress: 0,
+      message,
+      canCancel
+    });
+    setIsProcessing(true);
+  };
+
+  const updateLoadingProgress = (progress: number, message?: string) => {
+    setLoadingState(prev => ({
+      ...prev,
+      progress,
+      message: message || prev.message
+    }));
+  };
+
+  const stopLoading = () => {
+    setLoadingState({
+      isLoading: false,
+      currentAgent: '',
+      progress: 0,
+      message: '',
+      canCancel: false
+    });
+    setIsProcessing(false);
+  };
+
+  const cancelLoading = () => {
+    stopLoading();
+    // Aquí se podría añadir lógica adicional para cancelar procesos en curso
   };
 
   // Comprobar si se debe mostrar la animación de introducción
@@ -67,6 +114,25 @@ const WebAI: React.FC = () => {
     if (!hasSeenIntro) {
       setShowIntro(true);
     }
+
+    // Inicializar reconocimiento de voz global para WebAI
+    console.log('Inicializando reconocimiento de voz en WebAI...');
+    import('../utils/voiceInitializer').then(({ initializeVoiceRecognition, cleanupVoiceRecognition }) => {
+      initializeVoiceRecognition({
+        onStormCommand: (command: string) => {
+          console.log('Comando STORM recibido en WebAI:', command);
+          handleChatMessage(command);
+        },
+        enableDebug: true,
+        autoStart: true
+      });
+    });
+
+    return () => {
+      import('../utils/voiceInitializer').then(({ cleanupVoiceRecognition }) => {
+        cleanupVoiceRecognition();
+      });
+    };
   }, []);
 
   // Efecto para forzar la renderización de los componentes
@@ -447,83 +513,223 @@ const WebAI: React.FC = () => {
     console.log('Publicar sitio web');
   };
 
+  // Función para manejar la vista previa automática
+  const handleAutoPreview = (html: string, css: string, js: string) => {
+    setGeneratedHtml(html);
+    setGeneratedCss(css);
+    setGeneratedJs(js);
+
+    // Activar vista previa automáticamente
+    setShowWebPreview(true);
+
+    console.log('🔍 Vista previa activada automáticamente:', {
+      htmlLength: html.length,
+      cssLength: css.length,
+      jsLength: js.length
+    });
+  };
+
+  // Función para manejar archivos actualizados desde el chat
+  const handleFilesUpdated = (files: FileItem[]) => {
+    // Usar utilidades para evitar duplicados
+    const cleanFiles = removeDuplicateFiles(files);
+
+    // Actualizar el estado del proyecto con los nuevos archivos sin duplicados
+    setProjectState(prev => ({
+      ...prev,
+      files: mergeFilesWithoutDuplicates(prev.files, cleanFiles)
+    }));
+
+    // Extraer contenido para vista previa automática
+    const htmlFile = files.find(file =>
+      file.path.endsWith('.html') &&
+      (file.path === 'index.html' || file.path.includes('index'))
+    );
+    const cssFile = files.find(file =>
+      file.path.endsWith('.css') &&
+      (file.path === 'styles.css' || file.path.includes('style'))
+    );
+    const jsFile = files.find(file =>
+      file.path.endsWith('.js') &&
+      (file.path === 'script.js' || file.path.includes('script'))
+    );
+
+    // Si encontramos archivos, activar vista previa automática
+    if (htmlFile) {
+      handleAutoPreview(
+        htmlFile.content,
+        cssFile?.content || generatedCss,
+        jsFile?.content || generatedJs
+      );
+    }
+
+    console.log('📁 Archivos actualizados desde el chat:', files.map(f => f.path));
+  };
+
   // Funciones específicas para el asistente de IA
   const handleGenerateWebsite = async (description: string) => {
     setWebsiteDescription(description);
-    setIsProcessing(true);
+
+    // Iniciar el LoadingOverlay
+    startLoading('Agente Coordinador', 'Iniciando generación del sitio web...', true);
 
     try {
       // Iniciar el proceso de generación con el coordinador de agentes
       const coordinator = AgentCoordinatorService.getInstance();
-      const result = await coordinator.generateWebsite(description);
 
-      // Si hay archivos generados, actualizar el estado
-      if (result.files && result.files.length > 0) {
-        // Buscar el archivo HTML principal
-        const htmlFile = result.files.find(file => file.path.endsWith('.html'));
-        const cssFile = result.files.find(file => file.path.endsWith('.css'));
-        const jsFile = result.files.find(file => file.path.endsWith('.js'));
+      // Configurar listener para recibir actualizaciones de progreso
+      const listener = {
+        onTaskUpdate: (tasks: any[]) => {
+          // Encontrar la tarea principal del coordinador
+          const mainTask = tasks.find(task => task.agentType === 'coordinator');
+          if (mainTask) {
+            const progress = mainTask.progress || 0;
+            let message = 'Procesando...';
+            let agent = 'Agente Coordinador';
 
-        if (htmlFile) {
-          setGeneratedHtml(htmlFile.content);
+            // Determinar el mensaje y agente basado en las subtareas
+            if (mainTask.subtasks && mainTask.subtasks.length > 0) {
+              const currentSubtask = mainTask.subtasks.find(subtask => subtask.status === 'working');
+              if (currentSubtask) {
+                if (currentSubtask.agentType === 'design') {
+                  agent = 'Agente de Diseño';
+                  message = 'Generando propuesta de diseño...';
+                } else if (currentSubtask.agentType === 'code') {
+                  agent = 'Agente de Código';
+                  message = 'Generando código del sitio web...';
+                }
+              } else {
+                // Si no hay subtareas activas, verificar si hay completadas
+                const completedDesign = mainTask.subtasks.find(subtask =>
+                  subtask.agentType === 'design' && subtask.status === 'completed'
+                );
+                const completedCode = mainTask.subtasks.find(subtask =>
+                  subtask.agentType === 'code' && subtask.status === 'completed'
+                );
+
+                if (completedDesign && !completedCode) {
+                  agent = 'Agente de Código';
+                  message = 'Iniciando generación de código...';
+                } else if (completedDesign && completedCode) {
+                  agent = 'Agente Coordinador';
+                  message = 'Finalizando generación...';
+                }
+              }
+            }
+
+            updateLoadingProgress(progress, message);
+            setLoadingState(prev => ({ ...prev, currentAgent: agent }));
+          }
+        },
+        onFilesGenerated: (files: any[]) => {
+          console.log('📁 Archivos generados:', files.length);
+          // Activar vista previa automática cuando se generen archivos
+          handleFilesUpdated(files);
+        },
+        onDesignProposalUpdate: (proposal: any) => {
+          if (proposal) {
+            updateLoadingProgress(50, 'Propuesta de diseño completada');
+          }
+        },
+        onError: (error: string) => {
+          console.error('Error del coordinador:', error);
+          stopLoading();
         }
+      };
 
-        if (cssFile) {
-          setGeneratedCss(cssFile.content);
-        }
+      // Registrar el listener
+      coordinator.addListener(listener);
 
-        if (jsFile) {
-          setGeneratedJs(jsFile.content);
-        }
+      try {
+        // Ejecutar la generación
+        const result = await coordinator.generateWebsite(description);
 
-        // Actualizar el estado del proyecto con los archivos generados
-        setProjectState(prev => ({
-          ...prev,
-          files: [...prev.files, ...result.files]
-        }));
+        // Remover el listener
+        coordinator.removeListener(listener);
 
-        // Mostrar la vista previa
-        setShowWebPreview(true);
-      }
+        // Si hay archivos generados, actualizar el estado
+        if (result.files && result.files.length > 0) {
+          // Buscar el archivo HTML principal
+          const htmlFile = result.files.find(file => file.path.endsWith('.html'));
+          const cssFile = result.files.find(file => file.path.endsWith('.css'));
+          const jsFile = result.files.find(file => file.path.endsWith('.js'));
 
-      // Si hay una propuesta de diseño, actualizar el estado
-      if (result.designProposal) {
-        // Buscar una plantilla que coincida con el tipo de sitio
-        const templateType = result.designProposal.siteType || 'general';
-        const matchedTemplate = availableTemplates.find(t =>
-          t.category.toLowerCase().includes(templateType) ||
-          templateType.includes(t.category.toLowerCase())
-        );
-
-        if (matchedTemplate) {
-          setSelectedTemplate(matchedTemplate);
-        }
-
-        // Convertir los componentes de la propuesta a componentes de WebAI
-        const webComponents = result.designProposal.components.map(component => {
-          // Buscar un componente que coincida con el tipo
-          const matchedComponent = availableComponents.find(c =>
-            c.category.toLowerCase().includes(component.type) ||
-            component.type.includes(c.category.toLowerCase())
-          );
-
-          if (matchedComponent) {
-            return matchedComponent;
+          if (htmlFile) {
+            setGeneratedHtml(htmlFile.content);
           }
 
-          // Si no hay coincidencia, crear un componente genérico
-          return {
-            id: component.id,
-            name: component.name,
-            category: component.type,
-            icon: <div className="h-4 w-4 bg-codestorm-blue rounded-full"></div>,
-            description: component.description
-          };
-        });
+          if (cssFile) {
+            setGeneratedCss(cssFile.content);
+          }
 
-        // Actualizar los componentes seleccionados
-        setSelectedComponents(webComponents);
+          if (jsFile) {
+            setGeneratedJs(jsFile.content);
+          }
+
+          // Actualizar el estado del proyecto con los archivos generados sin duplicados
+          const cleanResultFiles = removeDuplicateFiles(result.files);
+          setProjectState(prev => ({
+            ...prev,
+            files: mergeFilesWithoutDuplicates(prev.files, cleanResultFiles)
+          }));
+
+          // Mostrar la vista previa
+          setShowWebPreview(true);
+        }
+
+        // Si hay una propuesta de diseño, actualizar el estado
+        if (result.designProposal) {
+          // Buscar una plantilla que coincida con el tipo de sitio
+          const templateType = result.designProposal.siteType || 'general';
+          const matchedTemplate = availableTemplates.find(t =>
+            t.category.toLowerCase().includes(templateType) ||
+            templateType.includes(t.category.toLowerCase())
+          );
+
+          if (matchedTemplate) {
+            setSelectedTemplate(matchedTemplate);
+          }
+
+          // Convertir los componentes de la propuesta a componentes de WebAI
+          const webComponents = result.designProposal.components.map(component => {
+            // Buscar un componente que coincida con el tipo
+            const matchedComponent = availableComponents.find(c =>
+              c.category.toLowerCase().includes(component.type) ||
+              component.type.includes(c.category.toLowerCase())
+            );
+
+            if (matchedComponent) {
+              return matchedComponent;
+            }
+
+            // Si no hay coincidencia, crear un componente genérico
+            return {
+              id: component.id,
+              name: component.name,
+              category: component.type,
+              icon: <div className="h-4 w-4 bg-codestorm-blue rounded-full"></div>,
+              description: component.description
+            };
+          });
+
+          // Actualizar los componentes seleccionados
+          setSelectedComponents(webComponents);
+        }
+
+        // Completar el progreso
+        updateLoadingProgress(100, 'Sitio web generado exitosamente');
+
+        // Esperar un momento antes de ocultar el loading
+        setTimeout(() => {
+          stopLoading();
+        }, 1500);
+
+      } catch (coordinatorError) {
+        // Remover el listener en caso de error
+        coordinator.removeListener(listener);
+        throw coordinatorError;
       }
+
     } catch (error) {
       console.error('Error al generar el sitio web:', error);
 
@@ -545,8 +751,9 @@ const WebAI: React.FC = () => {
         ...prev,
         terminal: [...prev.terminal, errorOutput]
       }));
-    } finally {
-      setIsProcessing(false);
+
+      // Detener el loading en caso de error
+      stopLoading();
     }
   };
 
@@ -575,6 +782,80 @@ const WebAI: React.FC = () => {
     }
   ];
 
+  // Lista de plantillas disponibles
+  const availableTemplates = [
+    {
+      id: 'template-1',
+      name: 'Business Pro',
+      category: 'business',
+      tags: ['profesional', 'corporativo', 'moderno'],
+      thumbnail: 'https://via.placeholder.com/300x200/2563eb/ffffff?text=Business+Pro',
+      description: 'Plantilla profesional para empresas con diseño moderno y secciones para servicios, equipo y testimonios.'
+    },
+    {
+      id: 'template-2',
+      name: 'Creative Portfolio',
+      category: 'portfolio',
+      tags: ['creativo', 'diseño', 'artístico'],
+      thumbnail: 'https://via.placeholder.com/300x200/10b981/ffffff?text=Creative+Portfolio',
+      description: 'Muestra tus trabajos creativos con esta plantilla de portafolio elegante y minimalista.'
+    },
+    {
+      id: 'template-3',
+      name: 'E-commerce Store',
+      category: 'ecommerce',
+      tags: ['tienda', 'productos', 'ventas'],
+      thumbnail: 'https://via.placeholder.com/300x200/8b5cf6/ffffff?text=E-commerce+Store',
+      description: 'Plantilla completa para tiendas online con catálogo de productos, carrito de compras y proceso de pago.'
+    }
+  ];
+
+  // Lista de componentes disponibles
+  const availableComponents = [
+    {
+      id: 'navbar',
+      name: 'Barra de navegación',
+      category: 'navigation',
+      icon: <Menu className="h-4 w-4" />,
+      description: 'Barra de navegación principal con logo y enlaces.'
+    },
+    {
+      id: 'section',
+      name: 'Sección',
+      category: 'layout',
+      icon: <Layout className="h-4 w-4" />,
+      description: 'Contenedor principal para organizar el contenido en secciones.'
+    },
+    {
+      id: 'gallery',
+      name: 'Galería',
+      category: 'media',
+      icon: <Image className="h-4 w-4" />,
+      description: 'Galería de imágenes con diseño grid o carrusel.'
+    },
+    {
+      id: 'contact-form',
+      name: 'Formulario de contacto',
+      category: 'forms',
+      icon: <ClipboardEdit className="h-4 w-4" />,
+      description: 'Formulario de contacto con campos personalizables.'
+    },
+    {
+      id: 'product-grid',
+      name: 'Cuadrícula de productos',
+      category: 'ecommerce',
+      icon: <ShoppingCart className="h-4 w-4" />,
+      description: 'Muestra productos en una cuadrícula con imágenes, títulos y precios.'
+    },
+    {
+      id: 'footer',
+      name: 'Pie de página',
+      category: 'navigation',
+      icon: <Menu className="h-4 w-4" />,
+      description: 'Pie de página con enlaces, información de contacto y derechos de autor.'
+    }
+  ];
+
   // Obtener el archivo seleccionado
   const selectedFile = selectedFileId
     ? projectState.files.find(file => file.id === selectedFileId)
@@ -594,9 +875,9 @@ const WebAI: React.FC = () => {
       <main className="flex-1 container mx-auto py-4 px-4 webai-component">
         {/* Título de la página */}
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">Constructor de Sitios Web</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Constructor de Sitios Web Estáticos</h1>
           <p className="text-gray-300 max-w-2xl mx-auto">
-            Crea sitios web profesionales de manera intuitiva y visual. Selecciona una plantilla, personaliza el diseño y publica tu sitio en minutos.
+            Crea sitios web estáticos profesionales con HTML5, CSS3 y JavaScript vanilla. Optimizados para SEO, accesibilidad y rendimiento ultra-rápido.
           </p>
 
           {/* Botones de modo */}
@@ -665,77 +946,11 @@ const WebAI: React.FC = () => {
                 onSelectTemplate={handleSelectTemplate}
                 onAddComponents={handleAddComponents}
                 onPreview={handleToggleWebPreview}
+                onFilesUpdated={handleFilesUpdated}
+                onAutoPreview={handleAutoPreview}
                 isProcessing={isProcessing}
-                availableTemplates={[
-                  {
-                    id: 'template-1',
-                    name: 'Business Pro',
-                    category: 'business',
-                    tags: ['profesional', 'corporativo', 'moderno'],
-                    thumbnail: 'https://via.placeholder.com/300x200/2563eb/ffffff?text=Business+Pro',
-                    description: 'Plantilla profesional para empresas con diseño moderno y secciones para servicios, equipo y testimonios.'
-                  },
-                  {
-                    id: 'template-2',
-                    name: 'Creative Portfolio',
-                    category: 'portfolio',
-                    tags: ['creativo', 'diseño', 'artístico'],
-                    thumbnail: 'https://via.placeholder.com/300x200/10b981/ffffff?text=Creative+Portfolio',
-                    description: 'Muestra tus trabajos creativos con esta plantilla de portafolio elegante y minimalista.'
-                  },
-                  {
-                    id: 'template-3',
-                    name: 'E-commerce Store',
-                    category: 'ecommerce',
-                    tags: ['tienda', 'productos', 'ventas'],
-                    thumbnail: 'https://via.placeholder.com/300x200/8b5cf6/ffffff?text=E-commerce+Store',
-                    description: 'Plantilla completa para tiendas online con catálogo de productos, carrito de compras y proceso de pago.'
-                  }
-                ]}
-                availableComponents={[
-                  {
-                    id: 'navbar',
-                    name: 'Barra de navegación',
-                    category: 'navigation',
-                    icon: <Menu className="h-4 w-4" />,
-                    description: 'Barra de navegación principal con logo y enlaces.'
-                  },
-                  {
-                    id: 'section',
-                    name: 'Sección',
-                    category: 'layout',
-                    icon: <Layout className="h-4 w-4" />,
-                    description: 'Contenedor principal para organizar el contenido en secciones.'
-                  },
-                  {
-                    id: 'gallery',
-                    name: 'Galería',
-                    category: 'media',
-                    icon: <Image className="h-4 w-4" />,
-                    description: 'Galería de imágenes con diseño grid o carrusel.'
-                  },
-                  {
-                    id: 'contact-form',
-                    name: 'Formulario de contacto',
-                    category: 'forms',
-                    icon: <ClipboardEdit className="h-4 w-4" />,
-                    description: 'Formulario de contacto con campos personalizables.'
-                  },
-                  {
-                    id: 'product-grid',
-                    name: 'Cuadrícula de productos',
-                    category: 'ecommerce',
-                    icon: <ShoppingCart className="h-4 w-4" />,
-                    description: 'Muestra productos en una cuadrícula con imágenes, títulos y precios.'
-                  },
-                  {
-                    id: 'footer',
-                    name: 'Pie de página',
-                    category: 'navigation',
-                    icon: <Menu className="h-4 w-4" />,
-                    description: 'Pie de página con enlaces, información de contacto y derechos de autor.'
-                  }
-                ]}
+                availableTemplates={availableTemplates}
+                availableComponents={availableComponents}
               />
             </div>
           </div>
@@ -860,6 +1075,16 @@ const WebAI: React.FC = () => {
 
       {/* Pie de página */}
       <Footer showLogo={true} />
+
+      {/* LoadingOverlay */}
+      <LoadingOverlay
+        isVisible={loadingState.isLoading}
+        currentAgent={loadingState.currentAgent}
+        progress={loadingState.progress}
+        message={loadingState.message}
+        canCancel={loadingState.canCancel}
+        onCancel={cancelLoading}
+      />
     </div>
   );
 };

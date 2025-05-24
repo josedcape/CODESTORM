@@ -58,16 +58,36 @@ Tu tarea es:
 2. Identificar todos los archivos necesarios.
 3. Definir los pasos de implementación.
 
+IMPORTANTE: Debes proporcionar descripciones muy detalladas y completas tanto para el proyecto como para cada archivo y paso de implementación. El usuario necesita entender claramente qué se va a construir y cómo funcionará antes de aprobar el plan.
+
+Para la descripción del proyecto:
+- Explica claramente el propósito y funcionalidad del proyecto
+- Detalla las características principales que tendrá
+- Menciona las tecnologías que se utilizarán y por qué
+- Incluye información sobre la arquitectura general
+
+Para cada archivo:
+- Explica detalladamente su propósito específico
+- Describe qué componentes o funcionalidades contendrá
+- Menciona cómo se relaciona con otros archivos
+- Incluye detalles técnicos relevantes
+
+Para cada paso de implementación:
+- Proporciona una explicación clara de lo que se realizará
+- Detalla el objetivo técnico de cada paso
+- Explica cómo contribuye al proyecto general
+- Menciona cualquier consideración importante
+
 Responde con un JSON estructurado de la siguiente manera:
 
 {
   "projectStructure": {
     "name": "Nombre del proyecto",
-    "description": "Descripción breve del proyecto",
+    "description": "Descripción extensa y detallada del proyecto, incluyendo propósito, funcionalidades, tecnologías y arquitectura",
     "files": [
       {
         "path": "ruta/al/archivo.ext",
-        "description": "Propósito y contenido del archivo",
+        "description": "Descripción detallada del propósito, contenido y funcionamiento del archivo",
         "dependencies": ["ruta/a/otro/archivo.ext"] // Opcional: archivos de los que depende
       }
     ]
@@ -76,7 +96,7 @@ Responde con un JSON estructurado de la siguiente manera:
     {
       "id": "paso-1",
       "title": "Título del paso",
-      "description": "Descripción detallada del paso",
+      "description": "Descripción extensa y detallada del paso, explicando qué se implementará, cómo y por qué",
       "filesToCreate": ["ruta/al/archivo.ext"]
     }
   ]

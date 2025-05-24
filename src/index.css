@@ -1,3 +1,9 @@
+/* Importar animaciones personalizadas */
+@import './styles/animations.css';
+
+/* Importar optimizaciones móviles */
+@import './styles/mobile.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

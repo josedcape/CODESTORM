@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Terminal, Code, Settings, Eye, MessageSquare, Hammer, ArrowLeft, Menu, X, AlertCircle, Globe, Home } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUI } from '../contexts/UIContext';
+import SoundControlPanel from './SoundControlPanel';
 
 interface HeaderProps {
   onPreviewClick: () => void;
@@ -24,7 +25,7 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
   };
 
   return (
-    <header className="futuristic-nav p-4 relative z-10">
+    <header className={`futuristic-nav ${isMobile ? 'p-3' : 'p-4'} relative z-10 mobile-safe-area`}>
       {/* Partículas de código en el fondo */}
       <div className="absolute inset-0 code-rain opacity-10 z-0"></div>
 
@@ -118,6 +119,13 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
               <Code className="h-4 w-4 text-blue-400 transition-transform duration-300 hover:scale-110" />
               <span className={`${isTablet ? 'hidden' : ''} text-blue-300`}>Proyectos</span>
             </button>
+            {/* Control de sonido */}
+            <SoundControlPanel
+              size="sm"
+              showLabel={false}
+              className="flex items-center"
+            />
+
             <button className="flex items-center space-x-1 bg-blue-900/30 hover:bg-blue-800/40 border border-blue-500/30 rounded-md px-3 py-1.5 transition-all duration-300 hover:shadow-[0_0_10px_rgba(59,130,246,0.3)] transform hover:-translate-y-0.5 active:translate-y-0 electric-btn">
               <Settings className="h-4 w-4 text-blue-400 transition-transform duration-300 hover:scale-110 hover:rotate-45" />
               <span className={`${isTablet ? 'hidden' : ''} text-blue-300`}>Ajustes</span>
@@ -125,31 +133,50 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
           </div>
         )}
 
-        {/* Botón de menú para móvil */}
+        {/* Botón de menú para móvil optimizado */}
         {isMobile && (
           <button
             onClick={toggleMenu}
-            className="p-2 rounded-md bg-blue-900/30 hover:bg-blue-800/40 border border-blue-500/30 transition-all duration-300 hover:shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+            className="
+              mobile-floating-button p-2 rounded-md
+              bg-blue-900/30 hover:bg-blue-800/40 border border-blue-500/30
+              transition-all duration-200 hover:shadow-[0_0_10px_rgba(59,130,246,0.3)]
+              -webkit-tap-highlight-color: transparent
+              touch-action: manipulation
+              min-w-[44px] min-h-[44px]
+              flex items-center justify-center
+            "
             aria-label="Menú"
           >
             {isMenuOpen ? (
-              <X className="h-6 w-6 text-blue-400" />
+              <X className="h-5 w-5 text-blue-400" />
             ) : (
-              <Menu className="h-6 w-6 text-blue-400" />
+              <Menu className="h-5 w-5 text-blue-400" />
             )}
           </button>
         )}
       </div>
 
-      {/* Menú móvil desplegable */}
+      {/* Menú móvil desplegable optimizado */}
       {isMobile && isMenuOpen && (
-        <div className="mt-4 bg-blue-900/40 backdrop-blur-sm rounded-md p-2 border border-blue-500/30 animate-slideInDown panel-enter shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+        <div className="
+          mt-4 bg-blue-900/40 backdrop-blur-sm rounded-md p-3
+          border border-blue-500/30 animate-slideInDown panel-enter
+          shadow-[0_0_15px_rgba(59,130,246,0.2)]
+          mobile-safe-area
+        ">
           <div className="flex flex-col space-y-2">
             {/* Renderizar children como botones en el menú móvil */}
             {children && React.Children.map(children, (child) => {
               if (React.isValidElement(child)) {
                 return React.cloneElement(child, {
-                  className: "flex items-center space-x-2 p-2 rounded-md bg-codestorm-accent hover:bg-blue-600 text-white transition-all duration-300",
+                  className: `
+                    flex items-center space-x-2 p-3 rounded-md
+                    bg-codestorm-accent hover:bg-blue-600 text-white
+                    transition-all duration-200 min-h-[44px]
+                    -webkit-tap-highlight-color: transparent
+                    touch-action: manipulation
+                  `,
                   onClick: (e: React.MouseEvent) => {
                     if (child.props.onClick) {
                       child.props.onClick(e);
@@ -226,6 +253,15 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
               <Code className="h-5 w-5 text-blue-400" />
               <span className="text-blue-300">Proyectos</span>
             </button>
+            {/* Control de sonido para móvil */}
+            <div className="p-2 rounded-md bg-blue-900/30 border border-blue-500/30">
+              <SoundControlPanel
+                size="md"
+                showLabel={true}
+                className="w-full"
+              />
+            </div>
+
             <button className="flex items-center space-x-2 p-2 rounded-md bg-blue-900/30 hover:bg-blue-800/40 border border-blue-500/30 transition-all duration-300">
               <Settings className="h-5 w-5 text-blue-400" />
               <span className="text-blue-300">Ajustes</span>

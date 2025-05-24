@@ -1,12 +1,15 @@
 import React from 'react';
 import { EnhancedPrompt } from '../services/PromptEnhancerService';
-import { 
-  X, 
-  Check, 
-  ArrowRight, 
-  Sparkles, 
-  AlertCircle, 
-  Info
+import { SpecializedEnhanceResult } from '../services/SpecializedEnhancerService';
+import {
+  X,
+  Check,
+  ArrowRight,
+  Sparkles,
+  AlertCircle,
+  Info,
+  Globe,
+  Settings
 } from 'lucide-react';
 
 interface EnhancedPromptDialogProps {
@@ -15,6 +18,7 @@ interface EnhancedPromptDialogProps {
   onUseOriginal: () => void;
   onUseEnhanced: () => void;
   isVisible: boolean;
+  specializedResult?: SpecializedEnhanceResult;
 }
 
 /**
@@ -26,10 +30,11 @@ const EnhancedPromptDialog: React.FC<EnhancedPromptDialogProps> = ({
   onClose,
   onUseOriginal,
   onUseEnhanced,
-  isVisible
+  isVisible,
+  specializedResult
 }) => {
   if (!isVisible) return null;
-  
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-codestorm-dark rounded-lg shadow-xl border border-codestorm-blue/30 w-full max-w-2xl max-h-[80vh] flex flex-col">
@@ -37,7 +42,21 @@ const EnhancedPromptDialog: React.FC<EnhancedPromptDialogProps> = ({
         <div className="bg-codestorm-blue/20 p-3 border-b border-codestorm-blue/30 flex justify-between items-center">
           <div className="flex items-center">
             <Sparkles className="h-5 w-5 text-codestorm-gold mr-2" />
-            <h2 className="text-sm font-medium text-white">Mejora de Prompt</h2>
+            <div className="flex flex-col">
+              <h2 className="text-sm font-medium text-white">Mejora de Prompt</h2>
+              {specializedResult && (
+                <div className="flex items-center mt-1">
+                  {specializedResult.context === 'webai' ? (
+                    <Globe className="h-3 w-3 text-blue-400 mr-1" />
+                  ) : (
+                    <Settings className="h-3 w-3 text-green-400 mr-1" />
+                  )}
+                  <span className="text-xs text-gray-300">
+                    {specializedResult.agentType || 'Agente Especializado'}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -47,7 +66,7 @@ const EnhancedPromptDialog: React.FC<EnhancedPromptDialogProps> = ({
             <X className="h-4 w-4" />
           </button>
         </div>
-        
+
         {/* Contenido */}
         <div className="flex-1 overflow-auto p-4 space-y-4">
           {/* Mejoras realizadas */}
@@ -65,7 +84,7 @@ const EnhancedPromptDialog: React.FC<EnhancedPromptDialogProps> = ({
               ))}
             </ul>
           </div>
-          
+
           {/* Prompt original */}
           <div>
             <h3 className="text-sm font-medium text-white mb-2">Prompt Original</h3>
@@ -73,12 +92,12 @@ const EnhancedPromptDialog: React.FC<EnhancedPromptDialogProps> = ({
               {enhancedPrompt.originalPrompt}
             </div>
           </div>
-          
+
           {/* Flecha de transformación */}
           <div className="flex justify-center">
             <ArrowRight className="h-6 w-6 text-codestorm-accent" />
           </div>
-          
+
           {/* Prompt mejorado */}
           <div>
             <h3 className="text-sm font-medium text-white mb-2 flex items-center">
@@ -89,17 +108,17 @@ const EnhancedPromptDialog: React.FC<EnhancedPromptDialogProps> = ({
               {enhancedPrompt.enhancedPrompt}
             </div>
           </div>
-          
+
           {/* Advertencia */}
           <div className="flex items-start text-xs text-yellow-400">
             <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
             <p>
-              La mejora de prompts es una característica experimental. Revisa siempre el contenido mejorado 
+              La mejora de prompts es una característica experimental. Revisa siempre el contenido mejorado
               antes de enviarlo para asegurarte de que refleja correctamente tu intención.
             </p>
           </div>
         </div>
-        
+
         {/* Acciones */}
         <div className="p-4 border-t border-codestorm-blue/30 flex justify-end space-x-3">
           <button

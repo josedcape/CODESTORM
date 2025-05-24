@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Constructor from './pages/Constructor';
 import CodeCorrector from './pages/CodeCorrector';
@@ -44,6 +44,28 @@ const MainApp: React.FC = () => {
 
   // Usar el hook personalizado para la animación de introducción
   const { showIntro, completeIntro } = useIntroAnimation();
+
+  // Inicializar reconocimiento de voz global
+  useEffect(() => {
+    console.log('Inicializando reconocimiento de voz global en página principal...');
+    import('./utils/voiceInitializer').then(({ initializeVoiceRecognition, cleanupVoiceRecognition }) => {
+      initializeVoiceRecognition({
+        onStormCommand: (command: string) => {
+          console.log('Comando STORM recibido en página principal:', command);
+          // Aquí se puede procesar el comando como una instrucción
+          handleSubmitInstruction(command);
+        },
+        enableDebug: true,
+        autoStart: true
+      });
+    });
+
+    return () => {
+      import('./utils/voiceInitializer').then(({ cleanupVoiceRecognition }) => {
+        cleanupVoiceRecognition();
+      });
+    };
+  }, []);
 
   // Para propósitos de desarrollo, forzar la animación
   // Comentar esta línea para producción

@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User, Sparkles, Zap, Code, Monitor, Smartphone, Tablet, X, Palette, Cpu, Split } from 'lucide-react';
+import { Send, Loader2, Bot, User, Sparkles, Zap, Code, Monitor, Smartphone, Tablet, X, Palette, Cpu, Split, Eye, Globe } from 'lucide-react';
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
+import { SpecializedEnhancerService, SpecializedEnhanceResult } from '../../services/SpecializedEnhancerService';
 import EnhancedPromptDialog from '../EnhancedPromptDialog';
 import { WebTemplate } from './WebTemplateSelector';
 import { WebComponent } from './ComponentPalette';
 import { generateUniqueId } from '../../utils/idGenerator';
+import { removeDuplicateFiles } from '../../utils/fileUtils';
 import AgentProgressPanel from './AgentProgressPanel';
 import AgentCoordinatorService, { CoordinatorTask } from '../../services/AgentCoordinatorService';
 import { DesignProposal, FileItem } from '../../types';
@@ -24,6 +26,8 @@ interface WebAIAssistantProps {
   onAddComponents: (components: WebComponent[]) => void;
   onPreview: () => void;
   onFilesGenerated?: (files: FileItem[]) => void;
+  onFilesUpdated?: (files: FileItem[]) => void;
+  onAutoPreview?: (html: string, css: string, js: string) => void;
   isProcessing: boolean;
   availableTemplates: WebTemplate[];
   availableComponents: WebComponent[];
@@ -35,6 +39,8 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
   onAddComponents,
   onPreview,
   onFilesGenerated,
+  onFilesUpdated,
+  onAutoPreview,
   isProcessing,
   availableTemplates,
   availableComponents
@@ -43,7 +49,7 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
-      content: '¡Hola! Soy tu asistente de diseño web. Describe el sitio web que te gustaría crear y te ayudaré a construirlo automáticamente. Por ejemplo: "Crea un sitio web para una pastelería artesanal con sección de productos, galería de fotos y formulario de contacto".',
+      content: '¡Hola! Soy tu asistente especializado en crear SITIOS WEB ESTÁTICOS profesionales. Describe el sitio web que te gustaría crear y generaré automáticamente HTML5, CSS3 y JavaScript vanilla optimizados. Por ejemplo: "Crea un sitio web estático para una consultoría de marketing digital con página de inicio, servicios, sobre nosotros y contacto".',
       sender: 'assistant',
       timestamp: Date.now(),
       type: 'text'
@@ -57,6 +63,7 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [currentEnhancedPrompt, setCurrentEnhancedPrompt] = useState<EnhancedPrompt | null>(null);
   const [showEnhancedPromptDialog, setShowEnhancedPromptDialog] = useState(false);
+  const [currentSpecializedResult, setCurrentSpecializedResult] = useState<SpecializedEnhanceResult | null>(null);
 
   // Estado para la vista previa
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
@@ -68,6 +75,106 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
   const [agentTasks, setAgentTasks] = useState<CoordinatorTask[]>([]);
   const [designProposal, setDesignProposal] = useState<DesignProposal | null>(null);
   const [generatedFiles, setGeneratedFiles] = useState<FileItem[]>([]);
+  const [currentFiles, setCurrentFiles] = useState<FileItem[]>([]);
+  const [generatedCss, setGeneratedCss] = useState('');
+  const [generatedJs, setGeneratedJs] = useState('');
+
+  // Función para detectar modificaciones de código en los mensajes
+  const detectCodeModifications = (content: string): { html?: string; css?: string; js?: string } | null => {
+    const modifications: { html?: string; css?: string; js?: string } = {};
+
+    // Detectar HTML completo (incluyendo DOCTYPE)
+    const fullHtmlMatch = content.match(/<!DOCTYPE html[\s\S]*?<\/html>/i);
+    if (fullHtmlMatch) {
+      modifications.html = fullHtmlMatch[0].trim();
+
+      // Extraer CSS del HTML si está presente
+      const cssInHtml = fullHtmlMatch[0].match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+      if (cssInHtml) {
+        modifications.css = cssInHtml[1].trim();
+      }
+
+      // Extraer JavaScript del HTML si está presente
+      const jsInHtml = fullHtmlMatch[0].match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+      if (jsInHtml) {
+        modifications.js = jsInHtml[1].trim();
+      }
+    } else {
+      // Detectar bloques de código HTML en markdown
+      const htmlMatch = content.match(/```html\s*([\s\S]*?)\s*```/i);
+      if (htmlMatch) {
+        modifications.html = htmlMatch[1].trim();
+      }
+
+      // Detectar bloques de código CSS
+      const cssMatch = content.match(/```css\s*([\s\S]*?)\s*```/i);
+      if (cssMatch) {
+        modifications.css = cssMatch[1].trim();
+      }
+
+      // Detectar bloques de código JavaScript
+      const jsMatch = content.match(/```javascript\s*([\s\S]*?)\s*```/i) ||
+                     content.match(/```js\s*([\s\S]*?)\s*```/i);
+      if (jsMatch) {
+        modifications.js = jsMatch[1].trim();
+      }
+    }
+
+    // Detectar modificaciones parciales de HTML (sin DOCTYPE)
+    if (!modifications.html) {
+      const partialHtmlMatch = content.match(/<html[\s\S]*?<\/html>/i) ||
+                              content.match(/<body[\s\S]*?<\/body>/i) ||
+                              content.match(/<head[\s\S]*?<\/head>/i);
+      if (partialHtmlMatch) {
+        modifications.html = partialHtmlMatch[0].trim();
+      }
+    }
+
+    return Object.keys(modifications).length > 0 ? modifications : null;
+  };
+
+  // Efecto para detectar modificaciones en los mensajes y actualizar vista previa
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && lastMessage.sender === 'user') {
+      const modifications = detectCodeModifications(lastMessage.content);
+
+      if (modifications) {
+        console.log('🔄 Modificaciones detectadas en el chat:', modifications);
+
+        // Actualizar estados con las modificaciones
+        if (modifications.html) {
+          setGeneratedHtml(modifications.html);
+        }
+        if (modifications.css) {
+          setGeneratedCss(modifications.css);
+        }
+        if (modifications.js) {
+          setGeneratedJs(modifications.js);
+        }
+
+        // Activar vista previa automática con las modificaciones
+        if (onAutoPreview && (modifications.html || modifications.css || modifications.js)) {
+          onAutoPreview(
+            modifications.html || generatedHtml,
+            modifications.css || generatedCss,
+            modifications.js || generatedJs
+          );
+
+          // Añadir mensaje de confirmación
+          const confirmationMessage: Message = {
+            id: generateUniqueId('msg-modification'),
+            content: `🔄 **Modificaciones detectadas y aplicadas**\n\n${modifications.html ? '✅ HTML actualizado\n' : ''}${modifications.css ? '✅ CSS actualizado\n' : ''}${modifications.js ? '✅ JavaScript actualizado\n' : ''}\n🔍 **Vista previa actualizada automáticamente**`,
+            sender: 'assistant',
+            timestamp: Date.now(),
+            type: 'suggestion'
+          };
+
+          setMessages(prev => [...prev, confirmationMessage]);
+        }
+      }
+    }
+  }, [messages, generatedHtml, generatedCss, generatedJs, onAutoPreview]);
 
   // Scroll al final del chat cuando hay nuevos mensajes
   useEffect(() => {
@@ -85,9 +192,11 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
         setAgentTasks(tasks);
       },
       onFilesGenerated: (files: FileItem[]) => {
-        setGeneratedFiles(files);
+        // Limpiar archivos duplicados antes de procesarlos
+        const cleanFiles = removeDuplicateFiles(files);
+        setGeneratedFiles(cleanFiles);
         if (onFilesGenerated) {
-          onFilesGenerated(files);
+          onFilesGenerated(cleanFiles);
         }
       },
       onDesignProposalUpdate: (proposal: DesignProposal | null) => {
@@ -135,17 +244,21 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
       setIsEnhancing(true);
 
       try {
-        const result = await PromptEnhancerService.enhancePrompt(inputValue);
+        // Usar el servicio especializado que detecta automáticamente el contexto WebAI
+        const result = await SpecializedEnhancerService.enhanceWithSpecializedAgent(inputValue, 'webai');
 
         if (result.success && result.enhancedPrompt) {
           setCurrentEnhancedPrompt(result.enhancedPrompt);
+          setCurrentSpecializedResult(result);
           setShowEnhancedPromptDialog(true);
+
+          console.log('🌐 WebAI: Prompt mejorado con agente especializado para sitios web estáticos');
         } else {
           // Si hay un error, enviar el mensaje original
           await sendOriginalMessage();
         }
       } catch (error) {
-        console.error('Error al mejorar el prompt:', error);
+        console.error('Error al mejorar el prompt con agente especializado:', error);
         // En caso de error, enviar el mensaje original
         await sendOriginalMessage();
       } finally {
@@ -301,20 +414,50 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
 
       // Si hay archivos generados
       if (result.files && result.files.length > 0) {
-        // Encontrar el archivo HTML principal
-        const htmlFile = result.files.find(file => file.path.endsWith('.html'));
+        // Limpiar archivos duplicados antes de procesarlos
+        const cleanFiles = removeDuplicateFiles(result.files);
+
+        // Extraer contenido de archivos para vista previa automática
+        const htmlFile = cleanFiles.find(file => file.path.endsWith('.html') && (file.path === 'index.html' || file.path.includes('index')));
+        const cssFile = cleanFiles.find(file => file.path.endsWith('.css') && (file.path === 'styles.css' || file.path.includes('style')));
+        const jsFile = cleanFiles.find(file => file.path.endsWith('.js') && (file.path === 'script.js' || file.path.includes('script')));
+
+        // Actualizar estados para vista previa
         if (htmlFile) {
           setGeneratedHtml(htmlFile.content);
+        }
+        if (cssFile) {
+          setGeneratedCss(cssFile.content);
+        }
+        if (jsFile) {
+          setGeneratedJs(jsFile.content);
+        }
+
+        // Activar vista previa automática si tenemos HTML
+        if (htmlFile && onAutoPreview) {
+          onAutoPreview(
+            htmlFile.content,
+            cssFile?.content || '',
+            jsFile?.content || ''
+          );
+        }
+
+        // Notificar archivos generados/actualizados
+        if (onFilesGenerated) {
+          onFilesGenerated(cleanFiles);
+        }
+        if (onFilesUpdated) {
+          onFilesUpdated(cleanFiles);
         }
 
         // Añadir mensaje con los archivos generados
         const filesMessage: Message = {
           id: generateUniqueId('msg-files'),
-          content: `El Agente de Código ha generado ${result.files.length} archivos para tu sitio web:\n${result.files.map(file => `• ${file.path}`).join('\n')}`,
+          content: `✅ **Sitio web estático generado exitosamente**\n\n📁 **Archivos creados:**\n${cleanFiles.map(file => `• \`${file.path}\``).join('\n')}\n\n🔍 **Vista previa activada automáticamente** - Puedes ver tu sitio web funcionando en tiempo real.\n\n💡 **Próximos pasos:**\n• Revisa la vista previa para verificar el diseño\n• Solicita modificaciones si necesitas cambios\n• Descarga los archivos cuando estés satisfecho`,
           sender: 'assistant',
           timestamp: Date.now(),
           type: 'suggestion',
-          metadata: { files: result.files }
+          metadata: { files: cleanFiles }
         };
 
         // Añadir mensaje con la vista previa
@@ -579,12 +722,12 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
                 className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg p-3 ${
+                  className={`max-w-[85%] rounded-lg p-3 transition-smooth ${
                     message.sender === 'user'
-                      ? 'bg-codestorm-accent text-white'
+                      ? 'bg-codestorm-accent text-white chat-message-pulse-user'
                       : message.type === 'suggestion'
-                        ? 'bg-codestorm-blue/30 text-white border border-codestorm-blue/50'
-                        : 'bg-codestorm-blue/20 text-white'
+                        ? 'bg-codestorm-blue/30 text-white border border-codestorm-blue/50 chat-message-pulse-system'
+                        : 'bg-codestorm-blue/20 text-white chat-message-pulse'
                   }`}
                 >
                   <div className="flex items-center mb-1">
@@ -633,7 +776,7 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
                     handleSendMessage();
                   }
                 }}
-                placeholder="Describe el sitio web que quieres crear..."
+                placeholder="Describe el sitio web estático que quieres crear (ej: sitio para restaurante, empresa, portfolio, etc.)..."
                 className={`flex-1 p-2 text-white placeholder-gray-400 border rounded-md resize-none bg-codestorm-dark ${
                   isEnhancing
                     ? 'border-codestorm-gold shadow-glow-blue animate-pulse-subtle'
@@ -650,9 +793,12 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
                       ? 'bg-codestorm-gold text-white'
                       : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
                   }`}
-                  title={enhancePromptEnabled ? 'Desactivar mejora de prompts' : 'Activar mejora de prompts'}
+                  title={enhancePromptEnabled ? 'Desactivar mejora de prompts (WebAI - Sitios Estáticos)' : 'Activar mejora de prompts (WebAI - Sitios Estáticos)'}
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <div className="relative">
+                    <Globe className="w-4 h-4" />
+                    <Sparkles className="w-2 h-2 absolute -top-1 -right-1 text-codestorm-gold" />
+                  </div>
                 </button>
                 <button
                   onClick={handleSendMessage}
@@ -684,8 +830,8 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
               <div className="flex items-center space-x-2">
                 {enhancePromptEnabled && (
                   <div className="flex items-center text-xs text-codestorm-gold">
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    <span>Mejora de prompts activada</span>
+                    <Globe className="w-3 h-3 mr-1" />
+                    <span>WebAI EnhanceAgent activo</span>
                   </div>
                 )}
 
@@ -765,10 +911,14 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
       {currentEnhancedPrompt && (
         <EnhancedPromptDialog
           enhancedPrompt={currentEnhancedPrompt}
-          onClose={() => setShowEnhancedPromptDialog(false)}
+          onClose={() => {
+            setShowEnhancedPromptDialog(false);
+            setCurrentSpecializedResult(null);
+          }}
           onUseOriginal={handleUseOriginalPrompt}
           onUseEnhanced={handleUseEnhancedPrompt}
           isVisible={showEnhancedPromptDialog}
+          specializedResult={currentSpecializedResult || undefined}
         />
       )}
     </div>

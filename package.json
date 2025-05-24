@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5173",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -14,7 +14,9 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.18.0",
     "@google/generative-ai": "^0.2.1",
+    "@monaco-editor/react": "^4.7.0",
     "@types/diff": "^8.0.0",
+    "@types/jszip": "^3.4.1",
     "cors": "^2.8.5",
     "diff": "^8.0.1",
     "dotenv": "^16.4.5",

@@ -21,7 +21,53 @@ const WebPreview: React.FC<WebPreviewProps> = ({
   const [device, setDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  
+  const [lastUpdate, setLastUpdate] = useState(Date.now());
+  const [forceRefresh, setForceRefresh] = useState(0);
+
+  // Función para validar y limpiar JavaScript
+  const validateAndCleanJS = (jsCode: string): string => {
+    if (!jsCode || jsCode.trim() === '') return '';
+
+    try {
+      // Limpiar patrones problemáticos comunes
+      let cleanedJS = jsCode
+        // Reemplazar querySelector('#') con código seguro
+        .replace(/querySelector\s*\(\s*['"`]#['"`]\s*\)/g, 'null /* querySelector con selector vacío removido */')
+        .replace(/querySelectorAll\s*\(\s*['"`]#['"`]\s*\)/g, '[] /* querySelectorAll con selector vacío removido */')
+        // Reemplazar getElementById('') con código seguro
+        .replace(/getElementById\s*\(\s*['"`]['"`]\s*\)/g, 'null /* getElementById con ID vacío removido */')
+        // Agregar verificación de existencia para elementos
+        .replace(/(\w+)\.addEventListener\s*\(/g, '$1 && $1.addEventListener(');
+
+      // Envolver en try-catch para mayor seguridad
+      cleanedJS = `
+try {
+  // Código JavaScript validado y limpiado
+  ${cleanedJS}
+} catch (error) {
+  console.warn('Error en JavaScript de vista previa:', error);
+}`;
+
+      return cleanedJS;
+    } catch (error) {
+      console.warn('Error al validar JavaScript:', error);
+      return '// JavaScript no válido - removido por seguridad';
+    }
+  };
+
+  // Efecto para detectar cambios en el contenido y forzar actualización completa
+  useEffect(() => {
+    setLastUpdate(Date.now());
+    setForceRefresh(prev => prev + 1); // Forzar re-render del iframe
+
+    console.log('🔄 Vista previa actualizada automáticamente:', {
+      htmlLength: html.length,
+      cssLength: css.length,
+      jsLength: js.length,
+      timestamp: new Date().toLocaleTimeString()
+    });
+  }, [html, css, js]);
+
   // Combinar HTML, CSS y JS en un solo documento
   const combinedCode = `
     <!DOCTYPE html>
@@ -29,6 +75,7 @@ const WebPreview: React.FC<WebPreviewProps> = ({
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="description" content="Sitio web generado por CODESTORM WebAI">
       <style>
         ${css}
       </style>
@@ -36,12 +83,57 @@ const WebPreview: React.FC<WebPreviewProps> = ({
     <body>
       ${html}
       <script>
-        ${js}
+        // JavaScript validado y limpiado
+        ${validateAndCleanJS(js)}
+
+        // Log para confirmar que el contenido se ha actualizado
+        console.log('🌐 Sitio web cargado - Última actualización:', new Date(${lastUpdate}).toLocaleTimeString());
+
+        // Función de utilidad para navegación segura
+        function setupSafeNavigation() {
+          // Manejar enlaces de navegación interna de forma segura
+          document.querySelectorAll('a[href^="#"]').forEach(link => {
+            const href = link.getAttribute('href');
+            if (href && href !== '#' && href.length > 1) {
+              link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = href.substring(1);
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                  targetElement.scrollIntoView({ behavior: 'smooth' });
+                }
+              });
+            } else if (href === '#') {
+              // Para enlaces con href="#", prevenir comportamiento por defecto
+              link.addEventListener('click', function(e) {
+                e.preventDefault();
+              });
+            }
+          });
+        }
+
+        // Ejecutar configuración cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', setupSafeNavigation);
+        } else {
+          setupSafeNavigation();
+        }
       </script>
     </body>
     </html>
   `;
-  
+
+  // Función para forzar actualización manual
+  const forceRefreshPreview = () => {
+    setForceRefresh(prev => prev + 1);
+    setLastUpdate(Date.now());
+    console.log('🔄 Vista previa actualizada manualmente');
+
+    if (onRefresh) {
+      onRefresh();
+    }
+  };
+
   // Función para copiar el código al portapapeles
   const copyToClipboard = () => {
     navigator.clipboard.writeText(combinedCode).then(() => {
@@ -49,7 +141,7 @@ const WebPreview: React.FC<WebPreviewProps> = ({
       setTimeout(() => setIsCopied(false), 2000);
     });
   };
-  
+
   // Función para descargar el código como archivo HTML
   const downloadAsHtml = () => {
     const blob = new Blob([combinedCode], { type: 'text/html' });
@@ -62,7 +154,7 @@ const WebPreview: React.FC<WebPreviewProps> = ({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-  
+
   // Efecto para manejar el modo pantalla completa
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
@@ -70,14 +162,14 @@ const WebPreview: React.FC<WebPreviewProps> = ({
         setIsFullscreen(false);
       }
     };
-    
+
     window.addEventListener('keydown', handleEsc);
-    
+
     return () => {
       window.removeEventListener('keydown', handleEsc);
     };
   }, []);
-  
+
   // Determinar el ancho de la vista previa según el dispositivo seleccionado
   const getPreviewWidth = () => {
     switch (device) {
@@ -90,7 +182,7 @@ const WebPreview: React.FC<WebPreviewProps> = ({
         return 'w-full max-w-[1200px]';
     }
   };
-  
+
   return (
     <div className={`
       bg-codestorm-darker text-white
@@ -122,20 +214,27 @@ const WebPreview: React.FC<WebPreviewProps> = ({
             <Smartphone className="h-4 w-4" />
           </button>
         </div>
-        
-        <h2 className="text-sm font-medium">Vista Previa</h2>
-        
+
+        <div className="flex items-center space-x-2">
+          <h2 className="text-sm font-medium">Vista Previa</h2>
+          <div className="flex items-center space-x-1 text-xs text-green-400">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <span>Auto-sync</span>
+          </div>
+          <div className="flex items-center space-x-1 text-xs text-blue-400">
+            <span>Actualización #{forceRefresh}</span>
+          </div>
+        </div>
+
         <div className="flex items-center space-x-1">
-          {onRefresh && (
-            <button
-              onClick={onRefresh}
-              className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white"
-              title="Actualizar vista previa"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-          )}
-          
+          <button
+            onClick={forceRefreshPreview}
+            className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white"
+            title="Actualizar vista previa"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+
           {onViewCode && (
             <button
               onClick={onViewCode}
@@ -145,7 +244,7 @@ const WebPreview: React.FC<WebPreviewProps> = ({
               <Code className="h-4 w-4" />
             </button>
           )}
-          
+
           <button
             onClick={copyToClipboard}
             className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white"
@@ -153,7 +252,7 @@ const WebPreview: React.FC<WebPreviewProps> = ({
           >
             {isCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
           </button>
-          
+
           <button
             onClick={downloadAsHtml}
             className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white"
@@ -161,7 +260,7 @@ const WebPreview: React.FC<WebPreviewProps> = ({
           >
             <Download className="h-4 w-4" />
           </button>
-          
+
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
             className="p-1.5 rounded text-gray-400 hover:bg-codestorm-blue/20 hover:text-white"
@@ -195,7 +294,7 @@ const WebPreview: React.FC<WebPreviewProps> = ({
               )}
             </svg>
           </button>
-          
+
           <button
             onClick={onClose}
             className="p-1.5 rounded text-gray-400 hover:bg-red-500/20 hover:text-red-400"
@@ -205,19 +304,21 @@ const WebPreview: React.FC<WebPreviewProps> = ({
           </button>
         </div>
       </div>
-      
+
       {/* Contenido de la vista previa */}
       <div className="flex-1 overflow-auto bg-gray-100 p-4">
         <div className={`mx-auto bg-white shadow-lg transition-all duration-300 ${getPreviewWidth()}`}>
           <iframe
+            key={`preview-${forceRefresh}-${lastUpdate}`}
             srcDoc={combinedCode}
             title="Vista previa del sitio web"
             className="w-full h-[600px] border-0"
             sandbox="allow-same-origin allow-scripts"
+            onLoad={() => console.log('🌐 Iframe cargado con nuevo contenido')}
           />
         </div>
       </div>
-      
+
       {/* Barra de estado */}
       <div className="bg-codestorm-blue/10 p-2 border-t border-codestorm-blue/30 flex justify-between items-center text-xs text-gray-400">
         <div>

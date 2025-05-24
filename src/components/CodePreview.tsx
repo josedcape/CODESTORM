@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FileItem } from '../types';
 import { Eye, Code, RefreshCw, ExternalLink, X, Smartphone, Tablet, Monitor, Maximize, Minimize, RotateCw } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
+import { removeDuplicateFiles, generateFileKey, validateFileKeys, fixDuplicateIds } from '../utils/fileUtils';
 
 interface CodePreviewProps {
   files: FileItem[];
@@ -10,6 +11,30 @@ interface CodePreviewProps {
 
 const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
   const { isMobile, isTablet } = useUI();
+
+  // Procesar archivos para eliminar duplicados y validar claves
+  const processedFiles = React.useMemo(() => {
+    // Primero eliminar duplicados basados en path
+    let cleanFiles = removeDuplicateFiles(files);
+
+    // Validar que no hay claves duplicadas
+    const validation = validateFileKeys(cleanFiles);
+    if (!validation.isValid) {
+      console.warn('🚨 Claves duplicadas detectadas en CodePreview:', {
+        duplicatePaths: validation.duplicates,
+        duplicateIds: validation.duplicateIds
+      });
+
+      // Corregir IDs duplicados si los hay
+      if (validation.duplicateIds.length > 0) {
+        cleanFiles = fixDuplicateIds(cleanFiles);
+        console.log('✅ IDs duplicados corregidos en CodePreview');
+      }
+    }
+
+    return cleanFiles;
+  }, [files]);
+
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,11 +46,11 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Filtrar archivos por tipo
-  const htmlFiles = files.filter(file => file.path.endsWith('.html'));
-  const cssFiles = files.filter(file => file.path.endsWith('.css'));
-  const jsFiles = files.filter(file => file.path.endsWith('.js'));
-  const otherFiles = files.filter(file =>
+  // Filtrar archivos por tipo usando archivos procesados
+  const htmlFiles = processedFiles.filter(file => file.path.endsWith('.html'));
+  const cssFiles = processedFiles.filter(file => file.path.endsWith('.css'));
+  const jsFiles = processedFiles.filter(file => file.path.endsWith('.js'));
+  const otherFiles = processedFiles.filter(file =>
     !file.path.endsWith('.html') &&
     !file.path.endsWith('.css') &&
     !file.path.endsWith('.js')
@@ -35,10 +60,10 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
   useEffect(() => {
     if (htmlFiles.length > 0 && !activeTab) {
       setActiveTab(htmlFiles[0].id);
-    } else if (files.length > 0 && !activeTab) {
-      setActiveTab(files[0].id);
+    } else if (processedFiles.length > 0 && !activeTab) {
+      setActiveTab(processedFiles[0].id);
     }
-  }, [files, htmlFiles, activeTab]);
+  }, [processedFiles, htmlFiles, activeTab]);
 
   // Generar una vista previa en tiempo real para proyectos web
   useEffect(() => {
@@ -88,7 +113,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
 
     try {
       // Encontrar el archivo HTML activo o usar el primero
-      const activeHtml = activeTab && files.find(f => f.id === activeTab && f.path.endsWith('.html'));
+      const activeHtml = activeTab && processedFiles.find(f => f.id === activeTab && f.path.endsWith('.html'));
       const htmlFile = activeHtml || htmlFiles[0];
 
       // Obtener el contenido HTML
@@ -220,7 +245,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
       (match, before, src, after) => {
         // Buscar si tenemos el archivo en nuestros archivos
         const imagePath = src.startsWith('/') ? src : `/${src}`;
-        const imageFile = files.find(f => f.path === imagePath);
+        const imageFile = processedFiles.find(f => f.path === imagePath);
 
         if (imageFile && imageFile.content) {
           // Si es una imagen en base64, usarla directamente
@@ -285,7 +310,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
     setAutoRefresh(!autoRefresh);
   };
 
-  const activeFile = activeTab ? files.find(f => f.id === activeTab) : null;
+  const activeFile = activeTab ? processedFiles.find(f => f.id === activeTab) : null;
 
   return (
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center ${isFullscreen ? 'p-0' : 'p-4'}`}>
@@ -370,7 +395,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
                   <div className="space-y-1">
                     {htmlFiles.map(file => (
                       <button
-                        key={file.id}
+                        key={generateFileKey(file)}
                         className={`w-full text-left px-2 py-1 rounded text-sm ${
                           activeTab === file.id
                             ? 'bg-codestorm-blue text-white'
@@ -391,7 +416,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
                   <div className="space-y-1">
                     {cssFiles.map(file => (
                       <button
-                        key={file.id}
+                        key={generateFileKey(file)}
                         className={`w-full text-left px-2 py-1 rounded text-sm ${
                           activeTab === file.id
                             ? 'bg-codestorm-blue text-white'
@@ -412,7 +437,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
                   <div className="space-y-1">
                     {jsFiles.map(file => (
                       <button
-                        key={file.id}
+                        key={generateFileKey(file)}
                         className={`w-full text-left px-2 py-1 rounded text-sm ${
                           activeTab === file.id
                             ? 'bg-codestorm-blue text-white'
@@ -433,7 +458,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
                   <div className="space-y-1">
                     {otherFiles.map(file => (
                       <button
-                        key={file.id}
+                        key={generateFileKey(file)}
                         className={`w-full text-left px-2 py-1 rounded text-sm ${
                           activeTab === file.id
                             ? 'bg-codestorm-blue text-white'
@@ -504,7 +529,7 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
                       src={previewUrl}
                       className="w-full h-full border-0"
                       title="Vista previa"
-                      sandbox="allow-scripts allow-same-origin allow-forms"
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-presentation"
                       onLoad={() => console.log('iframe cargado')}
                     />
                   </div>
