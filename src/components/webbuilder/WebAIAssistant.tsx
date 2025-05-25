@@ -1,5 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
+<<<<<<< HEAD
 import { Send, Loader2, Bot, User, Sparkles, Zap, Code, Monitor, Smartphone, Tablet, X, Palette, Cpu, Split, Eye, Globe } from 'lucide-react';
+=======
+import { Send, Loader2, Bot, User, Sparkles, Zap, Code, Monitor, Smartphone, Tablet, X, Palette, Cpu, Split, Eye, Globe, AlertCircle, Mic, MicOff } from 'lucide-react';
+>>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
 import { SpecializedEnhancerService, SpecializedEnhanceResult } from '../../services/SpecializedEnhancerService';
 import EnhancedPromptDialog from '../EnhancedPromptDialog';
@@ -10,6 +14,10 @@ import { removeDuplicateFiles } from '../../utils/fileUtils';
 import AgentProgressPanel from './AgentProgressPanel';
 import AgentCoordinatorService, { CoordinatorTask } from '../../services/AgentCoordinatorService';
 import { DesignProposal, FileItem } from '../../types';
+import DocumentUploader from '../DocumentUploader';
+import VoiceStateIndicator from '../VoiceStateIndicator';
+import VoiceInputButton from '../audio/VoiceInputButton';
+import { useAdvancedVoiceRecognition } from '../../hooks/useAdvancedVoiceRecognition';
 
 interface Message {
   id: string;
@@ -79,6 +87,26 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
   const [generatedCss, setGeneratedCss] = useState('');
   const [generatedJs, setGeneratedJs] = useState('');
 
+<<<<<<< HEAD
+=======
+  // Hook de reconocimiento de voz avanzado
+  const {
+    voiceState: advancedVoiceState,
+    isListening: isAdvancedListening,
+    isInitialized: isAdvancedVoiceInitialized,
+    error: advancedVoiceError,
+    startListening: startAdvancedListening,
+    stopListening: stopAdvancedListening
+  } = useAdvancedVoiceRecognition({
+    onTranscript: (transcript) => {
+      console.log('🎤 Comando de voz recibido en WebAI:', transcript);
+      setInputValue(transcript);
+    },
+    enableDebug: true,
+    componentName: 'WebAIAssistant'
+  });
+
+>>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
   // Función para detectar modificaciones de código en los mensajes
   const detectCodeModifications = (content: string): { html?: string; css?: string; js?: string } | null => {
     const modifications: { html?: string; css?: string; js?: string } = {};
@@ -348,6 +376,25 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
   // Función para alternar la mejora de prompts
   const toggleEnhancePrompt = () => {
     setEnhancePromptEnabled(!enhancePromptEnabled);
+  };
+
+  // Función para manejar documentos procesados
+  const handleDocumentProcessed = (content: string, fileName: string) => {
+    // Añadir mensaje del usuario con el contenido del documento
+    const userMessage: Message = {
+      id: generateUniqueId('msg-doc'),
+      content: content,
+      sender: 'user',
+      timestamp: Date.now(),
+      type: 'text'
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+
+    // Procesar la solicitud automáticamente
+    processUserRequest(content);
+
+    console.log(`📄 Documento cargado en WebAI: ${fileName}`);
   };
 
   // Función para procesar la solicitud del usuario
@@ -786,6 +833,49 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
                 disabled={isProcessing || isEnhancing}
               />
               <div className="flex flex-col justify-between space-y-2">
+                {/* Botón de carga de documentos */}
+                <DocumentUploader
+                  onDocumentProcessed={handleDocumentProcessed}
+                  disabled={isProcessing || isEnhancing}
+                  className="flex-shrink-0"
+                />
+
+                {/* Botón de micrófono - usar sistema avanzado si está disponible */}
+                {isAdvancedVoiceInitialized ? (
+                  <button
+                    onClick={() => {
+                      if (isAdvancedListening) {
+                        stopAdvancedListening();
+                      } else {
+                        startAdvancedListening();
+                      }
+                    }}
+                    disabled={isProcessing || isEnhancing}
+                    className={`p-2 rounded-md transition-all duration-200 ${
+                      isAdvancedListening
+                        ? 'bg-red-500 text-white animate-pulse'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+                    } ${isProcessing || isEnhancing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={isAdvancedListening ? 'Detener grabación' : 'Iniciar grabación de voz'}
+                  >
+                    {isAdvancedListening ? (
+                      <MicOff className="w-4 h-4" />
+                    ) : (
+                      <Mic className="w-4 h-4" />
+                    )}
+                  </button>
+                ) : (
+                  <VoiceInputButton
+                    onTranscript={(transcript) => setInputValue(transcript)}
+                    onFinalTranscript={(transcript) => setInputValue(transcript)}
+                    disabled={isProcessing || isEnhancing}
+                    size="md"
+                    autoSend={false}
+                    showTranscript={false}
+                    className="flex-shrink-0"
+                  />
+                )}
+
                 <button
                   onClick={toggleEnhancePrompt}
                   className={`p-2 rounded-md ${
@@ -843,6 +933,25 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Indicador de estado de voz avanzado */}
+            {isAdvancedVoiceInitialized && (
+              <div className="mt-2">
+                <VoiceStateIndicator
+                  state={advancedVoiceState}
+                  size="sm"
+                  showText={true}
+                />
+              </div>
+            )}
+
+            {/* Mensaje de error de voz avanzado */}
+            {advancedVoiceError && (
+              <div className="mt-2 flex items-center text-xs text-red-400">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                <span>{advancedVoiceError}</span>
+              </div>
+            )}
           </div>
         </div>
 

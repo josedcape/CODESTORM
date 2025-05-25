@@ -416,6 +416,7 @@ export class AIIterativeOrchestrator {
       this.updateProgress(30, 'Generando archivos del proyecto...');
       const generatedFiles = await this.generateFilesFromPlan(adaptedPlan);
 
+<<<<<<< HEAD
       // Mejorar los archivos HTML con el Agente de Diseño
       this.updateProgress(70, 'Mejorando diseño visual...');
       const enhancedFiles = await this.enhanceHTMLWithDesign(generatedFiles, adaptedPlan);
@@ -441,6 +442,38 @@ export class AIIterativeOrchestrator {
         }
       });
 
+=======
+      // Generar archivos de interfaz visual automáticamente (HTML/CSS)
+      this.updateProgress(60, 'Generando interfaz visual...');
+      const visualFiles = await this.generateVisualInterface(this.lastInstruction, adaptedPlan);
+      const allFiles = [...generatedFiles, ...visualFiles];
+
+      // Mejorar los archivos HTML con el Agente de Diseño
+      this.updateProgress(70, 'Mejorando diseño visual...');
+      const enhancedFiles = await this.enhanceHTMLWithDesign(allFiles, adaptedPlan);
+
+      // Generar todos los archivos automáticamente sin solicitar aprobación adicional
+      this.updateProgress(90, 'Finalizando generación de archivos...');
+      this.processGeneratedFiles(enhancedFiles);
+
+      // Completar progreso
+      this.updateProgress(100, 'Proyecto completado exitosamente');
+
+      // Añadir mensaje de finalización
+      this.addChatMessage({
+        id: generateUniqueId('msg-generation-complete'),
+        sender: 'ai-agent',
+        content: `✅ **AgenteLector**: Generación de archivos completada. Se han creado ${enhancedFiles.length} archivos. Ahora puedes intervenir para solicitar cambios o ajustes específicos.`,
+        timestamp: Date.now(),
+        type: 'notification',
+        metadata: {
+          agentType: 'lector',
+          phase: 'codeGeneration',
+          totalFiles: enhancedFiles.length
+        }
+      });
+
+>>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
       return;
     } catch (error) {
       this.handleError(error);
@@ -1832,5 +1865,151 @@ export class AIIterativeOrchestrator {
   private addLogEntry(entry: AILogEntry): void {
     this.aiLog.push(entry);
     this.logListeners.forEach(listener => listener(this.aiLog));
+  }
+
+  /**
+   * Genera archivos de interfaz visual (HTML/CSS) automáticamente
+   * @param instruction Instrucción original del usuario
+   * @param plan Plan del proyecto
+   * @returns Lista de archivos visuales generados
+   */
+  private async generateVisualInterface(instruction: string, plan: any): Promise<any[]> {
+    const visualFiles: any[] = [];
+
+    try {
+      console.log('Generando archivos de interfaz visual para el Constructor...');
+
+      // Verificar si ya existen archivos HTML/CSS en el plan
+      const existingHtml = plan.files?.find((f: any) => f.path?.endsWith('.html'));
+      const existingCss = plan.files?.find((f: any) => f.path?.endsWith('.css'));
+
+      // Solo generar si no existen archivos HTML/CSS
+      if (!existingHtml && !existingCss) {
+        // Añadir mensaje informativo
+        this.addChatMessage({
+          id: generateUniqueId('msg-visual-generation'),
+          sender: 'ai-agent',
+          content: `🎨 **AgenteLector**: Generando archivos de interfaz visual (HTML/CSS) automáticamente para complementar el proyecto.`,
+          timestamp: Date.now(),
+          type: 'agent-report',
+          metadata: {
+            agentType: 'lector',
+            phase: 'visualGeneration'
+          }
+        });
+
+        // 1. Generar index.html
+        const htmlTask: AgentTask = {
+          id: generateUniqueId('task'),
+          type: 'codeGenerator',
+          instruction: `Generar archivo index.html para: ${instruction}`,
+          status: 'working',
+          startTime: Date.now()
+        };
+
+        const htmlFileDesc = {
+          path: 'index.html',
+          description: `Página principal del proyecto. Debe incluir: estructura HTML5 semántica, meta tags SEO optimizados, contenido específico basado en "${instruction}", navegación, secciones principales, y enlaces a styles.css. El contenido debe ser completamente personalizado y relevante al contexto del proyecto.`,
+          dependencies: ['styles.css']
+        };
+
+        const htmlResult = await CodeGeneratorAgent.execute(htmlTask, htmlFileDesc, plan.description);
+
+        if (htmlResult.success && htmlResult.data?.file) {
+          visualFiles.push({
+            ...htmlResult.data.file,
+            language: 'html',
+            enhanced: false
+          });
+
+          this.addChatMessage({
+            id: generateUniqueId('msg-html-generated'),
+            sender: 'ai-agent',
+            content: `✅ **AgenteGenerador**: Archivo index.html generado exitosamente (${htmlResult.data.file.content?.length || 0} bytes)`,
+            timestamp: Date.now(),
+            type: 'progress',
+            metadata: {
+              agentType: 'codeGenerator',
+              phase: 'visualGeneration',
+              filePath: 'index.html'
+            }
+          });
+        }
+
+        // 2. Generar styles.css
+        const cssTask: AgentTask = {
+          id: generateUniqueId('task'),
+          type: 'codeGenerator',
+          instruction: `Generar archivo styles.css para: ${instruction}`,
+          status: 'working',
+          startTime: Date.now()
+        };
+
+        const cssFileDesc = {
+          path: 'styles.css',
+          description: `Hoja de estilos principal para el proyecto. Debe incluir: reset CSS, variables CSS para colores y espaciado, diseño responsive mobile-first, estilos para todos los componentes del HTML, animaciones suaves, hover effects, tipografía optimizada con Google Fonts, y paleta de colores coherente con el contexto "${instruction}".`,
+          dependencies: []
+        };
+
+        const cssResult = await CodeGeneratorAgent.execute(cssTask, cssFileDesc, plan.description);
+
+        if (cssResult.success && cssResult.data?.file) {
+          visualFiles.push({
+            ...cssResult.data.file,
+            language: 'css',
+            enhanced: false
+          });
+
+          this.addChatMessage({
+            id: generateUniqueId('msg-css-generated'),
+            sender: 'ai-agent',
+            content: `✅ **AgenteGenerador**: Archivo styles.css generado exitosamente (${cssResult.data.file.content?.length || 0} bytes)`,
+            timestamp: Date.now(),
+            type: 'progress',
+            metadata: {
+              agentType: 'codeGenerator',
+              phase: 'visualGeneration',
+              filePath: 'styles.css'
+            }
+          });
+        }
+
+        console.log(`Archivos de interfaz visual generados: ${visualFiles.length}`);
+      } else {
+        console.log('Ya existen archivos HTML/CSS en el plan, omitiendo generación automática');
+
+        this.addChatMessage({
+          id: generateUniqueId('msg-visual-skip'),
+          sender: 'ai-agent',
+          content: `ℹ️ **AgenteLector**: Se detectaron archivos HTML/CSS existentes en el plan. Se omite la generación automática de interfaz visual.`,
+          timestamp: Date.now(),
+          type: 'notification',
+          metadata: {
+            agentType: 'lector',
+            phase: 'visualGeneration'
+          }
+        });
+      }
+
+      return visualFiles;
+
+    } catch (error) {
+      console.error('Error al generar archivos de interfaz visual:', error);
+
+      this.addChatMessage({
+        id: generateUniqueId('msg-visual-error'),
+        sender: 'ai-agent',
+        content: `❌ **AgenteLector**: Error al generar archivos de interfaz visual: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        timestamp: Date.now(),
+        type: 'error',
+        metadata: {
+          agentType: 'lector',
+          phase: 'visualGeneration',
+          error: error instanceof Error ? error.message : 'Error desconocido'
+        }
+      });
+
+      return visualFiles; // Retornar los archivos que se pudieron generar
+    }
   }
 }

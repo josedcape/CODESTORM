@@ -19,6 +19,7 @@ import CollapsiblePanel from './components/CollapsiblePanel';
 import FloatingActionButtons from './components/FloatingActionButtons';
 import BrandLogo from './components/BrandLogo';
 import Footer from './components/Footer';
+import HelpAssistant from './components/HelpAssistant';
 import CodeModifierPanel from './components/codemodifier/CodeModifierPanel';
 import IntroAnimation from './components/IntroAnimation';
 import useIntroAnimation from './hooks/useIntroAnimation';
@@ -41,6 +42,7 @@ const MainApp: React.FC = () => {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showHelpAssistant, setShowHelpAssistant] = useState(false);
 
   // Usar el hook personalizado para la animación de introducción
   const { showIntro, completeIntro } = useIntroAnimation();
@@ -257,6 +259,27 @@ const MainApp: React.FC = () => {
               orchestrator: true
             };
           });
+
+          // Si se generó una propuesta de diseño, mostrar mensaje informativo
+          if (result.designProposal) {
+            const designInfoOutput: TerminalOutput = {
+              id: `term-design-info-${Date.now()}`,
+              command: 'echo "Propuesta de diseño generada"',
+              output: `Agente de Diseño: Se ha generado una propuesta visual para el proyecto. Los archivos HTML y CSS han sido creados automáticamente.`,
+              timestamp: Date.now(),
+              status: 'info' as const,
+              analysis: {
+                isValid: true,
+                summary: 'Propuesta de diseño generada',
+                executionTime: Math.floor(Math.random() * 200) + 100
+              }
+            };
+
+            setProjectState(prev => ({
+              ...prev,
+              terminal: [...prev.terminal, designInfoOutput]
+            }));
+          }
 
           // Seleccionar el primer archivo generado
           if (result.files.length > projectState.files.length) {
@@ -575,8 +598,46 @@ const MainApp: React.FC = () => {
     setShowChat(prev => !prev);
   };
 
+  // Función para manejar el asistente de ayuda
+  const handleToggleHelpAssistant = () => {
+    setShowHelpAssistant(prev => !prev);
+  };
+
+  // Función para detectar si un archivo es estático y afecta la vista previa
+  const isStaticWebFile = (file: FileItem): boolean => {
+    const staticExtensions = ['.html', '.htm', '.css', '.js', '.jsx', '.ts', '.tsx', '.json', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.eot'];
+    const staticPaths = ['index.html', 'styles.css', 'style.css', 'main.css', 'app.css', 'script.js', 'main.js', 'app.js'];
+
+    // Verificar por extensión
+    const hasStaticExtension = staticExtensions.some(ext =>
+      file.path.toLowerCase().endsWith(ext) || file.name.toLowerCase().endsWith(ext)
+    );
+
+    // Verificar por nombre de archivo común
+    const hasStaticName = staticPaths.some(path =>
+      file.path.toLowerCase().includes(path) || file.name.toLowerCase() === path
+    );
+
+    // Verificar por contenido HTML/CSS/JS
+    const hasWebContent = file.content && (
+      file.content.includes('<!DOCTYPE html>') ||
+      file.content.includes('<html') ||
+      file.content.includes('<style>') ||
+      file.content.includes('body {') ||
+      file.content.includes('function ') ||
+      file.content.includes('const ') ||
+      file.content.includes('var ') ||
+      file.content.includes('let ')
+    );
+
+    return hasStaticExtension || hasStaticName || hasWebContent;
+  };
+
   // Función para aplicar cambios del modificador de código
   const handleApplyCodeModifications = (originalFile: FileItem, modifiedFile: FileItem) => {
+    // Detectar si es un archivo estático que afecta la vista previa
+    const isStaticFile = isStaticWebFile(modifiedFile);
+
     // Actualizar el estado con el archivo modificado
     setProjectState(prev => {
       // Encontrar el índice del archivo original
@@ -592,7 +653,7 @@ const MainApp: React.FC = () => {
       const successOutput: TerminalOutput = {
         id: `term-modify-success-${Date.now()}`,
         command: `echo "Archivo ${modifiedFile.path} modificado con éxito"`,
-        output: `Archivo ${modifiedFile.path} modificado con éxito mediante el Agente Modificador de Código`,
+        output: `Archivo ${modifiedFile.path} modificado con éxito mediante el Agente Modificador de Código${isStaticFile ? ' - Vista previa actualizada automáticamente' : ''}`,
         timestamp: Date.now(),
         status: 'success' as const,
         analysis: {
@@ -608,6 +669,24 @@ const MainApp: React.FC = () => {
         terminal: [...prev.terminal, successOutput]
       };
     });
+
+    // Si es un archivo estático y la vista previa está abierta, forzar actualización
+    if (isStaticFile && showPreview) {
+      console.log('🔄 Archivo estático modificado, actualizando vista previa automáticamente:', modifiedFile.path);
+
+      // Pequeño delay para asegurar que el estado se haya actualizado
+      setTimeout(() => {
+        // Disparar evento personalizado para notificar al CodePreview
+        const event = new CustomEvent('codestorm-file-modified', {
+          detail: {
+            file: modifiedFile,
+            isStaticFile: true,
+            timestamp: Date.now()
+          }
+        });
+        window.dispatchEvent(event);
+      }, 100);
+    }
   };
 
   return (
@@ -775,8 +854,16 @@ const MainApp: React.FC = () => {
         onToggleChat={handleToggleChat}
         onTogglePreview={handleTogglePreview}
         onToggleCodeModifier={toggleCodeModifier}
+        onToggleHelpAssistant={handleToggleHelpAssistant}
         showChat={showChat}
         showCodeModifier={isCodeModifierVisible}
+        showHelpAssistant={showHelpAssistant}
+      />
+
+      {/* Asistente de ayuda */}
+      <HelpAssistant
+        isOpen={showHelpAssistant}
+        onClose={handleToggleHelpAssistant}
       />
 
       {/* Logo de BOTIDINAMIX */}

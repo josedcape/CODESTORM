@@ -15,6 +15,7 @@ import FloatingActionButtons from '../components/FloatingActionButtons';
 import BrandLogo from '../components/BrandLogo';
 import Footer from '../components/Footer';
 import CodeModifierPanel from '../components/codemodifier/CodeModifierPanel';
+import HelpAssistant from '../components/HelpAssistant';
 import IntroAnimation from '../components/IntroAnimation';
 import LoadingOverlay from '../components/LoadingOverlay';
 import WebTemplateSelector, { WebTemplate } from '../components/webbuilder/WebTemplateSelector';
@@ -52,6 +53,7 @@ const WebAI: React.FC = () => {
   const [generatedHtml, setGeneratedHtml] = useState<string>('');
   const [generatedCss, setGeneratedCss] = useState<string>('');
   const [generatedJs, setGeneratedJs] = useState<string>('');
+  const [showHelpAssistant, setShowHelpAssistant] = useState(false);
   const [websiteDescription, setWebsiteDescription] = useState<string>('');
 
   // Estado para la animación de introducción
@@ -259,6 +261,11 @@ const WebAI: React.FC = () => {
   // Función para alternar el asistente de IA
   const handleToggleAssistant = () => {
     setShowAssistant(prev => !prev);
+  };
+
+  // Función para manejar el asistente de ayuda
+  const handleToggleHelpAssistant = () => {
+    setShowHelpAssistant(prev => !prev);
   };
 
   // Función para manejar la vista previa web
@@ -1066,8 +1073,10 @@ const WebAI: React.FC = () => {
         onToggleChat={handleToggleChat}
         onTogglePreview={handleTogglePreview}
         onToggleCodeModifier={toggleCodeModifier}
+        onToggleHelpAssistant={handleToggleHelpAssistant}
         showChat={showChat}
         showCodeModifier={isCodeModifierVisible}
+        showHelpAssistant={showHelpAssistant}
       />
 
       {/* Logo de BOTIDINAMIX */}
@@ -1085,6 +1094,15 @@ const WebAI: React.FC = () => {
         canCancel={loadingState.canCancel}
         onCancel={cancelLoading}
       />
+<<<<<<< HEAD
+=======
+
+      {/* Asistente de ayuda */}
+      <HelpAssistant
+        isOpen={showHelpAssistant}
+        onClose={handleToggleHelpAssistant}
+      />
+>>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
     </div>
   );
 };

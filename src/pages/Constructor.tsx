@@ -6,6 +6,11 @@ import BrandLogo from '../components/BrandLogo';
 import Footer from '../components/Footer';
 import CodeModifierPanel from '../components/codemodifier/CodeModifierPanel';
 import LoadingOverlay from '../components/LoadingOverlay';
+<<<<<<< HEAD
+=======
+import HelpAssistant from '../components/HelpAssistant';
+import FloatingActionButtons from '../components/FloatingActionButtons';
+>>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
 import {
   Loader,
   AlertTriangle,
@@ -200,6 +205,7 @@ const Constructor: React.FC = () => {
   const [showError, setShowError] = useState(false);
   const [showDirectoryExplorer, setShowDirectoryExplorer] = useState<boolean>(true);
   const [selectedFileForViewing, setSelectedFileForViewing] = useState<FileItem | null>(null);
+  const [showHelpAssistant, setShowHelpAssistant] = useState(false);
 
   // Efecto para suscribirse a los cambios en el estado del orquestrador iterativo
   useEffect(() => {
@@ -1106,6 +1112,11 @@ Instrucciones de uso...`;
     });
   };
 
+  // Función para manejar el asistente de ayuda
+  const handleToggleHelpAssistant = () => {
+    setShowHelpAssistant(prev => !prev);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-codestorm-darker">
       <Header showConstructorButton={false} />
@@ -1364,6 +1375,17 @@ Instrucciones de uso...`;
         }}
       />
 
+      {/* Botones flotantes */}
+      <FloatingActionButtons
+        onToggleChat={() => {}} // No hay chat separado en Constructor
+        onTogglePreview={() => setAIConstructorState(prev => ({ ...prev, activeTab: 'preview' }))}
+        onToggleCodeModifier={toggleCodeModifier}
+        onToggleHelpAssistant={handleToggleHelpAssistant}
+        showChat={false}
+        showCodeModifier={isCodeModifierVisible}
+        showHelpAssistant={showHelpAssistant}
+      />
+
       <Footer showLogo={true} />
 
       {/* Repository Importer */}
@@ -1396,6 +1418,15 @@ Instrucciones de uso...`;
           }));
         }}
       />
+<<<<<<< HEAD
+=======
+
+      {/* Asistente de ayuda */}
+      <HelpAssistant
+        isOpen={showHelpAssistant}
+        onClose={handleToggleHelpAssistant}
+      />
+>>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
     </div>
   );
 };

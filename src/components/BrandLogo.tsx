@@ -62,7 +62,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({
 
   return (
     <div
-      className={`fixed z-50 ${isMobile ? 'bottom-20 right-4' : 'bottom-8 right-8'} cursor-pointer transition-all duration-500 transform hover:scale-110 ${getAnimationClasses()}`}
+      className={`fixed z-50 ${isMobile ? 'top-4 left-4' : 'top-6 left-6'} cursor-pointer transition-all duration-500 transform hover:scale-110 ${getAnimationClasses()}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
@@ -96,7 +96,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({
 
       {/* Texto que aparece al hacer hover */}
       <div
-        className={`absolute -top-10 left-1/2 transform -translate-x-1/2 bg-codestorm-dark px-3 py-1 rounded-full text-xs text-codestorm-accent border border-codestorm-blue/30 whitespace-nowrap transition-all duration-300 ${
+        className={`absolute ${isMobile ? '-bottom-10 left-1/2 transform -translate-x-1/2' : '-right-32 top-1/2 transform -translate-y-1/2'} bg-codestorm-dark px-3 py-1 rounded-full text-xs text-codestorm-accent border border-codestorm-blue/30 whitespace-nowrap transition-all duration-300 ${
           isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
         }`}
       >

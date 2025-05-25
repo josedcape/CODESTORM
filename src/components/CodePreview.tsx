@@ -287,6 +287,38 @@ const CodePreview: React.FC<CodePreviewProps> = ({ files, onClose }) => {
     };
   }, []);
 
+  // Escuchar eventos de modificación de archivos para actualización automática
+  useEffect(() => {
+    const handleFileModified = (event: CustomEvent) => {
+      const { file, isStaticFile, timestamp } = event.detail;
+
+      if (isStaticFile) {
+        console.log('🔄 CodePreview: Archivo estático modificado detectado, actualizando vista previa:', file.path);
+
+        // Actualizar timestamp de última modificación
+        setLastModified(timestamp);
+
+        // Si el archivo modificado es HTML y hay archivos HTML, regenerar vista previa
+        if (file.path.endsWith('.html') || file.path.endsWith('.htm')) {
+          console.log('📄 Archivo HTML modificado, regenerando vista previa...');
+          generatePreview();
+        }
+        // Si es CSS o JS y hay archivos HTML, también regenerar
+        else if ((file.path.endsWith('.css') || file.path.endsWith('.js')) && htmlFiles.length > 0) {
+          console.log('🎨 Archivo CSS/JS modificado, regenerando vista previa...');
+          generatePreview();
+        }
+      }
+    };
+
+    // Agregar listener para el evento personalizado
+    window.addEventListener('codestorm-file-modified', handleFileModified as EventListener);
+
+    return () => {
+      window.removeEventListener('codestorm-file-modified', handleFileModified as EventListener);
+    };
+  }, [htmlFiles.length, generatePreview]);
+
   // Función para cambiar el tamaño de la vista previa
   const getViewportStyle = () => {
     switch (viewportSize) {

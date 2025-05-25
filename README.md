@@ -27,9 +27,13 @@ CODESTORM implementa una arquitectura modular con agentes especializados que tra
 | **Agente de Planificación** | Analiza los requisitos y crea planes detallados de desarrollo |
 | **Agente de Generación de Código** | Produce código de alta calidad basado en los planes establecidos |
 | **Agente de Sincronización de Archivos** | Mantiene sincronizados los archivos entre el terminal y el explorador |
-| **Agente de Modificación de Código** | Realiza cambios inteligentes en el código existente |
+| **Agente de Modificación de Código** | Realiza cambios inteligentes en el código existente con actualización automática del preview |
 | **Agente de Observación de Archivos** | Monitorea en tiempo real los archivos creados y su estructura |
-| **Agente de Distribución de Archivos** | Separa el código generado en archivos independientes |
+| **Agente de Separación de Código** | Segmenta automáticamente código combinado en archivos individuales |
+| **Agente de Corrección de Código** | Detecta y corrige errores de sintaxis, lógica, seguridad y rendimiento |
+| **Agente de Seguimiento** | Documenta el proceso de desarrollo y mantiene un registro del progreso |
+| **Agente Lector** | Analiza archivos existentes y proporciona contexto para modificaciones |
+| **Agente de Diseño Arquitectónico** | Genera automáticamente archivos HTML/CSS para interfaces visuales |
 
 ### 🔍 Función "Enhance Prompt"
 
@@ -80,8 +84,39 @@ Sistema de monitoreo que:
 - Diseño adaptable para dispositivos móviles y de escritorio
 - Animaciones sutiles inspiradas en el concepto de "tormenta de código"
 - Paneles colapsables para optimizar el espacio de trabajo
-- Botones flotantes para acceso rápido a funciones principales
-- Temas visuales personalizables
+- Botones flotantes mejorados con navegación al menú principal
+- Logo de BOTIDINAMIX AI posicionado en la esquina superior izquierda
+- Temas visuales personalizables con efectos futuristas
+
+### 🔄 Actualización Automática del Preview
+
+Una característica revolucionaria que mejora la experiencia de desarrollo:
+
+- **Detección inteligente** de archivos estáticos (HTML, CSS, JavaScript)
+- **Actualización en tiempo real** del CodePreview/WebView cuando se modifican archivos
+- **Sincronización automática** entre modificaciones y vista previa
+- **Feedback visual inmediato** sin intervención manual del usuario
+- **Comunicación eficiente** mediante eventos personalizados entre componentes
+
+### 🧩 Segmentación Automática de Código
+
+Sistema avanzado de separación de archivos integrado en toda la plataforma:
+
+- **Detección automática** de código combinado que necesita segmentación
+- **Análisis inteligente** por patrones de comentarios, bloques de código y declaraciones
+- **Generación de archivos individuales** perfectamente organizados
+- **Consistencia total** entre página principal y Constructor
+- **Manejo robusto** de errores con fallbacks seguros
+
+### 🏗️ Generación Automática de Interfaces Visuales
+
+El DesignArchitectAgent ahora está integrado en toda la plataforma:
+
+- **Generación automática** de archivos HTML/CSS para TODAS las aplicaciones
+- **Detección inteligente** de colores y paletas profesionales por industria
+- **Diseño responsivo** mobile-first con estructura HTML5 semántica
+- **Variables CSS** organizadas y cumplimiento de accesibilidad WCAG 2.1 AA
+- **Integración transparente** sin afectar la funcionalidad existente
 
 ## 🛠️ Tecnologías Utilizadas
 
@@ -170,20 +205,47 @@ codestorm/
 └── vite.config.js           # Configuración de Vite
 ```
 
+## 📈 Changelog - Últimas Mejoras
+
+### 🆕 Versión 2.5.0 - Enero 2025
+
+#### ✨ **Nuevas Características:**
+
+- **🔄 Actualización Automática del Preview**: Los cambios en archivos estáticos (HTML, CSS, JS) se reflejan automáticamente en el CodePreview/WebView sin intervención manual
+- **🧩 Segmentación Automática de Código**: Integración del CodeSplitterAgent en la página principal para separar automáticamente código combinado en archivos individuales
+- **🏗️ Generación Automática de Interfaces**: El DesignArchitectAgent ahora genera archivos HTML/CSS automáticamente para TODAS las aplicaciones
+- **🏠 Botón de Menú Principal**: Nuevo botón flotante para navegación rápida al menú principal desde cualquier página
+- **📍 Logo Reposicionado**: Logo de BOTIDINAMIX AI movido a la esquina superior izquierda para mejor accesibilidad
+
+#### 🔧 **Mejoras Técnicas:**
+
+- **Detección inteligente** de archivos estáticos con múltiples criterios (extensión, nombre, contenido)
+- **Comunicación eficiente** mediante eventos personalizados entre componentes
+- **Manejo robusto de errores** con fallbacks seguros en todos los procesos
+- **Optimización móvil** mejorada para botones flotantes y navegación
+- **Consistencia total** entre página principal y Constructor
+
+#### 🐛 **Correcciones:**
+
+- Solucionado error en AgentStatus.tsx con tipos de agentes no definidos
+- Mejorada la responsividad de botones flotantes en dispositivos móviles
+- Optimizada la sincronización entre modificaciones de archivos y vista previa
+- Corregidos problemas de navegación en el panel de botones flotantes
+
 ## 📸 Capturas de Pantalla
 
 <div align="center">
   <img src="https://i.imgur.com/example1.png" alt="Interfaz Principal" width="80%"/>
-  <p><i>Interfaz Principal de CODESTORM</i></p>
+  <p><i>Interfaz Principal de CODESTORM con nuevas características</i></p>
 
   <img src="https://i.imgur.com/example2.png" alt="Constructor" width="80%"/>
-  <p><i>Página del Constructor con Sistema de Aprobación por Etapas</i></p>
+  <p><i>Constructor con Segmentación Automática y Generación de Interfaces</i></p>
 
-  <img src="https://i.imgur.com/example3.png" alt="Separador de Código" width="80%"/>
-  <p><i>Separador de Código en Acción</i></p>
+  <img src="https://i.imgur.com/example3.png" alt="Preview Automático" width="80%"/>
+  <p><i>Actualización Automática del Preview en Tiempo Real</i></p>
 
-  <img src="https://i.imgur.com/example4.png" alt="Corrector de Código" width="80%"/>
-  <p><i>Panel Visual de Resultados del Corrector de Código</i></p>
+  <img src="https://i.imgur.com/example4.png" alt="Botones Flotantes" width="80%"/>
+  <p><i>Panel de Botones Flotantes Mejorado con Navegación</i></p>
 </div>
 
 ## 🤝 Contribuir

@@ -32,7 +32,13 @@ import {
   FileText,
   AlertCircle,
   CheckCircle,
+<<<<<<< HEAD
   Code
+=======
+  Code,
+  Mic,
+  MicOff
+>>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
 } from 'lucide-react';
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
 import { SpecializedEnhancerService, SpecializedEnhanceResult } from '../../services/SpecializedEnhancerService';
@@ -41,6 +47,12 @@ import EnhancedPromptDialog from '../../components/EnhancedPromptDialog';
 import EnhancementHistoryPanel from '../../components/EnhancementHistoryPanel';
 import StageSidebar from './StageSidebar';
 import TypingIndicator from '../ui/TypingIndicator';
+<<<<<<< HEAD
+=======
+import DocumentUploader from '../DocumentUploader';
+import VoiceStateIndicator from '../VoiceStateIndicator';
+import { useAdvancedVoiceRecognition } from '../../hooks/useAdvancedVoiceRecognition';
+>>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
 
 interface InteractiveChatProps {
   messages: ChatMessage[];
@@ -116,6 +128,23 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Hook de reconocimiento de voz avanzado
+  const {
+    voiceState: advancedVoiceState,
+    isListening: isAdvancedListening,
+    isInitialized: isAdvancedVoiceInitialized,
+    error: advancedVoiceError,
+    startListening: startAdvancedListening,
+    stopListening: stopAdvancedListening
+  } = useAdvancedVoiceRecognition({
+    onTranscript: (transcript) => {
+      console.log('🎤 Comando de voz recibido en Constructor:', transcript);
+      setInputValue(transcript);
+    },
+    enableDebug: true,
+    componentName: 'InteractiveChat-Constructor'
+  });
 
   // Scroll al final de los mensajes cuando se añade uno nuevo
   useEffect(() => {
@@ -287,6 +316,17 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   const usePromptFromHistory = (prompt: string) => {
     setInputValue(prompt);
     setShowEnhancementHistory(false);
+  };
+
+  // Función para manejar documentos procesados
+  const handleDocumentProcessed = (content: string, fileName: string) => {
+    // Enviar el contenido del documento como mensaje automáticamente
+    onSendMessage(content);
+
+    // Reproducir sonido de documento cargado
+    audio.playProcessComplete();
+
+    console.log(`📄 Documento cargado en Constructor: ${fileName}`);
   };
 
   // Función para alternar la visibilidad de la ventana lateral de etapas
@@ -907,6 +947,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
               disabled={isProcessing || isEnhancing || isDisabled}
             />
             <div className={`flex ${isMobile ? 'flex-row space-x-1' : 'flex-col justify-between space-y-2'}`}>
+<<<<<<< HEAD
               {/* Botón de micrófono */}
               <VoiceInputButton
                 onTranscript={handleVoiceTranscript}
@@ -918,6 +959,55 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                 className="relative"
               />
 
+=======
+              {/* Botón de carga de documentos */}
+              <DocumentUploader
+                onDocumentProcessed={handleDocumentProcessed}
+                disabled={isProcessing || isEnhancing || isDisabled}
+                className="flex-shrink-0"
+              />
+
+              {/* Botón de micrófono - usar sistema avanzado si está disponible */}
+              {isAdvancedVoiceInitialized ? (
+                <button
+                  onClick={() => {
+                    if (isAdvancedListening) {
+                      stopAdvancedListening();
+                    } else {
+                      startAdvancedListening();
+                    }
+                  }}
+                  disabled={isProcessing || isEnhancing || isDisabled}
+                  className={`
+                    rounded-md transition-all duration-200 relative -webkit-tap-highlight-color: transparent
+                    ${isMobile ? 'p-2 min-w-[40px] min-h-[40px]' : 'p-2'}
+                    ${isAdvancedListening
+                      ? 'bg-red-500 text-white animate-pulse'
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+                    }
+                    ${isProcessing || isEnhancing || isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
+                  `}
+                  title={isAdvancedListening ? 'Detener grabación' : 'Iniciar grabación de voz'}
+                >
+                  {isAdvancedListening ? (
+                    <MicOff className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
+                  ) : (
+                    <Mic className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
+                  )}
+                </button>
+              ) : (
+                <VoiceInputButton
+                  onTranscript={handleVoiceTranscript}
+                  onFinalTranscript={handleVoiceFinalTranscript}
+                  disabled={isProcessing || isEnhancing || isDisabled}
+                  size={isMobile ? 'sm' : 'md'}
+                  autoSend={false}
+                  showTranscript={false}
+                  className="relative"
+                />
+              )}
+
+>>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
               <button
                 onClick={toggleEnhancePrompt}
                 className={`
@@ -986,6 +1076,23 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                 <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
                 <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
               </div>
+            </div>
+          )}
+
+          {/* Indicador de estado de voz avanzado */}
+          {isAdvancedVoiceInitialized && (
+            <VoiceStateIndicator
+              state={advancedVoiceState}
+              size="sm"
+              showText={true}
+            />
+          )}
+
+          {/* Mensaje de error de voz avanzado */}
+          {advancedVoiceError && (
+            <div className="flex items-center text-xs text-red-400">
+              <AlertCircle className="w-3 h-3 mr-1" />
+              <span>{advancedVoiceError}</span>
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { AgentTask, AgentType } from '../types';
-import { Brain, Code, RefreshCw, FileEdit, CheckCircle, Clock, AlertCircle, Circle, Eye, Scissors } from 'lucide-react';
+import { Brain, Code, RefreshCw, FileEdit, CheckCircle, Clock, AlertCircle, Circle, Eye, Scissors, Bug, BookOpen, Users, Palette } from 'lucide-react';
 
 interface AgentStatusProps {
   tasks: AgentTask[];
@@ -14,7 +14,11 @@ const AgentStatus: React.FC<AgentStatusProps> = ({ tasks }) => {
     fileSynchronizer: [],
     codeModifier: [],
     fileObserver: [],
-    codeSplitter: []
+    codeSplitter: [],
+    codeCorrector: [],
+    seguimiento: [],
+    lector: [],
+    designArchitect: []
   };
 
   tasks.forEach(task => {
@@ -28,7 +32,11 @@ const AgentStatus: React.FC<AgentStatusProps> = ({ tasks }) => {
     fileSynchronizer: getAgentStatus(tasksByType.fileSynchronizer),
     codeModifier: getAgentStatus(tasksByType.codeModifier),
     fileObserver: getAgentStatus(tasksByType.fileObserver),
-    codeSplitter: getAgentStatus(tasksByType.codeSplitter)
+    codeSplitter: getAgentStatus(tasksByType.codeSplitter),
+    codeCorrector: getAgentStatus(tasksByType.codeCorrector),
+    seguimiento: getAgentStatus(tasksByType.seguimiento),
+    lector: getAgentStatus(tasksByType.lector),
+    designArchitect: getAgentStatus(tasksByType.designArchitect)
   };
 
   return (
@@ -77,6 +85,34 @@ const AgentStatus: React.FC<AgentStatusProps> = ({ tasks }) => {
           taskCount={tasksByType.codeSplitter.length}
           icon={<Scissors className="h-4 w-4" />}
         />
+
+        <AgentStatusItem
+          type="codeCorrector"
+          status={agentStatus.codeCorrector}
+          taskCount={tasksByType.codeCorrector.length}
+          icon={<Bug className="h-4 w-4" />}
+        />
+
+        <AgentStatusItem
+          type="seguimiento"
+          status={agentStatus.seguimiento}
+          taskCount={tasksByType.seguimiento.length}
+          icon={<BookOpen className="h-4 w-4" />}
+        />
+
+        <AgentStatusItem
+          type="lector"
+          status={agentStatus.lector}
+          taskCount={tasksByType.lector.length}
+          icon={<Users className="h-4 w-4" />}
+        />
+
+        <AgentStatusItem
+          type="designArchitect"
+          status={agentStatus.designArchitect}
+          taskCount={tasksByType.designArchitect.length}
+          icon={<Palette className="h-4 w-4" />}
+        />
       </div>
     </div>
   );
@@ -104,6 +140,16 @@ const AgentStatusItem: React.FC<AgentStatusItemProps> = ({ type, status, taskCou
         return 'Agente de Observación de Archivos';
       case 'codeSplitter':
         return 'Agente de Separación de Código';
+      case 'codeCorrector':
+        return 'Agente de Corrección de Código';
+      case 'seguimiento':
+        return 'Agente de Seguimiento';
+      case 'lector':
+        return 'Agente Lector';
+      case 'designArchitect':
+        return 'Agente de Diseño Arquitectónico';
+      default:
+        return 'Agente Desconocido';
     }
   };
 
