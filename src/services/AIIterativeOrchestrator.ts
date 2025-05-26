@@ -1069,6 +1069,26 @@ export class AIIterativeOrchestrator {
         generateUniqueId
       );
 
+      // Actualizar el estado interno de archivos si la creación fue exitosa
+      if (result) {
+        // Verificar si el archivo ya existe
+        const existingFileIndex = this.files.findIndex(f => f.path === filePath);
+
+        if (existingFileIndex >= 0) {
+          // Actualizar archivo existente
+          this.files[existingFileIndex] = result;
+        } else {
+          // Agregar nuevo archivo
+          this.files.push(result);
+        }
+
+        // Notificar a los listeners de archivos
+        this.notifyFileListeners();
+
+        // Emitir evento personalizado para sincronización con Constructor
+        this.updateFilesInState(result);
+      }
+
       return { success: !!result, data: result };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';

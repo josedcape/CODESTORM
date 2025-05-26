@@ -34,7 +34,8 @@ import {
   CheckCircle,
   Code,
   Mic,
-  MicOff
+  MicOff,
+  Volume2
 } from 'lucide-react';
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
 import { SpecializedEnhancerService, SpecializedEnhanceResult } from '../../services/SpecializedEnhancerService';
@@ -46,6 +47,10 @@ import TypingIndicator from '../ui/TypingIndicator';
 import DocumentUploader from '../DocumentUploader';
 import VoiceStateIndicator from '../VoiceStateIndicator';
 import { useUnifiedVoice } from '../../hooks/useUnifiedVoice';
+import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
+import ChatMessageWithSpeech from '../ChatMessageWithSpeech';
+import SpeechSettings from '../SpeechSettings';
+import SpeechControls from '../SpeechControls';
 
 interface InteractiveChatProps {
   messages: ChatMessage[];
@@ -86,6 +91,9 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   const [editValue, setEditValue] = useState('');
   const [showHistory, setShowHistory] = useState(true);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [showSpeechSettings, setShowSpeechSettings] = useState(false);
+  const [speechEnabled, setSpeechEnabled] = useState(true);
+  const [autoPlaySpeech, setAutoPlaySpeech] = useState(false);
 
   // Estado para la funcionalidad de mejora de prompts
   const [enhancePromptEnabled, setEnhancePromptEnabled] = useState(false);
@@ -145,6 +153,25 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
     autoInitialize: true
   });
 
+  // Hook de síntesis de voz
+  const {
+    isSupported: isSpeechSupported,
+    isInitialized: isSpeechInitialized,
+    speak,
+    stop: stopSpeech,
+    status: speechStatus
+  } = useSpeechSynthesis({
+    componentName: 'InteractiveChat-Constructor-Speech',
+    autoInitialize: true,
+    defaultConfig: {
+      rate: 0.9,
+      pitch: 1.0,
+      volume: 0.8,
+      language: 'es-ES',
+      enableHighlight: true
+    }
+  });
+
   // Scroll al final de los mensajes cuando se añade uno nuevo
   useEffect(() => {
     if (showHistory && chatContainerRef.current) {
@@ -159,6 +186,20 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
       }
     }
   }, [messages.length, showHistory]);
+
+  // Cargar preferencias de síntesis de voz
+  useEffect(() => {
+    const savedPreferences = localStorage.getItem('codestorm-speech-preferences');
+    if (savedPreferences) {
+      try {
+        const parsed = JSON.parse(savedPreferences);
+        setSpeechEnabled(parsed.enabled ?? true);
+        setAutoPlaySpeech(parsed.autoPlayResponses ?? false);
+      } catch (error) {
+        console.warn('Error al cargar preferencias de síntesis:', error);
+      }
+    }
+  }, []);
 
   // Efecto para marcar nuevos mensajes con animación
   useEffect(() => {
@@ -402,6 +443,25 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
       setCopiedMessageId(message.id);
       setTimeout(() => setCopiedMessageId(null), 2000);
     });
+  };
+
+  // Funciones de síntesis de voz
+  const handleSpeechStart = (messageId: string) => {
+    console.log(`🔊 [Constructor] Iniciando síntesis para mensaje: ${messageId}`);
+  };
+
+  const handleSpeechEnd = (messageId: string) => {
+    console.log(`✅ [Constructor] Síntesis completada para mensaje: ${messageId}`);
+  };
+
+  const handleSpeechError = (messageId: string, error: string) => {
+    console.error(`❌ [Constructor] Error en síntesis para mensaje ${messageId}:`, error);
+  };
+
+  const handleSpeechConfigSave = (config: any) => {
+    setSpeechEnabled(config.enabled ?? true);
+    setAutoPlaySpeech(config.autoPlayResponses ?? false);
+    console.log('✅ [Constructor] Configuración de síntesis guardada:', config);
   };
 
   // Función para renderizar el contenido de un mensaje
@@ -673,6 +733,22 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           {renderMessageContent(message)}
         </div>
 
+        {/* Controles de síntesis de voz para mensajes del asistente */}
+        {speechEnabled && isSpeechSupported && message.sender !== 'user' && message.type === 'text' && (
+          <div className="mt-2 flex justify-end">
+            <SpeechControls
+              text={message.content}
+              autoPlay={autoPlaySpeech}
+              compact={true}
+              showSettings={false}
+              className="opacity-70 hover:opacity-100 transition-opacity"
+              onSpeechStart={() => handleSpeechStart(message.id)}
+              onSpeechEnd={() => handleSpeechEnd(message.id)}
+              onSpeechError={(error) => handleSpeechError(message.id, error)}
+            />
+          </div>
+        )}
+
         {message.metadata?.requiresAction && (
           <div className="mt-2 text-xs bg-yellow-500/20 text-yellow-400 p-1.5 rounded flex items-center">
             <Bell className="w-3 h-3 mr-1" />
@@ -749,6 +825,18 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           >
             <History className="w-4 h-4" />
           </button>
+
+          {isSpeechSupported && (
+            <button
+              onClick={() => setShowSpeechSettings(true)}
+              className={`p-1.5 rounded transition-colors hover:text-codestorm-accent ${
+                speechEnabled ? 'text-codestorm-accent' : 'text-gray-400'
+              }`}
+              title="Configuración de síntesis de voz"
+            >
+              <Volume2 className="w-4 h-4" />
+            </button>
+          )}
 
           {currentStage && onApproveStage && onModifyStage && onRejectStage && (
             <button
@@ -1120,6 +1208,13 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
 
       {/* Indicador de comando STORM */}
       <StormIndicator onCommand={handleStormCommand} />
+
+      {/* Configuración de Síntesis de Voz */}
+      <SpeechSettings
+        isOpen={showSpeechSettings}
+        onClose={() => setShowSpeechSettings(false)}
+        onSave={handleSpeechConfigSave}
+      />
     </div>
   );
 };

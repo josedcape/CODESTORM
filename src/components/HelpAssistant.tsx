@@ -15,15 +15,19 @@ import {
   AlertTriangle,
   MessageSquare,
   Send,
-  Copy,
   Download,
   MicOff,
   Loader2,
-  HelpCircle
+  HelpCircle,
+  Volume2
 } from 'lucide-react';
 import DocumentUploader from './DocumentUploader';
 import VoiceStateIndicator from './VoiceStateIndicator';
+import ChatMessageWithSpeech from './ChatMessageWithSpeech';
+import SpeechSettings from './SpeechSettings';
 import { useUnifiedVoice } from '../hooks/useUnifiedVoice';
+import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
+import { SpeechConfig } from '../services/SpeechSynthesisService';
 import { tryWithFallback } from '../services/ai';
 
 // Tipos para las secciones de ayuda
@@ -81,6 +85,9 @@ const CodestormHelpAssistant: React.FC<HelpAssistantProps> = ({ isOpen, onClose 
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [showSpeechSettings, setShowSpeechSettings] = useState(false);
+  const [speechEnabled, setSpeechEnabled] = useState(true);
+  const [autoPlaySpeech, setAutoPlaySpeech] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -93,7 +100,6 @@ const CodestormHelpAssistant: React.FC<HelpAssistantProps> = ({ isOpen, onClose 
     transcript,
     startListening,
     stopListening,
-    resetTranscript
   } = useUnifiedVoice({
     onTranscript: (transcript: string) => {
       setInputValue(transcript);
@@ -110,6 +116,21 @@ const CodestormHelpAssistant: React.FC<HelpAssistantProps> = ({ isOpen, onClose 
     autoInitialize: true
   });
 
+  // Hook de síntesis de voz
+  const {
+    isSupported: isSpeechSupported
+  } = useSpeechSynthesis({
+    componentName: 'HelpAssistant-Speech',
+    autoInitialize: true,
+    defaultConfig: {
+      rate: 0.9,
+      pitch: 1.0,
+      volume: 0.8,
+      language: 'es-ES',
+      enableHighlight: true
+    }
+  });
+
   // Detectar la página actual
   useEffect(() => {
     const path = location.pathname;
@@ -123,6 +144,20 @@ const CodestormHelpAssistant: React.FC<HelpAssistantProps> = ({ isOpen, onClose 
       setCurrentPage('main');
     }
   }, [location]);
+
+  // Cargar preferencias de síntesis de voz
+  useEffect(() => {
+    const savedPreferences = localStorage.getItem('codestorm-speech-preferences');
+    if (savedPreferences) {
+      try {
+        const parsed = JSON.parse(savedPreferences);
+        setSpeechEnabled(parsed.enabled ?? true);
+        setAutoPlaySpeech(parsed.autoPlayResponses ?? false);
+      } catch (error) {
+        console.warn('Error al cargar preferencias de síntesis:', error);
+      }
+    }
+  }, []);
 
   // Función para alternar secciones expandidas
   const toggleSection = (sectionId: string) => {
@@ -401,10 +436,6 @@ Error técnico: ${error instanceof Error ? error.message : 'Error desconocido'}`
     }
   };
 
-  const copyMessage = (content: string) => {
-    navigator.clipboard.writeText(content);
-  };
-
   const exportConversation = () => {
     const conversation = chatMessages.map(msg =>
       `[${new Date(msg.timestamp).toLocaleString()}] ${msg.sender.toUpperCase()}: ${msg.content}`
@@ -417,6 +448,25 @@ Error técnico: ${error instanceof Error ? error.message : 'Error desconocido'}`
     a.download = `codestorm-chat-${new Date().toISOString().split('T')[0]}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Funciones de síntesis de voz
+  const handleSpeechStart = (messageId: string) => {
+    console.log(`🔊 [HelpAssistant] Iniciando síntesis para mensaje: ${messageId}`);
+  };
+
+  const handleSpeechEnd = (messageId: string) => {
+    console.log(`✅ [HelpAssistant] Síntesis completada para mensaje: ${messageId}`);
+  };
+
+  const handleSpeechError = (messageId: string, error: string) => {
+    console.error(`❌ [HelpAssistant] Error en síntesis para mensaje ${messageId}:`, error);
+  };
+
+  const handleSpeechConfigSave = (config: Partial<SpeechConfig> & { enabled?: boolean; autoPlayResponses?: boolean }) => {
+    setSpeechEnabled(config.enabled ?? true);
+    setAutoPlaySpeech(config.autoPlayResponses ?? false);
+    console.log('✅ [HelpAssistant] Configuración de síntesis guardada:', config);
   };
 
   // Configuración de contenido de ayuda según la página actual
@@ -838,54 +888,27 @@ Error técnico: ${error instanceof Error ? error.message : 'Error desconocido'}`
                 )}
 
                 {chatMessages.map((message) => (
-                  <div
+                  <ChatMessageWithSpeech
                     key={message.id}
-                    className={`flex gap-3 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    {message.sender === 'assistant' && (
-                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full bg-codestorm-blue/20">
-                        <Bot className="w-4 h-4 text-codestorm-accent" />
-                      </div>
-                    )}
-
-                    <div className={`max-w-[80%] ${message.sender === 'user' ? 'order-1' : ''}`}>
-                      <div
-                        className={`p-3 rounded-lg ${
-                          message.sender === 'user'
-                            ? 'bg-codestorm-blue text-white'
-                            : 'bg-codestorm-dark border border-codestorm-blue/20 text-gray-300'
-                        }`}
-                      >
-                        <div className="prose-sm prose max-w-none">
-                          {message.content.split('\n').map((line, index) => (
-                            <p key={index} className={`${index > 0 ? 'mt-2' : ''} ${message.sender === 'user' ? 'text-white' : 'text-gray-300'}`}>
-                              {line}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500">
-                          {new Date(message.timestamp).toLocaleTimeString()}
-                        </span>
-                        {message.sender === 'assistant' && (
-                          <button
-                            onClick={() => copyMessage(message.content)}
-                            className="p-1 text-gray-500 transition-colors hover:text-codestorm-accent"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {message.sender === 'user' && (
-                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full bg-codestorm-accent/20">
-                        <span className="text-sm font-semibold text-codestorm-accent">U</span>
-                      </div>
-                    )}
-                  </div>
+                    message={{
+                      id: message.id,
+                      content: message.content,
+                      isUser: message.sender === 'user',
+                      timestamp: new Date(message.timestamp),
+                      metadata: {
+                        agent: 'HelpAssistant',
+                        type: message.type,
+                        ...message.metadata
+                      }
+                    }}
+                    enableSpeech={speechEnabled && isSpeechSupported}
+                    autoPlaySpeech={autoPlaySpeech && message.sender === 'assistant'}
+                    showTimestamp={true}
+                    onSpeechStart={handleSpeechStart}
+                    onSpeechEnd={handleSpeechEnd}
+                    onSpeechError={handleSpeechError}
+                    className="mb-4"
+                  />
                 ))}
 
                 {isTyping && (
@@ -914,6 +937,17 @@ Error técnico: ${error instanceof Error ? error.message : 'Error desconocido'}`
                       acceptedTypes={['.pdf', '.txt', '.doc', '.docx', '.md']}
                       className="flex-shrink-0"
                     />
+                    {isSpeechSupported && (
+                      <button
+                        onClick={() => setShowSpeechSettings(true)}
+                        className={`p-2 transition-colors hover:text-codestorm-accent ${
+                          speechEnabled ? 'text-codestorm-accent' : 'text-gray-400'
+                        }`}
+                        title="Configuración de síntesis de voz"
+                      >
+                        <Volume2 className="w-4 h-4" />
+                      </button>
+                    )}
                     {chatMessages.length > 0 && (
                       <button
                         onClick={exportConversation}
@@ -1008,6 +1042,13 @@ Error técnico: ${error instanceof Error ? error.message : 'Error desconocido'}`
           </div>
         </div>
       </div>
+
+      {/* Configuración de Síntesis de Voz */}
+      <SpeechSettings
+        isOpen={showSpeechSettings}
+        onClose={() => setShowSpeechSettings(false)}
+        onSave={handleSpeechConfigSave}
+      />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Bot, User, Sparkles, Zap, Code, Monitor, Smartphone, Tablet, X, Palette, Cpu, Split, Eye, Globe, AlertCircle, Mic, MicOff } from 'lucide-react';
+import { Send, Loader2, Bot, User, Sparkles, Zap, Code, Monitor, Smartphone, Tablet, X, Palette, Cpu, Split, Eye, Globe, AlertCircle, Mic, MicOff, Volume2 } from 'lucide-react';
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
 import { SpecializedEnhancerService, SpecializedEnhanceResult } from '../../services/SpecializedEnhancerService';
 import EnhancedPromptDialog from '../EnhancedPromptDialog';
@@ -14,6 +14,9 @@ import DocumentUploader from '../DocumentUploader';
 import VoiceStateIndicator from '../VoiceStateIndicator';
 import VoiceInputButton from '../audio/VoiceInputButton';
 import { useUnifiedVoice } from '../../hooks/useUnifiedVoice';
+import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
+import SpeechControls from '../SpeechControls';
+import SpeechSettings from '../SpeechSettings';
 
 interface Message {
   id: string;
@@ -83,6 +86,11 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
   const [generatedCss, setGeneratedCss] = useState('');
   const [generatedJs, setGeneratedJs] = useState('');
 
+  // Estados para síntesis de voz
+  const [showSpeechSettings, setShowSpeechSettings] = useState(false);
+  const [speechEnabled, setSpeechEnabled] = useState(true);
+  const [autoPlaySpeech, setAutoPlaySpeech] = useState(false);
+
   // Hook de reconocimiento de voz unificado
   const {
     voiceState: advancedVoiceState,
@@ -105,6 +113,26 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
     language: 'es-ES',
     autoInitialize: true
   });
+
+  // Hook de síntesis de voz
+  const {
+    isSupported: isSpeechSupported,
+    isInitialized: isSpeechInitialized,
+    speak,
+    stop: stopSpeech,
+    status: speechStatus
+  } = useSpeechSynthesis({
+    componentName: 'WebAIAssistant-Speech',
+    autoInitialize: true,
+    defaultConfig: {
+      rate: 0.9,
+      pitch: 1.0,
+      volume: 0.8,
+      language: 'es-ES',
+      enableHighlight: true
+    }
+  });
+
   // Función para detectar modificaciones de código en los mensajes
   const detectCodeModifications = (content: string): { html?: string; css?: string; js?: string } | null => {
     const modifications: { html?: string; css?: string; js?: string } = {};
@@ -393,6 +421,39 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
     processUserRequest(content);
 
     console.log(`📄 Documento cargado en WebAI: ${fileName}`);
+  };
+
+  // Cargar preferencias de síntesis de voz
+  useEffect(() => {
+    const savedPreferences = localStorage.getItem('codestorm-speech-preferences');
+    if (savedPreferences) {
+      try {
+        const parsed = JSON.parse(savedPreferences);
+        setSpeechEnabled(parsed.enabled ?? true);
+        setAutoPlaySpeech(parsed.autoPlayResponses ?? false);
+      } catch (error) {
+        console.warn('Error al cargar preferencias de síntesis:', error);
+      }
+    }
+  }, []);
+
+  // Funciones de síntesis de voz
+  const handleSpeechStart = (messageId: string) => {
+    console.log(`🔊 [WebAI] Iniciando síntesis para mensaje: ${messageId}`);
+  };
+
+  const handleSpeechEnd = (messageId: string) => {
+    console.log(`✅ [WebAI] Síntesis completada para mensaje: ${messageId}`);
+  };
+
+  const handleSpeechError = (messageId: string, error: string) => {
+    console.error(`❌ [WebAI] Error en síntesis para mensaje ${messageId}:`, error);
+  };
+
+  const handleSpeechConfigSave = (config: any) => {
+    setSpeechEnabled(config.enabled ?? true);
+    setAutoPlaySpeech(config.autoPlayResponses ?? false);
+    console.log('✅ [WebAI] Configuración de síntesis guardada:', config);
   };
 
   // Función para procesar la solicitud del usuario
@@ -714,6 +775,17 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
           <h2 className="text-sm font-medium text-white">Asistente de Diseño Web</h2>
         </div>
         <div className="flex space-x-2">
+          {isSpeechSupported && (
+            <button
+              onClick={() => setShowSpeechSettings(true)}
+              className={`p-1.5 rounded transition-colors hover:text-codestorm-accent ${
+                speechEnabled ? 'text-codestorm-accent' : 'text-gray-400'
+              }`}
+              title="Configuración de síntesis de voz"
+            >
+              <Volume2 className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={() => setShowAgentPanel(!showAgentPanel)}
             className={`p-1.5 rounded ${showAgentPanel ? 'bg-codestorm-blue/30 text-white' : 'text-gray-400 hover:bg-codestorm-blue/20 hover:text-white'}`}
@@ -790,6 +862,22 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
                     </span>
                   </div>
                   <div className="whitespace-pre-wrap">{message.content}</div>
+
+                  {/* Controles de síntesis de voz para mensajes del asistente */}
+                  {speechEnabled && isSpeechSupported && message.sender === 'assistant' && message.type === 'text' && (
+                    <div className="mt-2 flex justify-end">
+                      <SpeechControls
+                        text={message.content}
+                        autoPlay={autoPlaySpeech}
+                        compact={true}
+                        showSettings={false}
+                        className="opacity-70 hover:opacity-100 transition-opacity"
+                        onSpeechStart={() => handleSpeechStart(message.id)}
+                        onSpeechEnd={() => handleSpeechEnd(message.id)}
+                        onSpeechError={(error) => handleSpeechError(message.id, error)}
+                      />
+                    </div>
+                  )}
 
                   {/* Botones de acción para mensajes de tipo preview */}
                   {message.type === 'preview' && (
@@ -1028,6 +1116,13 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
           specializedResult={currentSpecializedResult || undefined}
         />
       )}
+
+      {/* Configuración de Síntesis de Voz */}
+      <SpeechSettings
+        isOpen={showSpeechSettings}
+        onClose={() => setShowSpeechSettings(false)}
+        onSave={handleSpeechConfigSave}
+      />
     </div>
   );
 };

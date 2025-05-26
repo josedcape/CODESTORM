@@ -13,8 +13,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Habilitar CORS para todas las rutas
-app.use(cors());
+// Habilitar CORS para todas las rutas con configuración específica
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://181.58.39.18:5173',
+    'http://181.58.39.18:3001'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'anthropic-version']
+}));
 
 // Middleware para registrar solicitudes
 app.use((req, res, next) => {
@@ -95,6 +105,9 @@ app.get('/', (req, res) => {
 });
 
 // Iniciar el servidor
-app.listen(PORT, () => {
-  console.log(`Servidor proxy ejecutándose en http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor proxy ejecutándose en:`);
+  console.log(`  - Local: http://localhost:${PORT}`);
+  console.log(`  - Red: http://181.58.39.18:${PORT}`);
+  console.log(`  - Todas las interfaces: http://0.0.0.0:${PORT}`);
 });

@@ -108,17 +108,31 @@ class UnifiedVoiceService {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     permissions.speechRecognition = !!SpeechRecognition;
 
-    // Verificar permisos de micrófono
+    // Verificar permisos de micrófono de manera más permisiva
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        permissions.microphone = true;
-        // Cerrar el stream inmediatamente
-        stream.getTracks().forEach(track => track.stop());
+        // Intentar verificar permisos sin solicitar acceso inmediato
+        if (navigator.permissions) {
+          try {
+            const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+            permissions.microphone = permissionStatus.state === 'granted' || permissionStatus.state === 'prompt';
+          } catch (permError) {
+            // Si no se puede verificar permisos, asumir que están disponibles
+            this.log('No se pudo verificar permisos específicos, asumiendo disponibilidad');
+            permissions.microphone = true;
+          }
+        } else {
+          // Si no hay API de permisos, asumir que están disponibles
+          permissions.microphone = true;
+        }
+      } else {
+        this.log('getUserMedia no está disponible');
+        permissions.microphone = false;
       }
     } catch (error) {
       this.log('Error al verificar permisos de micrófono:', error);
-      permissions.microphone = false;
+      // En caso de error, ser permisivo y permitir que el usuario intente usar la funcionalidad
+      permissions.microphone = true;
     }
 
     return permissions;
@@ -137,8 +151,10 @@ class UnifiedVoiceService {
       if (!permissions.speechRecognition) {
         throw new Error('Speech Recognition no está soportado en este navegador');
       }
+
+      // Solo advertir sobre permisos de micrófono, no fallar
       if (!permissions.microphone) {
-        throw new Error('No se tienen permisos de micrófono');
+        this.log('⚠️ Permisos de micrófono no verificados, se solicitarán cuando sea necesario');
       }
 
       // Solicitar acceso exclusivo
@@ -225,10 +241,30 @@ class UnifiedVoiceService {
       const errorMessage = `Error de reconocimiento: ${event.error}`;
       this.log('❌ Error:', event);
 
+      // Manejar diferentes tipos de errores
+      if (event.error === 'not-allowed') {
+        this.log('⚠️ Permisos de micrófono denegados por el usuario');
+        this.triggerCallback('onError', 'Permisos de micrófono denegados. Por favor, permite el acceso al micrófono.');
+      } else if (event.error === 'no-speech') {
+        this.log('⚠️ No se detectó habla');
+        // No tratar como error crítico, solo reiniciar
+      } else if (event.error === 'network') {
+        this.log('⚠️ Error de red en reconocimiento de voz');
+        this.triggerCallback('onError', 'Error de conexión. Verifica tu conexión a internet.');
+      } else {
+        this.triggerCallback('onError', errorMessage);
+      }
+
       voiceCoordinator.markRecognitionInactive('advanced');
-      this.setState('error');
+
+      // Solo cambiar a estado de error para errores críticos
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        this.setState('error');
+      } else {
+        this.setState('idle');
+      }
+
       this.clearTimeout();
-      this.triggerCallback('onError', errorMessage);
     };
 
     this.recognition.onend = () => {
@@ -327,13 +363,34 @@ class UnifiedVoiceService {
     this.clearTimeout();
 
     if (this.recognition && this.currentState === 'listening') {
-      this.recognition.stop();
+      try {
+        this.recognition.stop();
+      } catch (error) {
+        this.log('Error al detener reconocimiento durante cleanup:', error);
+      }
     }
 
     voiceCoordinator.releaseAccess('advanced');
     this.activeComponents.clear();
     this.setState('idle');
     this.isInitialized = false;
+    this.recognition = null;
+  }
+
+  /**
+   * Reinicializar el servicio
+   */
+  public async reinitialize(): Promise<boolean> {
+    this.log('🔄 Reinicializando servicio de voz...');
+
+    // Limpiar estado actual
+    this.cleanup();
+
+    // Esperar un momento antes de reinicializar
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Reinicializar con la configuración actual
+    return this.initialize(this.currentConfig, this.currentCallbacks);
   }
 
   /**

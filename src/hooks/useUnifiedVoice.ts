@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { unifiedVoiceService, VoiceState, VoiceConfig, VoiceCallbacks } from '../services/UnifiedVoiceService';
+import { repairVoiceSystem } from '../utils/voiceRepair';
 
 export interface UseUnifiedVoiceOptions extends VoiceConfig {
   onTranscript?: (transcript: string) => void;
@@ -23,14 +24,15 @@ export interface UseUnifiedVoiceReturn {
   isSupported: boolean;
   error: string | null;
   transcript: string;
-  
+
   // Acciones
   initialize: () => Promise<boolean>;
   startListening: () => boolean;
   stopListening: () => void;
   resetTranscript: () => void;
   cleanup: () => void;
-  
+  repair: () => Promise<boolean>;
+
   // Información
   getDebugInfo: () => string;
 }
@@ -72,7 +74,7 @@ export const useUnifiedVoice = (options: UseUnifiedVoiceOptions = {}): UseUnifie
       onStateChange: (state: VoiceState) => {
         setVoiceState(state);
         setIsListening(state === 'listening');
-        
+
         // Limpiar error cuando el estado cambia a algo válido
         if (state !== 'error') {
           setError(null);
@@ -91,12 +93,12 @@ export const useUnifiedVoice = (options: UseUnifiedVoiceOptions = {}): UseUnifie
   const initialize = useCallback(async (): Promise<boolean> => {
     try {
       console.log(`🎤 [${componentNameRef.current}] Inicializando reconocimiento de voz...`);
-      
+
       setError(null);
       setVoiceState('initializing');
 
       const success = await unifiedVoiceService.initialize(voiceConfig, callbacksRef.current);
-      
+
       if (success) {
         setIsInitialized(true);
         setVoiceState('ready');
@@ -131,13 +133,13 @@ export const useUnifiedVoice = (options: UseUnifiedVoiceOptions = {}): UseUnifie
     console.log(`🎤 [${componentNameRef.current}] Iniciando escucha...`);
     setTranscript('');
     setError(null);
-    
+
     const success = unifiedVoiceService.startListening(componentNameRef.current);
-    
+
     if (!success) {
       console.error(`❌ [${componentNameRef.current}] No se pudo iniciar la escucha`);
     }
-    
+
     return success;
   }, [isInitialized]);
 
@@ -164,6 +166,36 @@ export const useUnifiedVoice = (options: UseUnifiedVoiceOptions = {}): UseUnifie
     setTranscript('');
   }, [stopListening]);
 
+  // Función de reparación
+  const repair = useCallback(async (): Promise<boolean> => {
+    console.log(`🔧 [${componentNameRef.current}] Iniciando reparación del sistema de voz...`);
+
+    try {
+      setError(null);
+      setVoiceState('initializing');
+
+      const repairResult = await repairVoiceSystem();
+
+      if (repairResult.success) {
+        console.log(`✅ [${componentNameRef.current}] Sistema de voz reparado exitosamente`);
+        setIsInitialized(true);
+        setVoiceState('ready');
+        return true;
+      } else {
+        console.error(`❌ [${componentNameRef.current}] Reparación falló:`, repairResult.message);
+        setError(repairResult.message);
+        setVoiceState('error');
+        return false;
+      }
+    } catch (error) {
+      const errorMessage = `Error durante reparación: ${error instanceof Error ? error.message : 'Error desconocido'}`;
+      console.error(`❌ [${componentNameRef.current}] ${errorMessage}`);
+      setError(errorMessage);
+      setVoiceState('error');
+      return false;
+    }
+  }, []);
+
   // Función para obtener información de debug
   const getDebugInfo = useCallback((): string => {
     const localInfo = [
@@ -177,7 +209,7 @@ export const useUnifiedVoice = (options: UseUnifiedVoiceOptions = {}): UseUnifie
       '--- Servicio Unificado ---',
       unifiedVoiceService.getDebugInfo()
     ];
-    
+
     return localInfo.join('\n');
   }, [voiceState, isListening, isInitialized, isSupported, error, transcript]);
 
@@ -186,20 +218,40 @@ export const useUnifiedVoice = (options: UseUnifiedVoiceOptions = {}): UseUnifie
     const checkSupport = () => {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const supported = !!SpeechRecognition;
-      
+
       setIsSupported(supported);
-      
+
       if (!supported) {
         setVoiceState('disabled');
         setError('Reconocimiento de voz no soportado en este navegador');
         console.warn(`⚠️ [${componentNameRef.current}] Reconocimiento de voz no soportado`);
       }
-      
+
       return supported;
     };
 
     if (checkSupport() && autoInitialize) {
-      initialize();
+      // Inicializar con un pequeño delay para evitar problemas de concurrencia
+      const initTimer = setTimeout(async () => {
+        try {
+          const success = await initialize();
+          if (!success) {
+            console.warn(`⚠️ [${componentNameRef.current}] Inicialización falló, intentando reparación...`);
+            // Intentar reparación automática después de un fallo de inicialización
+            setTimeout(async () => {
+              try {
+                await repair();
+              } catch (repairError) {
+                console.error(`❌ [${componentNameRef.current}] Auto-reparación falló:`, repairError);
+              }
+            }, 2000);
+          }
+        } catch (error) {
+          console.warn(`⚠️ [${componentNameRef.current}] Inicialización automática falló:`, error);
+        }
+      }, 100);
+
+      return () => clearTimeout(initTimer);
     }
   }, [autoInitialize, initialize]);
 
@@ -209,7 +261,7 @@ export const useUnifiedVoice = (options: UseUnifiedVoiceOptions = {}): UseUnifie
       const serviceState = unifiedVoiceService.getState();
       const serviceListening = unifiedVoiceService.isListening();
       const serviceReady = unifiedVoiceService.isReady();
-      
+
       setVoiceState(serviceState);
       setIsListening(serviceListening);
       setIsInitialized(serviceReady);
@@ -242,14 +294,15 @@ export const useUnifiedVoice = (options: UseUnifiedVoiceOptions = {}): UseUnifie
     isSupported,
     error,
     transcript,
-    
+
     // Acciones
     initialize,
     startListening,
     stopListening,
     resetTranscript,
     cleanup,
-    
+    repair,
+
     // Información
     getDebugInfo
   };

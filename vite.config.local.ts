@@ -1,11 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Configuración para acceso público
+// Configuración para desarrollo local
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '0.0.0.0', // Permitir acceso desde cualquier IP
     port: 5173,
     open: false,
     cors: true,
@@ -14,7 +13,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://181.58.39.18:3001',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {

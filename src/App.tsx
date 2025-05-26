@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+import Menu from './pages/Menu';
 import Constructor from './pages/Constructor';
 import CodeCorrector from './pages/CodeCorrector';
 import WebAI from './pages/WebAI';
@@ -22,8 +24,7 @@ import BrandLogo from './components/BrandLogo';
 import Footer from './components/Footer';
 import HelpAssistant from './components/HelpAssistant';
 import CodeModifierPanel from './components/codemodifier/CodeModifierPanel';
-import IntroAnimation from './components/IntroAnimation';
-import useIntroAnimation from './hooks/useIntroAnimation';
+// IntroAnimation e useIntroAnimation movidos a la página Menu
 import { availableModels } from './data/models';
 import {
   ProjectState,
@@ -45,8 +46,7 @@ const MainApp: React.FC = () => {
   const [showChat, setShowChat] = useState(false);
   const [showHelpAssistant, setShowHelpAssistant] = useState(false);
 
-  // Usar el hook personalizado para la animación de introducción
-  const { showIntro, completeIntro } = useIntroAnimation();
+  // Animación de introducción removida - ahora está en la página Menu
 
   // Inicializar reconocimiento de voz global
   useEffect(() => {
@@ -692,9 +692,6 @@ const MainApp: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-codestorm-darker flex flex-col">
-      {/* Animación de introducción */}
-      {showIntro && <IntroAnimation onComplete={completeIntro} />}
-
       <Header
         onPreviewClick={handleTogglePreview}
         onChatClick={handleToggleChat}
@@ -881,6 +878,8 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<MainApp />} />
+      <Route path="/home" element={<Home />} />
+      <Route path="/menu" element={<Menu />} />
       <Route path="/constructor" element={<ConstructorPage />} />
       <Route path="/codecorrector" element={<CodeCorrectorPage />} />
       <Route path="/webai" element={<WebAIPage />} />
