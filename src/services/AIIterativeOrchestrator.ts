@@ -416,33 +416,6 @@ export class AIIterativeOrchestrator {
       this.updateProgress(30, 'Generando archivos del proyecto...');
       const generatedFiles = await this.generateFilesFromPlan(adaptedPlan);
 
-<<<<<<< HEAD
-      // Mejorar los archivos HTML con el Agente de Diseño
-      this.updateProgress(70, 'Mejorando diseño visual...');
-      const enhancedFiles = await this.enhanceHTMLWithDesign(generatedFiles, adaptedPlan);
-
-      // Generar todos los archivos automáticamente sin solicitar aprobación adicional
-      this.updateProgress(90, 'Finalizando generación de archivos...');
-      this.processGeneratedFiles(enhancedFiles);
-
-      // Completar progreso
-      this.updateProgress(100, 'Proyecto completado exitosamente');
-
-      // Añadir mensaje de finalización
-      this.addChatMessage({
-        id: generateUniqueId('msg-generation-complete'),
-        sender: 'ai-agent',
-        content: `✅ **AgenteLector**: Generación de archivos completada. Se han creado ${enhancedFiles.length} archivos. Ahora puedes intervenir para solicitar cambios o ajustes específicos.`,
-        timestamp: Date.now(),
-        type: 'notification',
-        metadata: {
-          agentType: 'lector',
-          phase: 'codeGeneration',
-          totalFiles: enhancedFiles.length
-        }
-      });
-
-=======
       // Generar archivos de interfaz visual automáticamente (HTML/CSS)
       this.updateProgress(60, 'Generando interfaz visual...');
       const visualFiles = await this.generateVisualInterface(this.lastInstruction, adaptedPlan);
@@ -472,8 +445,6 @@ export class AIIterativeOrchestrator {
           totalFiles: enhancedFiles.length
         }
       });
-
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
       return;
     } catch (error) {
       this.handleError(error);

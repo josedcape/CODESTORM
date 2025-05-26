@@ -7,10 +7,7 @@ import BrandLogo from '../components/BrandLogo';
 import Footer from '../components/Footer';
 import CodeModifierPanel from '../components/codemodifier/CodeModifierPanel';
 import LoadingOverlay from '../components/LoadingOverlay';
-<<<<<<< HEAD
-=======
 import HelpAssistant from '../components/HelpAssistant';
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
 import {
   Zap,
   AlertCircle,
@@ -60,15 +57,6 @@ const CodeCorrector: React.FC = () => {
   const [showResultPanel, setShowResultPanel] = useState(false);
   const [correctionResult, setCorrectionResult] = useState<CodeCorrectionResult | null>(null);
   const [showHelpAssistant, setShowHelpAssistant] = useState(false);
-
-  // Estados para el LoadingOverlay
-  const [loadingState, setLoadingState] = useState({
-    isLoading: false,
-    currentAgent: '',
-    progress: 0,
-    message: '',
-    canCancel: false
-  });
 
   // Estados para el LoadingOverlay
   const [loadingState, setLoadingState] = useState({
@@ -649,15 +637,12 @@ const CodeCorrector: React.FC = () => {
         canCancel={loadingState.canCancel}
         onCancel={cancelLoading}
       />
-<<<<<<< HEAD
-=======
 
       {/* Asistente de ayuda */}
       <HelpAssistant
         isOpen={showHelpAssistant}
         onClose={handleToggleHelpAssistant}
       />
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
     </div>
   );
 };

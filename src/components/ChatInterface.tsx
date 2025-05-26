@@ -10,12 +10,9 @@ import { useAudioIntegration } from '../hooks/useAudioIntegration';
 import VoiceInputButton from './audio/VoiceInputButton';
 import StormIndicator from './audio/StormIndicator';
 import AudioControls from './audio/AudioControls';
-<<<<<<< HEAD
-=======
 import DocumentUploader from './DocumentUploader';
 import VoiceStateIndicator from './VoiceStateIndicator';
-import { useAdvancedVoiceRecognition } from '../hooks/useAdvancedVoiceRecognition';
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
+import { useUnifiedVoice } from '../hooks/useUnifiedVoice';
 
 interface Message {
   id: string;
@@ -274,8 +271,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setShowEnhancementHistory(false);
   };
 
-<<<<<<< HEAD
-=======
   // Función para manejar documentos procesados
   const handleDocumentProcessed = (content: string, fileName: string) => {
     // Enviar el contenido del documento como mensaje automáticamente
@@ -287,7 +282,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     console.log(`📄 Documento cargado en página principal: ${fileName}`);
   };
 
-  // Hook de reconocimiento de voz avanzado
+  // Hook de reconocimiento de voz unificado
   const {
     voiceState,
     isListening: isAdvancedListening,
@@ -295,16 +290,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     error: voiceError,
     startListening: startAdvancedListening,
     stopListening: stopAdvancedListening
-  } = useAdvancedVoiceRecognition({
-    onTranscript: (transcript) => {
+  } = useUnifiedVoice({
+    onTranscript: (transcript: string) => {
       console.log('🎤 Comando de voz recibido:', transcript);
       setInputValue(transcript);
     },
+    onFinalTranscript: (transcript: string) => {
+      console.log('🎤 Comando de voz final:', transcript);
+      setInputValue(transcript);
+    },
     enableDebug: true,
-    componentName: 'ChatInterface'
+    componentName: 'ChatInterface',
+    language: 'es-ES',
+    autoInitialize: true
   });
-
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
   // Funciones para reconocimiento de voz
   const handleVoiceTranscript = (transcript: string) => {
     setVoiceTranscript(transcript);
@@ -493,19 +492,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               disabled={isProcessing || isEnhancing}
             />
             <div className="flex flex-col justify-between space-y-2">
-<<<<<<< HEAD
-              {/* Botón de micrófono */}
-              <VoiceInputButton
-                onTranscript={handleVoiceTranscript}
-                onFinalTranscript={handleVoiceFinalTranscript}
-                disabled={isProcessing || isEnhancing}
-                size="md"
-                autoSend={false}
-                showTranscript={false}
-                className="relative"
-              />
-
-=======
               {/* Botón de carga de documentos */}
               <DocumentUploader
                 onDocumentProcessed={handleDocumentProcessed}
@@ -549,8 +535,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   className="relative"
                 />
               )}
-
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
               <button
                 onClick={toggleEnhancePrompt}
                 className={`p-2 rounded-md ${

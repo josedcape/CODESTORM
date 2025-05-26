@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useUI } from '../contexts/UIContext';
+import { Bot } from 'lucide-react';
 
 interface BrandLogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -18,6 +19,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({
   const { isMobile } = useUI();
   const [isHovered, setIsHovered] = useState(false);
   const [randomDelay, setRandomDelay] = useState(0);
+  const [imageError, setImageError] = useState(false);
 
   // Efecto para generar un retraso aleatorio para las animaciones
   useEffect(() => {
@@ -75,11 +77,23 @@ const BrandLogo: React.FC<BrandLogoProps> = ({
       >
         <div className="absolute inset-0 bg-gradient-to-br from-codestorm-blue/20 to-codestorm-accent/20 z-0"></div>
 
-        <img
-          src="botidinamix-logo.svg"
-          alt="BOTIDINAMIX Logo"
-          className="w-full h-full object-contain z-10 relative p-1"
-        />
+        {!imageError ? (
+          <img
+            src="/botidinamix-logo.svg"
+            alt="BOTIDINAMIX Logo"
+            className="w-full h-full object-contain z-10 relative p-1"
+            onError={(e) => {
+              console.error('Error cargando logo BOTIDINAMIX');
+              setImageError(true);
+            }}
+          />
+        ) : (
+          // Fallback: Ícono de robot con texto
+          <div className="w-full h-full flex flex-col items-center justify-center z-10 relative p-1">
+            <Bot className="w-1/2 h-1/2 text-codestorm-accent" />
+            <span className="text-xs font-bold text-codestorm-accent mt-1">BOTIDINAMIX</span>
+          </div>
+        )}
 
         {showGlow && (
           <div className={`absolute inset-0 bg-codestorm-accent/10 z-20 transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}></div>

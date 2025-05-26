@@ -162,11 +162,7 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
     <>
       {/* Botón principal flotante optimizado para móvil */}
       <button
-<<<<<<< HEAD
-        onClick={toggleMenu}
-=======
         onClick={handleButtonClick(toggleMenu)}
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
         className={`
           fixed z-50 mobile-floating-button
           ${isMobile ? 'bottom-4 left-4 w-12 h-12' : 'bottom-6 left-6 w-14 h-14'}
@@ -195,11 +191,6 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
             : 'bottom-24 left-6 flex flex-col-reverse space-y-reverse space-y-3'
           }
         `}>
-<<<<<<< HEAD
-          {/* Botón para mostrar/ocultar sidebar */}
-          <button
-            onClick={toggleSidebar}
-=======
           {/* Botón para ir al menú principal */}
           <button
             onClick={handleButtonClick(handleGoToMainMenu)}
@@ -220,7 +211,6 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
           {/* Botón para mostrar/ocultar sidebar */}
           <button
             onClick={handleButtonClick(toggleSidebar)}
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
             className={`
               mobile-floating-button
               ${isMobile ? 'w-10 h-10' : 'w-12 h-12'}
@@ -237,11 +227,7 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
 
           {/* Botón para mostrar/ocultar explorador de archivos */}
           <button
-<<<<<<< HEAD
-            onClick={toggleFileExplorer}
-=======
             onClick={handleButtonClick(toggleFileExplorer)}
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
             className={`
               mobile-floating-button
               ${isMobile ? 'w-10 h-10' : 'w-12 h-12'}
@@ -258,11 +244,7 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
 
           {/* Botón para mostrar/ocultar terminal */}
           <button
-<<<<<<< HEAD
-            onClick={toggleTerminal}
-=======
             onClick={handleButtonClick(toggleTerminal)}
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
             className={`
               mobile-floating-button
               ${isMobile ? 'w-10 h-10' : 'w-12 h-12'}
@@ -279,11 +261,7 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
 
           {/* Botón para alternar chat/terminal */}
           <button
-<<<<<<< HEAD
-            onClick={onToggleChat}
-=======
             onClick={handleButtonClick(onToggleChat)}
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
             className={`
               mobile-floating-button
               ${isMobile ? 'w-10 h-10' : 'w-12 h-12'}
@@ -300,11 +278,7 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
 
           {/* Botón para vista previa */}
           <button
-<<<<<<< HEAD
-            onClick={onTogglePreview}
-=======
             onClick={handleButtonClick(onTogglePreview)}
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
             className={`
               mobile-floating-button
               ${isMobile ? 'w-10 h-10' : 'w-12 h-12'}
@@ -321,11 +295,7 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
           {/* Botón para modificador de código */}
           {onToggleCodeModifier && (
             <button
-<<<<<<< HEAD
-              onClick={onToggleCodeModifier}
-=======
               onClick={handleButtonClick(onToggleCodeModifier)}
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
               className={`
                 mobile-floating-button
                 ${isMobile ? 'w-10 h-10' : 'w-12 h-12'}
@@ -338,8 +308,6 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
               style={{ animationDelay: '300ms' }}
             >
               <Edit className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
-<<<<<<< HEAD
-=======
             </button>
           )}
 
@@ -359,7 +327,6 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
               style={{ animationDelay: '350ms' }}
             >
               <HelpCircle className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
             </button>
           )}
         </div>

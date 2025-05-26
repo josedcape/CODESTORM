@@ -1,9 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-<<<<<<< HEAD
-import { Send, Loader2, Bot, User, Sparkles, Zap, Code, Monitor, Smartphone, Tablet, X, Palette, Cpu, Split, Eye, Globe } from 'lucide-react';
-=======
 import { Send, Loader2, Bot, User, Sparkles, Zap, Code, Monitor, Smartphone, Tablet, X, Palette, Cpu, Split, Eye, Globe, AlertCircle, Mic, MicOff } from 'lucide-react';
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
 import { SpecializedEnhancerService, SpecializedEnhanceResult } from '../../services/SpecializedEnhancerService';
 import EnhancedPromptDialog from '../EnhancedPromptDialog';
@@ -17,7 +13,7 @@ import { DesignProposal, FileItem } from '../../types';
 import DocumentUploader from '../DocumentUploader';
 import VoiceStateIndicator from '../VoiceStateIndicator';
 import VoiceInputButton from '../audio/VoiceInputButton';
-import { useAdvancedVoiceRecognition } from '../../hooks/useAdvancedVoiceRecognition';
+import { useUnifiedVoice } from '../../hooks/useUnifiedVoice';
 
 interface Message {
   id: string;
@@ -87,9 +83,7 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
   const [generatedCss, setGeneratedCss] = useState('');
   const [generatedJs, setGeneratedJs] = useState('');
 
-<<<<<<< HEAD
-=======
-  // Hook de reconocimiento de voz avanzado
+  // Hook de reconocimiento de voz unificado
   const {
     voiceState: advancedVoiceState,
     isListening: isAdvancedListening,
@@ -97,16 +91,20 @@ const WebAIAssistant: React.FC<WebAIAssistantProps> = ({
     error: advancedVoiceError,
     startListening: startAdvancedListening,
     stopListening: stopAdvancedListening
-  } = useAdvancedVoiceRecognition({
-    onTranscript: (transcript) => {
+  } = useUnifiedVoice({
+    onTranscript: (transcript: string) => {
       console.log('🎤 Comando de voz recibido en WebAI:', transcript);
       setInputValue(transcript);
     },
+    onFinalTranscript: (transcript: string) => {
+      console.log('🎤 Comando de voz final en WebAI:', transcript);
+      setInputValue(transcript);
+    },
     enableDebug: true,
-    componentName: 'WebAIAssistant'
+    componentName: 'WebAIAssistant',
+    language: 'es-ES',
+    autoInitialize: true
   });
-
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
   // Función para detectar modificaciones de código en los mensajes
   const detectCodeModifications = (content: string): { html?: string; css?: string; js?: string } | null => {
     const modifications: { html?: string; css?: string; js?: string } = {};

@@ -4,11 +4,7 @@
  * Optimizado para español con detección de comandos STORM
  */
 
-<<<<<<< HEAD
-=======
 import { voiceCoordinator } from './VoiceCoordinator';
-
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
 export interface VoiceRecognitionSettings {
   enabled: boolean;
   language: string;
@@ -81,8 +77,6 @@ class NativeVoiceRecognitionService {
       return;
     }
 
-<<<<<<< HEAD
-=======
     // Solicitar acceso al coordinador de voz
     if (!voiceCoordinator.requestAccess('native')) {
       if (this.settings.debug) {
@@ -90,8 +84,6 @@ class NativeVoiceRecognitionService {
       }
       return;
     }
-
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
     this.initializeRecognitionInstances();
     this.isInitialized = true;
 
@@ -148,11 +140,7 @@ class NativeVoiceRecognitionService {
 
     this.keywordRecognition.onend = () => {
       this.keywordDetectionActive = false;
-<<<<<<< HEAD
-=======
       voiceCoordinator.markRecognitionInactive('native');
-
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
       if (this.settings.debug) {
         console.log('Detección de palabras clave terminada');
       }
@@ -168,10 +156,7 @@ class NativeVoiceRecognitionService {
     this.keywordRecognition.onerror = (event: any) => {
       console.error('Error en detección de palabras clave:', event.error);
       this.keywordDetectionActive = false;
-<<<<<<< HEAD
-=======
       voiceCoordinator.markRecognitionInactive('native');
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
 
       // Reintentar después de un error
       setTimeout(() => {
@@ -212,10 +197,7 @@ class NativeVoiceRecognitionService {
     this.mainRecognition.onend = () => {
       this.isListening = false;
       this.mainRecognitionActive = false;
-<<<<<<< HEAD
-=======
       voiceCoordinator.markRecognitionInactive('native');
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
       this.emitEvent({ type: 'end', timestamp: Date.now() });
 
       if (this.settings.debug) {
@@ -243,10 +225,7 @@ class NativeVoiceRecognitionService {
       console.error('Error en reconocimiento principal:', event.error);
       this.isListening = false;
       this.mainRecognitionActive = false;
-<<<<<<< HEAD
-=======
       voiceCoordinator.markRecognitionInactive('native');
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
 
       this.emitEvent({
         type: 'error',
@@ -496,8 +475,6 @@ class NativeVoiceRecognitionService {
       return;
     }
 
-<<<<<<< HEAD
-=======
     // Verificar acceso con el coordinador
     if (!voiceCoordinator.canUseRecognition('native')) {
       if (this.settings.debug) {
@@ -505,17 +482,10 @@ class NativeVoiceRecognitionService {
       }
       return;
     }
-
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
     try {
       if (this.settings.debug) {
         console.log('Iniciando detección de palabras clave STORM...');
       }
-<<<<<<< HEAD
-      this.keywordRecognition.start();
-    } catch (error) {
-      console.error('Error al iniciar detección de palabras clave:', error);
-=======
 
       // Marcar reconocimiento como activo
       if (!voiceCoordinator.markRecognitionActive('native')) {
@@ -529,7 +499,6 @@ class NativeVoiceRecognitionService {
     } catch (error) {
       console.error('Error al iniciar detección de palabras clave:', error);
       voiceCoordinator.markRecognitionInactive('native');
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
     }
   }
 
@@ -540,15 +509,10 @@ class NativeVoiceRecognitionService {
     if (this.keywordDetectionActive && this.keywordRecognition) {
       try {
         this.keywordRecognition.stop();
-<<<<<<< HEAD
-      } catch (error) {
-        console.error('Error al detener detección de palabras clave:', error);
-=======
         voiceCoordinator.markRecognitionInactive('native');
       } catch (error) {
         console.error('Error al detener detección de palabras clave:', error);
         voiceCoordinator.markRecognitionInactive('native');
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
       }
     }
   }
@@ -565,11 +529,6 @@ class NativeVoiceRecognitionService {
       if (this.settings.debug) {
         console.log('Iniciando reconocimiento principal...');
       }
-<<<<<<< HEAD
-      this.mainRecognition.start();
-    } catch (error) {
-      console.error('Error al iniciar reconocimiento principal:', error);
-=======
 
       // Marcar reconocimiento como activo
       if (!voiceCoordinator.markRecognitionActive('native')) {
@@ -583,7 +542,6 @@ class NativeVoiceRecognitionService {
     } catch (error) {
       console.error('Error al iniciar reconocimiento principal:', error);
       voiceCoordinator.markRecognitionInactive('native');
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
     }
   }
 
@@ -594,15 +552,10 @@ class NativeVoiceRecognitionService {
     if (this.mainRecognitionActive && this.mainRecognition) {
       try {
         this.mainRecognition.stop();
-<<<<<<< HEAD
-      } catch (error) {
-        console.error('Error al detener reconocimiento principal:', error);
-=======
         voiceCoordinator.markRecognitionInactive('native');
       } catch (error) {
         console.error('Error al detener reconocimiento principal:', error);
         voiceCoordinator.markRecognitionInactive('native');
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
       }
     }
   }
@@ -646,12 +599,9 @@ class NativeVoiceRecognitionService {
     }
 
     this.isStormListening = false;
-<<<<<<< HEAD
-=======
 
     // Liberar acceso en el coordinador
     voiceCoordinator.releaseAccess('native');
->>>>>>> cef32cf (Se creó el Help Assistant, se actualizó el reconocimiento de voz en toda la aplicación, mejoramiento de efectos en panel de botones flotantes.)
   }
 
   /**

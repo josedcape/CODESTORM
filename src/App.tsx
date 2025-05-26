@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import Constructor from './pages/Constructor';
 import CodeCorrector from './pages/CodeCorrector';
 import WebAI from './pages/WebAI';
+import VoiceTestPage from './pages/VoiceTestPage';
 import Header from './components/Header';
 import ModelSelector from './components/ModelSelector';
 import InstructionInput from './components/InstructionInput';
@@ -883,6 +884,7 @@ function App() {
       <Route path="/constructor" element={<ConstructorPage />} />
       <Route path="/codecorrector" element={<CodeCorrectorPage />} />
       <Route path="/webai" element={<WebAIPage />} />
+      <Route path="/voice-test" element={<VoiceTestPage />} />
     </Routes>
   );
 }
