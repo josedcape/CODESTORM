@@ -208,14 +208,18 @@ const Constructor: React.FC = () => {
   useEffect(() => {
     // Suscribirse a los mensajes de chat
     const handleChatMessagesUpdate = (messages: ChatMessage[]) => {
-      // Filtrar mensajes duplicados
-      const newMessages = messages.filter(
-        newMsg => !chatMessages.some(existingMsg => existingMsg.id === newMsg.id)
-      );
+      // Usar callback para evitar dependencia de chatMessages
+      setChatMessages(prev => {
+        // Filtrar mensajes duplicados usando el estado anterior
+        const newMessages = messages.filter(
+          newMsg => !prev.some(existingMsg => existingMsg.id === newMsg.id)
+        );
 
-      if (newMessages.length > 0) {
-        setChatMessages(prev => [...prev, ...newMessages]);
-      }
+        if (newMessages.length > 0) {
+          return [...prev, ...newMessages];
+        }
+        return prev;
+      });
     };
 
     // Suscribirse a los archivos
@@ -376,7 +380,7 @@ const Constructor: React.FC = () => {
         cleanupVoiceRecognition();
       });
     };
-  }, [chatMessages]);
+  }, []); // Eliminar dependencia de chatMessages para evitar re-renderizados infinitos
 
   const addChatMessage = (message: ChatMessage) => {
     setChatMessages(prev => [...prev, message]);

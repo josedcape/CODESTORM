@@ -2,45 +2,43 @@ import { useState, useEffect } from 'react';
 
 /**
  * Hook personalizado para gestionar la lógica de la animación de introducción
+ * @param pageKey - Clave única para identificar la página (opcional)
  * @returns Un objeto con el estado de la animación y funciones para controlarla
  */
-const useIntroAnimation = () => {
+const useIntroAnimation = (pageKey?: string) => {
   const [showIntro, setShowIntro] = useState<boolean>(false);
 
-  useEffect(() => {
-    // Para propósitos de desarrollo, siempre mostrar la animación
-    // Comentar esta línea para producción
-    setShowIntro(true);
+  // Generar la clave de localStorage basada en la página
+  const storageKey = pageKey ? `codestorm-intro-seen-${pageKey}` : 'codestorm-intro-seen';
 
+  useEffect(() => {
     try {
-      // Comprobar si el usuario ya ha visto la animación
-      const hasSeenIntro = localStorage.getItem('codestorm-intro-seen');
+      // Comprobar si el usuario ya ha visto la animación para esta página específica
+      const hasSeenIntro = localStorage.getItem(storageKey);
 
       if (!hasSeenIntro) {
         // Si no ha visto la animación, mostrarla
-        console.log('Mostrando animación de introducción');
+        console.log(`Mostrando animación de introducción para ${pageKey || 'página principal'}`);
         setShowIntro(true);
       } else {
-        console.log('El usuario ya ha visto la animación');
-        // Para propósitos de desarrollo, mostrar la animación de todos modos
-        // Comentar esta línea para producción
-        setShowIntro(true);
+        console.log(`El usuario ya ha visto la animación para ${pageKey || 'página principal'}`);
+        setShowIntro(false);
       }
     } catch (error) {
       console.error('Error al acceder a localStorage:', error);
-      // En caso de error, mostrar la animación de todos modos
-      setShowIntro(true);
+      // En caso de error, no mostrar la animación
+      setShowIntro(false);
     }
-  }, []);
+  }, [storageKey, pageKey]);
 
   /**
    * Función para marcar la animación como vista y ocultarla
    */
   const completeIntro = () => {
     try {
-      // Guardar en localStorage que el usuario ya ha visto la animación
-      localStorage.setItem('codestorm-intro-seen', 'true');
-      console.log('Animación completada y marcada como vista');
+      // Guardar en localStorage que el usuario ya ha visto la animación para esta página
+      localStorage.setItem(storageKey, 'true');
+      console.log(`Animación completada y marcada como vista para ${pageKey || 'página principal'}`);
     } catch (error) {
       console.error('Error al guardar en localStorage:', error);
     }
@@ -55,8 +53,8 @@ const useIntroAnimation = () => {
   const resetIntro = () => {
     try {
       // Eliminar la marca de localStorage
-      localStorage.removeItem('codestorm-intro-seen');
-      console.log('Estado de la animación reseteado');
+      localStorage.removeItem(storageKey);
+      console.log(`Estado de la animación reseteado para ${pageKey || 'página principal'}`);
     } catch (error) {
       console.error('Error al eliminar de localStorage:', error);
     }

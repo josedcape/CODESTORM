@@ -23,11 +23,18 @@ const Menu: React.FC = () => {
   const navigate = useNavigate();
   const { isMobile, isTablet } = useUI();
 
-  // Hook para manejar la animación de introducción
-  const { showIntro, completeIntro } = useIntroAnimation();
+  // Hook para manejar la animación de introducción específica para el menú
+  const { showIntro, completeIntro } = useIntroAnimation('menu');
 
   // Estado para controlar la reproducción del sonido
   const [hasPlayedSound, setHasPlayedSound] = useState(false);
+
+  // TEMPORAL: Para testing - limpiar localStorage
+  // useEffect(() => {
+  //   localStorage.removeItem('codestorm-intro-seen-home');
+  //   localStorage.removeItem('codestorm-intro-seen-menu');
+  //   console.log('🧹 Menu - Limpiando localStorage para testing');
+  // }, []);
 
   // Inicializar reconocimiento de voz global
   useEffect(() => {
@@ -115,7 +122,7 @@ const Menu: React.FC = () => {
       description: 'Acceso directo a la interfaz principal de desarrollo solo describe lo que quieres y en segundos te construira cualquier cosa',
       icon: Zap,
       color: 'from-blue-600 to-blue-400',
-      path: '/',
+      path: '/home',
       highlights: ['Acceso Directo', 'Herramientas Completas', 'Desarrollo Rápido']
     }
   ];
@@ -259,7 +266,7 @@ const Menu: React.FC = () => {
         {/* CTA Section */}
         <div className="text-center">
           <button
-            onClick={() => handleFeatureClick('/constructor')}
+            onClick={() => handleFeatureClick('/home')}
             className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-codestorm-accent to-blue-500 text-white font-semibold rounded-lg hover:from-blue-500 hover:to-codestorm-accent transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-codestorm-accent/30"
           >
             <Sparkles className="w-5 h-5 mr-2" />

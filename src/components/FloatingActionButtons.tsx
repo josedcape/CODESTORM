@@ -67,7 +67,7 @@ const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({
 
   // Función para navegar al menú principal
   const handleGoToMainMenu = () => {
-    navigate('/');
+    navigate('/menu');
     setIsMenuOpen(false);
   };
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { ChatMessage, ApprovalStage } from '../../types';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -70,6 +70,263 @@ interface InteractiveChatProps {
 
 // Número de mensajes recientes que se mostrarán expandidos por defecto
 const DEFAULT_EXPANDED_MESSAGES = 4;
+
+// Componente memoizado para mensajes individuales para evitar re-renderizados innecesarios
+const MessageItem = memo(({
+  message,
+  isCollapsed,
+  isNew,
+  onToggleCollapse,
+  onEdit,
+  onDelete,
+  onCopy,
+  editingMessageId,
+  editValue,
+  setEditValue,
+  saveEdit,
+  cancelEdit,
+  copiedMessageId,
+  isMobile
+}: {
+  message: ChatMessage;
+  isCollapsed: boolean;
+  isNew: boolean;
+  onToggleCollapse: (id: string) => void;
+  onEdit?: (message: ChatMessage) => void;
+  onDelete?: (id: string) => void;
+  onCopy: (message: ChatMessage) => void;
+  editingMessageId: string | null;
+  editValue: string;
+  setEditValue: (value: string) => void;
+  saveEdit: () => void;
+  cancelEdit: () => void;
+  copiedMessageId: string | null;
+  isMobile: boolean;
+}) => {
+  // Función para renderizar el contenido del mensaje (movida aquí para optimización)
+  const renderMessageContent = (message: ChatMessage) => {
+    const isLongContent = message.content.length > 500;
+
+    if (message.type === 'code') {
+      const language = message.metadata?.language ||
+                      (message.content.includes('<html') ? 'html' :
+                       message.content.includes('function') ? 'javascript' :
+                       message.content.includes('import ') ? 'javascript' :
+                       message.content.includes('class ') ? 'javascript' :
+                       message.content.includes('def ') ? 'python' : 'text');
+
+      return (
+        <div className="relative">
+          <div className="absolute top-0 right-0 z-10 bg-codestorm-darker text-xs text-gray-400 px-2 py-0.5 rounded-bl">
+            {language}
+          </div>
+          <SyntaxHighlighter
+            language={language}
+            style={vscDarkPlus}
+            customStyle={{
+              margin: 0,
+              padding: '0.75rem',
+              paddingTop: '1.5rem',
+              background: '#0a1120',
+              borderRadius: '0.375rem',
+              maxHeight: isLongContent ? '300px' : 'none',
+              overflowY: isLongContent ? 'auto' : 'visible',
+            }}
+            showLineNumbers
+            wrapLongLines={true}
+          >
+            {message.content}
+          </SyntaxHighlighter>
+        </div>
+      );
+    } else if (message.type === 'notification') {
+      const isStageNotification =
+        message.content.includes('etapa') ||
+        message.content.includes('Etapa') ||
+        message.metadata?.stageId;
+
+      return (
+        <div className="flex items-start">
+          {isStageNotification ? (
+            <Bell className="h-4 w-4 text-codestorm-gold mr-2 flex-shrink-0 mt-0.5" />
+          ) : (
+            <Bell className="h-4 w-4 text-green-400 mr-2 flex-shrink-0 mt-0.5" />
+          )}
+          <span className={`whitespace-pre-wrap ${isStageNotification ? 'text-codestorm-gold' : 'text-green-100'}`}>
+            {message.content}
+          </span>
+        </div>
+      );
+    } else {
+      return (
+        <div className={`whitespace-pre-wrap ${isLongContent ? 'max-h-[300px] overflow-y-auto pr-2' : ''}`}>
+          {message.content}
+        </div>
+      );
+    }
+  };
+
+  // Si estamos editando este mensaje, mostrar el formulario de edición
+  if (editingMessageId === message.id) {
+    return (
+      <div className="p-3 border rounded-lg bg-codestorm-blue/20 border-codestorm-blue/40">
+        <div className="flex items-center mb-2">
+          <Edit className="w-4 h-4 mr-2 text-blue-400" />
+          <span className="text-xs text-blue-400">Editando mensaje</span>
+        </div>
+
+        <textarea
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          className="w-full p-2 mb-2 text-sm text-white border rounded-md bg-codestorm-darker border-codestorm-blue/30"
+          rows={3}
+        />
+
+        <div className="flex justify-end space-x-2">
+          <button
+            onClick={cancelEdit}
+            className="px-3 py-1 text-xs text-white bg-gray-700 rounded-md hover:bg-gray-600"
+          >
+            <X className="inline w-3 h-3 mr-1" />
+            <span>Cancelar</span>
+          </button>
+          <button
+            onClick={saveEdit}
+            className="px-3 py-1 text-xs text-white bg-blue-600 rounded-md hover:bg-blue-500"
+          >
+            <Check className="inline w-3 h-3 mr-1" />
+            <span>Guardar</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Determinar el ancho máximo según el tipo de mensaje
+  const getMaxWidth = () => {
+    if (message.type === 'code') {
+      return 'max-w-[90%] sm:max-w-[85%]';
+    }
+    if (message.type === 'notification' || message.sender === 'system') {
+      return 'max-w-[90%] sm:max-w-[80%]';
+    }
+    return 'max-w-[80%] sm:max-w-[70%]';
+  };
+
+  // Determinar el estilo según el tipo de mensaje (optimizado para evitar parpadeo)
+  const getMessageStyle = () => {
+    let baseStyle = 'rounded-lg p-3 break-words transition-smooth';
+
+    if (message.sender === 'user') {
+      baseStyle += ' bg-codestorm-accent text-white border border-purple-500/30';
+    } else if (message.sender === 'system') {
+      baseStyle += ' bg-codestorm-blue/10 text-gray-300 border border-green-500/30';
+    } else {
+      baseStyle += ' bg-codestorm-blue/20 text-white border border-blue-500/30';
+    }
+
+    if (message.type === 'notification') {
+      // Detectar si es una notificación de etapa para aplicar efecto dorado
+      const isStageNotification = message.content.includes('etapa') ||
+                                  message.content.includes('Etapa') ||
+                                  message.metadata?.stageId;
+
+      if (isStageNotification) {
+        // Aplicar efecto láser dorado para notificaciones de etapas
+        baseStyle += ' border-l-4 border-l-yellow-500 bg-yellow-900/10 stage-notification-laser-border';
+      } else {
+        // Aplicar efecto láser verde sutil para notificaciones normales
+        baseStyle += ' border-l-4 border-l-green-500 bg-green-900/10 notification-laser-border';
+      }
+    } else if (message.type === 'code') {
+      baseStyle += ' font-mono border-yellow-500/30 bg-yellow-900/5';
+    } else if (message.type === 'error') {
+      baseStyle += ' border-red-500/50 bg-red-900/10';
+    } else if (message.type === 'success') {
+      baseStyle += ' border-green-500/50 bg-green-900/10';
+    } else if (message.metadata?.requiresAction) {
+      baseStyle += ' border-l-4 border-l-codestorm-gold bg-yellow-900/5';
+    }
+
+    if (isNew) {
+      baseStyle += ' animate-fadeIn';
+    }
+
+    return baseStyle;
+  };
+
+  return (
+    <div className={`${getMaxWidth()} ${getMessageStyle()} shadow-sm`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center">
+          {message.sender === 'user' ? (
+            <User className="w-4 h-4 mr-2 text-white" />
+          ) : message.sender === 'system' ? (
+            <Bell className="w-4 h-4 mr-2 text-gray-400" />
+          ) : (
+            <Bot className="w-4 h-4 mr-2 text-codestorm-gold" />
+          )}
+          <span className="text-xs opacity-70">
+            {new Date(message.timestamp).toLocaleTimeString()}
+          </span>
+
+          {message.type !== 'text' && (
+            <span className="ml-2 text-xs px-1.5 py-0.5 rounded-sm bg-black/20 text-gray-300">
+              {message.type === 'code' ? 'código' :
+               message.type === 'notification' ? 'notificación' :
+               message.type === 'proposal' ? 'propuesta' : ''}
+            </span>
+          )}
+        </div>
+
+        <div className="flex ml-2 space-x-1">
+          {message.sender === 'user' && onEdit && (
+            <button
+              onClick={() => onEdit(message)}
+              className="p-1 rounded hover:bg-black/20 text-white/70 hover:text-white"
+              title="Editar mensaje"
+            >
+              <Edit className="w-3 h-3" />
+            </button>
+          )}
+
+          <button
+            onClick={() => onCopy(message)}
+            className="p-1 rounded hover:bg-black/20 text-white/70 hover:text-white"
+            title="Copiar contenido"
+          >
+            {copiedMessageId === message.id ? (
+              <Check className="w-3 h-3 text-green-400" />
+            ) : (
+              <Copy className="w-3 h-3" />
+            )}
+          </button>
+
+          {message.sender === 'user' && onDelete && (
+            <button
+              onClick={() => onDelete(message.id)}
+              className="p-1 rounded hover:bg-black/20 text-white/70 hover:text-white"
+              title="Eliminar mensaje"
+            >
+              <Trash className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-2">
+        {renderMessageContent(message)}
+      </div>
+
+      {message.metadata?.stageId && (
+        <div className="mt-2 text-xs bg-codestorm-blue/20 text-blue-300 p-1.5 rounded flex items-center">
+          <Info className="w-3 h-3 mr-1" />
+          <span>Relacionado con una etapa del proyecto</span>
+        </div>
+      )}
+    </div>
+  );
+});
 
 const InteractiveChat: React.FC<InteractiveChatProps> = ({
   messages,
@@ -243,7 +500,14 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
         .slice(0, messages.length - DEFAULT_EXPANDED_MESSAGES)
         .map(msg => msg.id);
 
-      setCollapsedMessageIds(new Set(messageIdsToCollapse));
+      // Solo actualizar si hay cambios reales
+      setCollapsedMessageIds(prev => {
+        const newSet = new Set(messageIdsToCollapse);
+        if (prev.size !== newSet.size || [...prev].some(id => !newSet.has(id))) {
+          return newSet;
+        }
+        return prev;
+      });
     }
   }, [messages.length, expandAllMessages]);
 
@@ -626,42 +890,36 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
       return 'max-w-[80%] sm:max-w-[70%]';
     };
 
-    // Determinar el estilo según el tipo de mensaje
+    // Determinar el estilo según el tipo de mensaje (optimizado para evitar parpadeo)
     const getMessageStyle = () => {
-      // Estilo base para todos los mensajes con animación de pulso
+      // Estilo base para todos los mensajes sin animaciones de pulso constantes
       let baseStyle = 'rounded-lg p-3 break-words transition-smooth';
 
-      // Estilo según el remitente con animaciones específicas
+      // Estilo según el remitente (sin animaciones de pulso para evitar parpadeo)
       if (message.sender === 'user') {
-        baseStyle += ' bg-codestorm-accent text-white chat-message-pulse-user';
+        baseStyle += ' bg-codestorm-accent text-white border border-purple-500/30';
       } else if (message.sender === 'system') {
-        baseStyle += ' bg-codestorm-blue/10 text-gray-300 chat-message-pulse-system';
+        baseStyle += ' bg-codestorm-blue/10 text-gray-300 border border-green-500/30';
       } else {
-        baseStyle += ' bg-codestorm-blue/20 text-white chat-message-pulse';
+        baseStyle += ' bg-codestorm-blue/20 text-white border border-blue-500/30';
       }
 
       // Estilo adicional según el tipo de mensaje
       if (message.type === 'notification') {
-        baseStyle += ' border-l-2 border-l-yellow-500 chat-message-pulse-warning';
-        // Remover animaciones anteriores para usar la específica
-        baseStyle = baseStyle.replace('chat-message-pulse-user', '').replace('chat-message-pulse-system', '').replace('chat-message-pulse ', '');
+        baseStyle += ' border-l-4 border-l-yellow-500 bg-yellow-900/10';
       } else if (message.type === 'code') {
-        baseStyle += ' font-mono';
-        // Remover la animación de usuario/sistema para código y usar la específica
-        baseStyle = baseStyle.replace('chat-message-pulse-user', '').replace('chat-message-pulse-system', '').replace('chat-message-pulse ', '');
-        baseStyle += ' chat-message-pulse-code';
+        baseStyle += ' font-mono border-yellow-500/30 bg-yellow-900/5';
       } else if (message.type === 'error') {
-        baseStyle += ' chat-message-pulse-error';
-        // Remover animaciones anteriores para usar la específica
-        baseStyle = baseStyle.replace('chat-message-pulse-user', '').replace('chat-message-pulse-system', '').replace('chat-message-pulse ', '');
+        baseStyle += ' border-red-500/50 bg-red-900/10';
       } else if (message.type === 'success') {
-        baseStyle += ' chat-message-pulse-success';
-        // Remover animaciones anteriores para usar la específica
-        baseStyle = baseStyle.replace('chat-message-pulse-user', '').replace('chat-message-pulse-system', '').replace('chat-message-pulse ', '');
+        baseStyle += ' border-green-500/50 bg-green-900/10';
       } else if (message.metadata?.requiresAction) {
-        baseStyle += ' border-l-2 border-l-codestorm-gold chat-message-pulse-important';
-        // Remover animaciones anteriores para usar la específica
-        baseStyle = baseStyle.replace('chat-message-pulse-user', '').replace('chat-message-pulse-system', '').replace('chat-message-pulse ', '');
+        baseStyle += ' border-l-4 border-l-codestorm-gold bg-yellow-900/5';
+      }
+
+      // Solo aplicar animación de aparición para mensajes nuevos
+      if (newMessageIds.has(message.id)) {
+        baseStyle += ' animate-fadeIn';
       }
 
       return baseStyle;
@@ -939,7 +1197,11 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                               <div
                                 className={`rounded-lg p-2 cursor-pointer transition-all duration-300 ${
                                   message.sender === 'user' ? 'bg-codestorm-accent/50' : 'bg-codestorm-blue/10'
-                                } hover:bg-codestorm-blue/30 flex items-center space-x-2`}
+                                } ${message.type === 'notification' ?
+                                  (message.content.includes('etapa') || message.content.includes('Etapa') || message.metadata?.stageId)
+                                    ? 'stage-notification-laser-border'
+                                    : 'notification-laser-border'
+                                  : ''} hover:bg-codestorm-blue/30 flex items-center space-x-2`}
                                 onClick={() => toggleMessageCollapse(message.id)}
                               >
                                 <ChevronDown className="w-3 h-3" />
@@ -965,7 +1227,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                                 </div>
                               </div>
                             ) : (
-                              <div className={`${newMessageIds.has(message.id) ? 'chat-message-appear' : 'animate-fadeIn'}`}>
+                              <div>
                                 {renderMessage(message)}
                                 <div className="flex justify-end mt-1">
                                   <button
@@ -1022,7 +1284,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
               className={`
                 flex-1 text-white placeholder-gray-500 border rounded-md resize-none bg-codestorm-darker transition-smooth
                 -webkit-tap-highlight-color: transparent
-                ${isMobile ? 'p-2 text-sm' : 'p-2'}
+                ${isMobile ? 'p-3 text-sm min-h-[44px]' : 'p-3 min-h-[60px]'}
                 ${isEnhancing
                   ? 'border-codestorm-accent shadow-glow-blue animate-pulse-subtle'
                   : isDisabled
@@ -1030,10 +1292,10 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                   : 'border-codestorm-blue/30 hover:border-codestorm-blue/50 focus:border-codestorm-blue focus:ring-1 focus:ring-codestorm-blue/50'
                 }
               `}
-              rows={isMobile ? 1 : 2}
+              rows={isMobile ? 2 : 3}
               disabled={isProcessing || isEnhancing || isDisabled}
             />
-            <div className={`flex ${isMobile ? 'flex-row space-x-1' : 'flex-col justify-between space-y-2'}`}>
+            <div className={`flex ${isMobile ? 'flex-row space-x-2' : 'flex-col justify-between space-y-2'}`}>
               {/* Botón de carga de documentos */}
               <DocumentUploader
                 onDocumentProcessed={handleDocumentProcessed}
@@ -1054,7 +1316,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                   disabled={isProcessing || isEnhancing || isDisabled}
                   className={`
                     rounded-md transition-all duration-200 relative -webkit-tap-highlight-color: transparent
-                    ${isMobile ? 'p-2 min-w-[40px] min-h-[40px]' : 'p-2'}
+                    ${isMobile ? 'p-3 min-w-[44px] min-h-[44px]' : 'p-3 min-w-[48px] min-h-[48px]'}
                     ${isAdvancedListening
                       ? 'bg-red-500 text-white animate-pulse'
                       : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
@@ -1064,9 +1326,9 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                   title={isAdvancedListening ? 'Detener grabación' : 'Iniciar grabación de voz'}
                 >
                   {isAdvancedListening ? (
-                    <MicOff className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
+                    <MicOff className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                   ) : (
-                    <Mic className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'}`} />
+                    <Mic className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                   )}
                 </button>
               ) : (
@@ -1074,7 +1336,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                   onTranscript={handleVoiceTranscript}
                   onFinalTranscript={handleVoiceFinalTranscript}
                   disabled={isProcessing || isEnhancing || isDisabled}
-                  size={isMobile ? 'sm' : 'md'}
+                  size={isMobile ? 'md' : 'lg'}
                   autoSend={false}
                   showTranscript={false}
                   className="relative"
@@ -1084,7 +1346,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                 onClick={toggleEnhancePrompt}
                 className={`
                   rounded-md transition-all duration-200 -webkit-tap-highlight-color: transparent
-                  ${isMobile ? 'p-2 min-w-[40px] min-h-[40px]' : 'p-2'}
+                  ${isMobile ? 'p-3 min-w-[44px] min-h-[44px]' : 'p-3 min-w-[48px] min-h-[48px]'}
                   ${enhancePromptEnabled
                     ? 'bg-purple-600 text-white shadow-glow-blue'
                     : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
@@ -1092,14 +1354,14 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                 `}
                 title={enhancePromptEnabled ? 'Desactivar mejora de prompts' : 'Activar mejora de prompts'}
               >
-                <Sparkles className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'} ${enhancePromptEnabled ? 'animate-pulse' : ''}`} />
+                <Sparkles className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} ${enhancePromptEnabled ? 'animate-pulse' : ''}`} />
               </button>
               <button
                 onClick={handleSendMessage}
                 disabled={!inputValue.trim() || isProcessing || isEnhancing || isDisabled}
                 className={`
                   rounded-md transition-smooth -webkit-tap-highlight-color: transparent
-                  ${isMobile ? 'p-2 min-w-[40px] min-h-[40px]' : 'p-2'}
+                  ${isMobile ? 'p-3 min-w-[44px] min-h-[44px]' : 'p-3 min-w-[48px] min-h-[48px]'}
                   ${!inputValue.trim() || isProcessing || isEnhancing || isDisabled
                     ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                     : 'bg-codestorm-accent hover:bg-blue-600 text-white btn-hover-glow'
@@ -1108,9 +1370,9 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
                 title={isDisabled ? "Selecciona una plantilla para continuar" : "Enviar mensaje"}
               >
                 {isEnhancing ? (
-                  <Sparkles className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} animate-pulse`} />
+                  <Sparkles className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} animate-pulse`} />
                 ) : (
-                  <Send className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                  <Send className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'}`} />
                 )}
               </button>
             </div>

@@ -24,7 +24,8 @@ import BrandLogo from './components/BrandLogo';
 import Footer from './components/Footer';
 import HelpAssistant from './components/HelpAssistant';
 import CodeModifierPanel from './components/codemodifier/CodeModifierPanel';
-// IntroAnimation e useIntroAnimation movidos a la página Menu
+import IntroAnimation from './components/IntroAnimation';
+import useIntroAnimation from './hooks/useIntroAnimation';
 import { availableModels } from './data/models';
 import {
   ProjectState,
@@ -873,12 +874,33 @@ const MainApp: React.FC = () => {
   );
 };
 
+// Componente MainApp con animación de introducción
+const MainAppWithIntro: React.FC = () => {
+  // Hook para manejar la animación de introducción específica para la página principal
+  const { showIntro, completeIntro } = useIntroAnimation('home');
+
+  // TEMPORAL: Para testing - descomentar para resetear animaciones
+  // useEffect(() => {
+  //   localStorage.removeItem('codestorm-intro-seen-home');
+  //   localStorage.removeItem('codestorm-intro-seen-menu');
+  //   console.log('🧹 Limpiando localStorage para testing');
+  // }, []);
+
+  // Renderizar la animación de introducción si está activa
+  if (showIntro) {
+    return <IntroAnimation onComplete={completeIntro} />;
+  }
+
+  // Renderizar la aplicación principal
+  return <MainApp />;
+};
+
 // Componente principal que maneja el enrutamiento
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<MainApp />} />
-      <Route path="/home" element={<Home />} />
+      <Route path="/" element={<Menu />} />
+      <Route path="/home" element={<MainAppWithIntro />} />
       <Route path="/menu" element={<Menu />} />
       <Route path="/constructor" element={<ConstructorPage />} />
       <Route path="/codecorrector" element={<CodeCorrectorPage />} />

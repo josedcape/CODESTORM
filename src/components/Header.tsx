@@ -60,12 +60,12 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
 
             {isConstructorPage || isCodeCorrectorPage || isWebAIPage ? (
               <Link
-                to="/"
+                to="/menu"
                 className="flex items-center space-x-1 bg-blue-900/30 hover:bg-blue-800/40 border border-blue-500/30 rounded-md px-3 py-1.5 transition-all duration-300 hover:shadow-[0_0_10px_rgba(59,130,246,0.3)] transform hover:-translate-y-0.5 active:translate-y-0"
-                title="Ir a la página principal"
+                title="Ir al menú principal"
               >
                 <Home className="h-4 w-4 text-blue-400" />
-                <span className="text-blue-300">Inicio</span>
+                <span className="text-blue-300">Menú</span>
               </Link>
             ) : (
               <>
@@ -190,12 +190,12 @@ const Header: React.FC<HeaderProps> = ({ onPreviewClick, onChatClick, showConstr
 
             {isConstructorPage || isCodeCorrectorPage || isWebAIPage ? (
               <Link
-                to="/"
+                to="/menu"
                 className="flex items-center space-x-2 p-2 rounded-md bg-blue-900/30 hover:bg-blue-800/40 border border-blue-500/30 transition-all duration-300"
                 onClick={() => setIsMenuOpen(false)}
               >
                 <Home className="h-5 w-5 text-blue-400" />
-                <span className="text-blue-300">Ir a la página principal</span>
+                <span className="text-blue-300">Ir al menú principal</span>
               </Link>
             ) : (
               <>

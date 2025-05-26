@@ -20,7 +20,7 @@ const VoiceTestPage: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <BrandLogo />
-            
+
             {/* Título */}
             <div className="flex items-center gap-3">
               <TestTube className="w-6 h-6 text-codestorm-accent" />
@@ -28,10 +28,10 @@ const VoiceTestPage: React.FC = () => {
                 Pruebas de Reconocimiento de Voz
               </h1>
             </div>
-            
+
             {/* Botón de regreso */}
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/menu')}
               className="flex items-center gap-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-codestorm-blue/20 rounded-lg transition-all duration-200"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -48,8 +48,8 @@ const VoiceTestPage: React.FC = () => {
             Sistema Unificado de Reconocimiento de Voz
           </h2>
           <p className="text-gray-300 text-lg leading-relaxed">
-            Esta página permite probar y validar el funcionamiento del sistema de reconocimiento de voz 
-            optimizado para español en CODESTORM. El sistema utiliza coordinación centralizada para 
+            Esta página permite probar y validar el funcionamiento del sistema de reconocimiento de voz
+            optimizado para español en CODESTORM. El sistema utiliza coordinación centralizada para
             evitar conflictos entre múltiples instancias de reconocimiento.
           </p>
         </div>
@@ -66,7 +66,7 @@ const VoiceTestPage: React.FC = () => {
               <li>• Compatibilidad multi-navegador</li>
             </ul>
           </div>
-          
+
           <div className="bg-codestorm-darker border border-codestorm-blue/30 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-3">🔧 Componentes</h3>
             <ul className="space-y-2 text-gray-300 text-sm">
@@ -77,7 +77,7 @@ const VoiceTestPage: React.FC = () => {
               <li>• Manejo de permisos</li>
             </ul>
           </div>
-          
+
           <div className="bg-codestorm-darker border border-codestorm-blue/30 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-3">✅ Validaciones</h3>
             <ul className="space-y-2 text-gray-300 text-sm">
@@ -118,11 +118,11 @@ const VoiceTestPage: React.FC = () => {
               </ol>
             </div>
           </div>
-          
+
           <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
             <p className="text-yellow-200 text-sm">
-              <strong>Nota:</strong> Para obtener mejores resultados, asegúrate de estar en un ambiente silencioso 
-              y habla claramente. El sistema está optimizado para español pero puede reconocer otros idiomas 
+              <strong>Nota:</strong> Para obtener mejores resultados, asegúrate de estar en un ambiente silencioso
+              y habla claramente. El sistema está optimizado para español pero puede reconocer otros idiomas
               con menor precisión.
             </p>
           </div>

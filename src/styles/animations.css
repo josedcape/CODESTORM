@@ -498,6 +498,284 @@
   border: 1px solid rgba(59, 130, 246, 0.5);
 }
 
+/* ===== EFECTO LÁSER VERDE PARA NOTIFICACIONES ===== */
+
+/* Animación de borde láser verde sutil para notificaciones */
+@keyframes notification-laser-pulse {
+  0%, 100% {
+    border-color: rgba(34, 197, 94, 0.3);
+    box-shadow:
+      0 0 0 1px rgba(34, 197, 94, 0.2),
+      0 0 8px rgba(34, 197, 94, 0.15),
+      0 0 16px rgba(34, 197, 94, 0.1),
+      inset 0 0 8px rgba(34, 197, 94, 0.05);
+  }
+  25% {
+    border-color: rgba(34, 197, 94, 0.4);
+    box-shadow:
+      0 0 0 1px rgba(34, 197, 94, 0.3),
+      0 0 12px rgba(34, 197, 94, 0.2),
+      0 0 20px rgba(34, 197, 94, 0.15),
+      inset 0 0 10px rgba(34, 197, 94, 0.08);
+  }
+  50% {
+    border-color: rgba(34, 197, 94, 0.5);
+    box-shadow:
+      0 0 0 1px rgba(34, 197, 94, 0.4),
+      0 0 16px rgba(34, 197, 94, 0.25),
+      0 0 24px rgba(34, 197, 94, 0.2),
+      0 0 32px rgba(34, 197, 94, 0.1),
+      inset 0 0 12px rgba(34, 197, 94, 0.1);
+  }
+  75% {
+    border-color: rgba(34, 197, 94, 0.4);
+    box-shadow:
+      0 0 0 1px rgba(34, 197, 94, 0.3),
+      0 0 12px rgba(34, 197, 94, 0.2),
+      0 0 20px rgba(34, 197, 94, 0.15),
+      inset 0 0 10px rgba(34, 197, 94, 0.08);
+  }
+}
+
+/* Clase para aplicar el efecto láser verde a notificaciones */
+.notification-laser-border {
+  animation: notification-laser-pulse 3.5s ease-in-out infinite;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  position: relative;
+}
+
+/* Efecto de intensificación sutil al hacer hover */
+.notification-laser-border:hover {
+  animation-duration: 2.5s;
+}
+
+/* Variante más sutil para dispositivos móviles */
+@media (max-width: 768px) {
+  @keyframes notification-laser-pulse-mobile {
+    0%, 100% {
+      border-color: rgba(34, 197, 94, 0.25);
+      box-shadow:
+        0 0 0 1px rgba(34, 197, 94, 0.15),
+        0 0 6px rgba(34, 197, 94, 0.1),
+        inset 0 0 6px rgba(34, 197, 94, 0.03);
+    }
+    50% {
+      border-color: rgba(34, 197, 94, 0.4);
+      box-shadow:
+        0 0 0 1px rgba(34, 197, 94, 0.3),
+        0 0 12px rgba(34, 197, 94, 0.15),
+        0 0 18px rgba(34, 197, 94, 0.1),
+        inset 0 0 8px rgba(34, 197, 94, 0.05);
+    }
+  }
+
+  .notification-laser-border {
+    animation: notification-laser-pulse-mobile 4s ease-in-out infinite;
+  }
+}
+
+/* Variante dorada para notificaciones de etapas importantes */
+@keyframes stage-notification-laser-pulse {
+  0%, 100% {
+    border-color: rgba(251, 191, 36, 0.3);
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.2),
+      0 0 8px rgba(251, 191, 36, 0.15),
+      0 0 16px rgba(251, 191, 36, 0.1),
+      inset 0 0 8px rgba(251, 191, 36, 0.05);
+  }
+  50% {
+    border-color: rgba(251, 191, 36, 0.5);
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.4),
+      0 0 16px rgba(251, 191, 36, 0.25),
+      0 0 24px rgba(251, 191, 36, 0.2),
+      0 0 32px rgba(251, 191, 36, 0.1),
+      inset 0 0 12px rgba(251, 191, 36, 0.1);
+  }
+}
+
+.stage-notification-laser-border {
+  animation: stage-notification-laser-pulse 3s ease-in-out infinite;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  position: relative;
+}
+
+.stage-notification-laser-border:hover {
+  animation-duration: 2s;
+}
+
+/* ===== ANIMACIONES PARA INTRO ANIMATION ===== */
+
+/* Animaciones para partículas de la intro */
+@keyframes particle-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+}
+
+@keyframes particle-float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  25% {
+    transform: translateY(-10px) translateX(5px);
+  }
+  50% {
+    transform: translateY(-20px) translateX(-5px);
+  }
+  75% {
+    transform: translateY(-10px) translateX(3px);
+  }
+}
+
+@keyframes code-particle-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  to {
+    opacity: 0.6;
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+@keyframes code-particle-float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-15px) translateX(8px) rotate(90deg);
+  }
+  50% {
+    transform: translateY(-30px) translateX(-8px) rotate(180deg);
+  }
+  75% {
+    transform: translateY(-15px) translateX(5px) rotate(270deg);
+  }
+}
+
+/* Animaciones para rayos eléctricos */
+@keyframes lightning-flash {
+  0%, 100% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.lightning-horizontal {
+  animation: lightning-flash 0.5s ease-in-out;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+}
+
+.lightning-vertical {
+  animation: lightning-flash 0.7s ease-in-out 0.2s;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+}
+
+.lightning-diagonal-1 {
+  animation: lightning-flash 0.6s ease-in-out 0.4s;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+}
+
+.lightning-diagonal-2 {
+  animation: lightning-flash 0.8s ease-in-out 0.6s;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+}
+
+/* Animación para el título futurista */
+@keyframes electric-pulse {
+  0%, 100% {
+    text-shadow:
+      0 0 5px rgba(59, 130, 246, 0.8),
+      0 0 10px rgba(59, 130, 246, 0.6),
+      0 0 15px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    text-shadow:
+      0 0 10px rgba(59, 130, 246, 1),
+      0 0 20px rgba(59, 130, 246, 0.8),
+      0 0 30px rgba(59, 130, 246, 0.6),
+      0 0 40px rgba(59, 130, 246, 0.4);
+  }
+}
+
+.electric-pulse {
+  animation: electric-pulse 2s ease-in-out infinite;
+}
+
+/* Efecto de lluvia de código */
+@keyframes code-rain {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.code-rain {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(59, 130, 246, 0.1) 10%,
+    rgba(59, 130, 246, 0.3) 50%,
+    rgba(59, 130, 246, 0.1) 90%,
+    transparent 100%
+  );
+  animation: code-rain 3s linear infinite;
+}
+
+/* Título futurista con efecto de glitch */
+.futuristic-title {
+  position: relative;
+  color: #3b82f6;
+  text-shadow:
+    0 0 5px rgba(59, 130, 246, 0.8),
+    0 0 10px rgba(59, 130, 246, 0.6),
+    0 0 15px rgba(59, 130, 246, 0.4);
+}
+
+.futuristic-title::before {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  color: #60a5fa;
+  z-index: -1;
+  animation: glitch 2s infinite;
+}
+
+@keyframes glitch {
+  0%, 90%, 100% {
+    transform: translate(0);
+    opacity: 0;
+  }
+  95% {
+    transform: translate(2px, -2px);
+    opacity: 0.3;
+  }
+}
+
 .chat-message-pulse-important:hover {
   animation-duration: 1s;
 }

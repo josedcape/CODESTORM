@@ -40,7 +40,7 @@
   .p-2 { padding: 8px; }
   .p-3 { padding: 12px; }
   .p-4 { padding: 16px; }
-  
+
   .m-1 { margin: 4px; }
   .m-2 { margin: 8px; }
   .m-3 { margin: 12px; }
@@ -209,6 +209,26 @@
   padding: var(--mobile-padding);
   background: rgba(10, 17, 32, 0.95);
   border-top: 1px solid rgba(59, 130, 246, 0.3);
+  min-height: 80px;
+}
+
+/* Optimización específica para el área de texto del chat */
+.mobile-chat-input textarea {
+  min-height: 44px !important;
+  font-size: 16px !important; /* Evita zoom en iOS */
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .mobile-chat-input textarea {
+    min-height: 50px !important;
+    padding: 12px !important;
+  }
+
+  .mobile-chat-input .flex > div {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 /* Mensajes de chat optimizados para móvil */
@@ -355,7 +375,7 @@
   .hidden-mobile {
     display: none !important;
   }
-  
+
   .visible-mobile {
     display: block !important;
   }
@@ -377,16 +397,16 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  
+
   /* Reducir complejidad de sombras en móvil */
   .shadow-lg {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
-  
+
   .shadow-xl {
     box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
   }
-  
+
   /* Simplificar gradientes */
   .bg-gradient-to-r {
     background: var(--codestorm-accent);
