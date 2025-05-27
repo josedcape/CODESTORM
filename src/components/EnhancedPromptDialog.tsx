@@ -9,8 +9,12 @@ import {
   AlertCircle,
   Info,
   Globe,
+<<<<<<< HEAD
   Settings,
   Layers
+=======
+  Settings
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 } from 'lucide-react';
 
 interface EnhancedPromptDialogProps {
@@ -20,7 +24,10 @@ interface EnhancedPromptDialogProps {
   onUseEnhanced: () => void;
   isVisible: boolean;
   specializedResult?: SpecializedEnhanceResult;
+<<<<<<< HEAD
   onSelectTechnology?: () => void; // Nueva prop para seleccionar tecnología
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 }
 
 /**
@@ -33,8 +40,12 @@ const EnhancedPromptDialog: React.FC<EnhancedPromptDialogProps> = ({
   onUseOriginal,
   onUseEnhanced,
   isVisible,
+<<<<<<< HEAD
   specializedResult,
   onSelectTechnology
+=======
+  specializedResult
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 }) => {
   if (!isVisible) return null;
 
@@ -123,6 +134,7 @@ const EnhancedPromptDialog: React.FC<EnhancedPromptDialogProps> = ({
         </div>
 
         {/* Acciones */}
+<<<<<<< HEAD
         <div className="p-4 border-t border-codestorm-blue/30 flex justify-between items-center">
           {/* Botón de seleccionar tecnología a la izquierda */}
           {onSelectTechnology && (
@@ -152,6 +164,23 @@ const EnhancedPromptDialog: React.FC<EnhancedPromptDialogProps> = ({
               Usar Mejorado
             </button>
           </div>
+=======
+        <div className="p-4 border-t border-codestorm-blue/30 flex justify-end space-x-3">
+          <button
+            onClick={onUseOriginal}
+            className="px-4 py-2 rounded-md bg-gray-700 hover:bg-gray-600 text-white text-sm flex items-center"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Usar Original
+          </button>
+          <button
+            onClick={onUseEnhanced}
+            className="px-4 py-2 rounded-md bg-codestorm-accent hover:bg-blue-600 text-white text-sm flex items-center"
+          >
+            <Check className="h-4 w-4 mr-2" />
+            Usar Mejorado
+          </button>
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         </div>
       </div>
     </div>

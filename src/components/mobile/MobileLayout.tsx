@@ -32,7 +32,10 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   className = '',
   defaultTab = 'chat'
 }) => {
+<<<<<<< HEAD
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const { isMobile, isTablet } = useUI();
   const mobileOpt = useMobileOptimization();
   const [activeTab, setActiveTab] = useState(defaultTab);
@@ -44,6 +47,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
     preview: 0
   });
 
+<<<<<<< HEAD
   // Simular actualizaciones de contadores (esto se conectaría con los componentes reales)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -54,6 +58,8 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
     return () => clearInterval(interval);
   }, []);
 
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   // Solo mostrar el layout móvil en dispositivos móviles
   if (!isMobile && !isTablet) {
     return (
@@ -174,7 +180,19 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
     }));
   };
 
+<<<<<<< HEAD
 
+=======
+  // Simular actualizaciones de contadores (esto se conectaría con los componentes reales)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Aquí se conectarían los contadores reales de cada componente
+      // Por ahora es solo una simulación
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
   return (
     <div className={`mobile-layout ${className}`}>

@@ -13,16 +13,25 @@ import {
   User,
   Bot,
   Bell,
+<<<<<<< HEAD
+=======
+  Clock,
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   Edit,
   Check,
   X,
   Copy,
   Trash,
+<<<<<<< HEAD
+=======
+  RotateCcw,
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   ChevronDown,
   ChevronUp,
   Sparkles,
   History,
   Info,
+<<<<<<< HEAD
   Eye,
   EyeOff,
   Mic,
@@ -32,6 +41,19 @@ import {
   Clock,
   Code,
   FileText
+=======
+  Layers,
+  MessageSquare,
+  Eye,
+  EyeOff,
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  Code,
+  Mic,
+  MicOff,
+  Volume2
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 } from 'lucide-react';
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
 import { SpecializedEnhancerService, SpecializedEnhanceResult } from '../../services/SpecializedEnhancerService';
@@ -62,9 +84,12 @@ interface InteractiveChatProps {
   isDisabled?: boolean;
   currentAgent?: string;
   processingMessage?: string;
+<<<<<<< HEAD
   disablePromptEnhancement?: boolean; // Nueva prop para desactivar mejora de prompt
   onOpenStackSelector?: () => void; // Nueva prop para abrir selector de stack
   onProcessWithStack?: (enhancedPrompt: string) => void; // Nueva prop para procesar con stack
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 }
 
 // Número de mensajes recientes que se mostrarán expandidos por defecto
@@ -340,10 +365,14 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   isPaused = false,
   isDisabled = false,
   currentAgent,
+<<<<<<< HEAD
   processingMessage,
   disablePromptEnhancement = false,
   onOpenStackSelector,
   onProcessWithStack
+=======
+  processingMessage
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -355,7 +384,11 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   const [autoPlaySpeech, setAutoPlaySpeech] = useState(false);
 
   // Estado para la funcionalidad de mejora de prompts
+<<<<<<< HEAD
   const [enhancePromptEnabled, setEnhancePromptEnabled] = useState(true);
+=======
+  const [enhancePromptEnabled, setEnhancePromptEnabled] = useState(false);
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [currentEnhancedPrompt, setCurrentEnhancedPrompt] = useState<EnhancedPrompt | null>(null);
   const [showEnhancedPromptDialog, setShowEnhancedPromptDialog] = useState(false);
@@ -520,7 +553,11 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
     // Reproducir sonido de envío
     audio.playMessageSent();
 
+<<<<<<< HEAD
     // Si la mejora de prompts está habilitada, siempre mostrar modal (sin importar disablePromptEnhancement)
+=======
+    // Si la mejora de prompts está habilitada, mejorar el prompt
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     if (enhancePromptEnabled && !isEnhancing) {
       setIsEnhancing(true);
       audio.playProcessStart();
@@ -576,6 +613,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
     }
   };
 
+<<<<<<< HEAD
   // Función para seleccionar tecnología
   const handleSelectTechnology = () => {
     if (currentEnhancedPrompt && onOpenStackSelector && onProcessWithStack) {
@@ -593,6 +631,8 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
     }
   };
 
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   // Función para alternar la mejora de prompts
   const toggleEnhancePrompt = () => {
     setEnhancePromptEnabled(!enhancePromptEnabled);
@@ -1462,8 +1502,11 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           onUseOriginal={handleUseOriginalPrompt}
           onUseEnhanced={handleUseEnhancedPrompt}
           isVisible={showEnhancedPromptDialog}
+<<<<<<< HEAD
           specializedResult={currentSpecializedResult || undefined}
           onSelectTechnology={onOpenStackSelector ? handleSelectTechnology : undefined}
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         />
       )}
 

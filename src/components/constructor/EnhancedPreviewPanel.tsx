@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+=======
+import React, { useState, useEffect, useRef } from 'react';
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 import {
   RefreshCw,
   ExternalLink,
@@ -70,7 +74,11 @@ const EnhancedPreviewPanel: React.FC<EnhancedPreviewPanelProps> = ({
   };
 
   // Generar contenido HTML completo con CSS y JS integrados
+<<<<<<< HEAD
   const generatePreviewContent = useCallback(() => {
+=======
+  const generatePreviewContent = () => {
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     setPreviewStatus('loading');
     setErrors([]);
 
@@ -142,7 +150,11 @@ const EnhancedPreviewPanel: React.FC<EnhancedPreviewPanelProps> = ({
       setPreviewStatus('error');
       onError?.(errorMessage);
     }
+<<<<<<< HEAD
   }, [htmlFiles, cssFiles, jsFiles, selectedHtmlFile, onError, onSuccess]);
+=======
+  };
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
   // Generar HTML por defecto
   const generateDefaultHTML = () => {
@@ -241,7 +253,11 @@ ${jsContent}
       setPreviewStatus('empty');
       setPreviewContent('');
     }
+<<<<<<< HEAD
   }, [files, selectedHtmlFile, generatePreviewContent]);
+=======
+  }, [files, selectedHtmlFile]);
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
   // Función para abrir en nueva pestaña
   const handleOpenInNewTab = () => {

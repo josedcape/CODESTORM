@@ -18,23 +18,39 @@ import BrandLogo from '../components/BrandLogo';
 import IntroAnimation from '../components/IntroAnimation';
 import { useUI } from '../contexts/UIContext';
 import useIntroAnimation from '../hooks/useIntroAnimation';
+<<<<<<< HEAD
 import { initializeFreshIntroExperience } from '../utils/introAnimationUtils';
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
 const Menu: React.FC = () => {
   const navigate = useNavigate();
   const { isMobile, isTablet } = useUI();
 
+<<<<<<< HEAD
   // Initialize fresh intro experience on component mount
   useEffect(() => {
     initializeFreshIntroExperience();
   }, []);
 
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   // Hook para manejar la animación de introducción específica para el menú
   const { showIntro, completeIntro } = useIntroAnimation('menu');
 
   // Estado para controlar la reproducción del sonido
   const [hasPlayedSound, setHasPlayedSound] = useState(false);
 
+<<<<<<< HEAD
+=======
+  // TEMPORAL: Para testing - limpiar localStorage
+  // useEffect(() => {
+  //   localStorage.removeItem('codestorm-intro-seen-home');
+  //   localStorage.removeItem('codestorm-intro-seen-menu');
+  //   console.log('🧹 Menu - Limpiando localStorage para testing');
+  // }, []);
+
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   // Inicializar reconocimiento de voz global
   useEffect(() => {
     console.log('Inicializando reconocimiento de voz global en página Menu...');

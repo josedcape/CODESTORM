@@ -79,6 +79,7 @@ export class CodeGeneratorAgent {
       const fileDescriptions: FileDescription[] = task.plan.files;
       const projectContext = task.plan.description || task.instruction;
 
+<<<<<<< HEAD
       console.log(`🔧 CodeGeneratorAgent: Iniciando generación de ${fileDescriptions.length} archivos según plan aprobado`);
       console.log('📋 Plan del proyecto:', {
         title: task.plan.title,
@@ -94,10 +95,17 @@ export class CodeGeneratorAgent {
       for (let i = 0; i < fileDescriptions.length; i++) {
         const fileDescription = fileDescriptions[i];
 
+=======
+      // Generar cada archivo del plan
+      const generatedFiles: FileItem[] = [];
+
+      for (const fileDescription of fileDescriptions) {
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         try {
           // Verificar que la descripción del archivo tenga la estructura esperada
           if (!fileDescription.path) {
             console.warn('Descripción de archivo sin ruta, omitiendo:', fileDescription);
+<<<<<<< HEAD
             failedFiles.push('archivo sin ruta');
             continue;
           }
@@ -112,10 +120,18 @@ export class CodeGeneratorAgent {
 
           // Construir el prompt mejorado para el modelo de IA
           const prompt = this.buildEnhancedPrompt(fileDescription, projectContext, fileDescriptions, task.plan);
+=======
+            continue;
+          }
+
+          // Construir el prompt para el modelo de IA
+          const prompt = this.buildPrompt(fileDescription, projectContext);
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
           // Procesar la instrucción con el modelo de IA Gemini
           const response = await processInstruction(prompt, 'Gemini 2.5');
 
+<<<<<<< HEAD
           if (!response.content) {
             throw new Error(`El modelo de IA no devolvió contenido para ${fileDescription.path}`);
           }
@@ -138,6 +154,11 @@ export class CodeGeneratorAgent {
             }
           }
 
+=======
+          // Extraer el contenido del archivo
+          const fileContent = this.extractCodeContent(response.content, fileDescription.path);
+
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
           // Crear el objeto FileItem
           const file: FileItem = {
             id: generateUniqueId('file'),
@@ -151,6 +172,7 @@ export class CodeGeneratorAgent {
           };
 
           generatedFiles.push(file);
+<<<<<<< HEAD
           console.log(`✅ Archivo generado exitosamente: ${fileDescription.path} (${fileContent.length} caracteres)`);
 
         } catch (error) {
@@ -177,6 +199,11 @@ export class CodeGeneratorAgent {
           } catch (fallbackError) {
             console.error(`❌ Error al generar fallback para ${fileDescription.path}:`, fallbackError);
           }
+=======
+        } catch (error) {
+          console.error(`Error al generar el archivo ${fileDescription.path}:`, error);
+          // Continuar con el siguiente archivo
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         }
       }
 
@@ -184,6 +211,7 @@ export class CodeGeneratorAgent {
         throw new Error('No se pudo generar ningún archivo del plan');
       }
 
+<<<<<<< HEAD
       const successRate = (generatedFiles.length / fileDescriptions.length) * 100;
       console.log(`📊 Generación completada: ${generatedFiles.length}/${fileDescriptions.length} archivos (${successRate.toFixed(1)}% éxito)`);
 
@@ -191,14 +219,20 @@ export class CodeGeneratorAgent {
         console.warn(`⚠️ Archivos que fallaron: ${failedFiles.join(', ')}`);
       }
 
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
       return {
         success: true,
         data: { files: generatedFiles },
         metadata: {
           totalFiles: generatedFiles.length,
+<<<<<<< HEAD
           plannedFiles: fileDescriptions.length,
           successRate: successRate,
           failedFiles: failedFiles
+=======
+          plannedFiles: fileDescriptions.length
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         }
       };
     } catch (error) {
@@ -280,6 +314,7 @@ export class CodeGeneratorAgent {
   }
 
   /**
+<<<<<<< HEAD
    * Construye un prompt mejorado que incluye contexto del plan completo
    * @param fileDescription Descripción del archivo a generar
    * @param projectContext Contexto general del proyecto
@@ -558,6 +593,8 @@ console.log('Archivo ${fileName} inicializado');
   }
 
   /**
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
    * Construye el prompt específico para archivos de sitios web estáticos
    * @param fileDescription Descripción del archivo a generar
    * @param projectContext Contexto general del proyecto
@@ -612,6 +649,7 @@ Usa el formato de bloque de código con el lenguaje apropiado:
   }
 
   /**
+<<<<<<< HEAD
    * Construye el prompt mejorado específico para archivos de sitios web estáticos
    * @param fileDescription Descripción del archivo a generar
    * @param projectContext Contexto general del proyecto
@@ -704,6 +742,8 @@ IMPORTANTE: El archivo debe cumplir exactamente con la descripción proporcionad
   }
 
   /**
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
    * Construye el prompt general para archivos no web
    * @param fileDescription Descripción del archivo a generar
    * @param projectContext Contexto general del proyecto

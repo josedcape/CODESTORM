@@ -6,7 +6,10 @@ import Constructor from './pages/Constructor';
 import CodeCorrector from './pages/CodeCorrector';
 import WebAI from './pages/WebAI';
 import VoiceTestPage from './pages/VoiceTestPage';
+<<<<<<< HEAD
 import IntroTestPage from './pages/IntroTestPage';
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 import Header from './components/Header';
 import ModelSelector from './components/ModelSelector';
 import InstructionInput from './components/InstructionInput';
@@ -27,7 +30,10 @@ import HelpAssistant from './components/HelpAssistant';
 import CodeModifierPanel from './components/codemodifier/CodeModifierPanel';
 import IntroAnimation from './components/IntroAnimation';
 import useIntroAnimation from './hooks/useIntroAnimation';
+<<<<<<< HEAD
 import { initializeFreshIntroExperience } from './utils/introAnimationUtils';
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 import { availableModels } from './data/models';
 import {
   ProjectState,
@@ -878,6 +884,7 @@ const MainApp: React.FC = () => {
 
 // Componente MainApp con animación de introducción
 const MainAppWithIntro: React.FC = () => {
+<<<<<<< HEAD
   // Initialize fresh intro experience on component mount
   useEffect(() => {
     initializeFreshIntroExperience();
@@ -886,6 +893,18 @@ const MainAppWithIntro: React.FC = () => {
   // Hook para manejar la animación de introducción específica para la página principal
   const { showIntro, completeIntro } = useIntroAnimation('home');
 
+=======
+  // Hook para manejar la animación de introducción específica para la página principal
+  const { showIntro, completeIntro } = useIntroAnimation('home');
+
+  // TEMPORAL: Para testing - descomentar para resetear animaciones
+  // useEffect(() => {
+  //   localStorage.removeItem('codestorm-intro-seen-home');
+  //   localStorage.removeItem('codestorm-intro-seen-menu');
+  //   console.log('🧹 Limpiando localStorage para testing');
+  // }, []);
+
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   // Renderizar la animación de introducción si está activa
   if (showIntro) {
     return <IntroAnimation onComplete={completeIntro} />;
@@ -906,7 +925,10 @@ function App() {
       <Route path="/codecorrector" element={<CodeCorrectorPage />} />
       <Route path="/webai" element={<WebAIPage />} />
       <Route path="/voice-test" element={<VoiceTestPage />} />
+<<<<<<< HEAD
       <Route path="/intro-test" element={<IntroTestPage />} />
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     </Routes>
   );
 }

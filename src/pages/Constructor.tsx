@@ -31,16 +31,22 @@ import {
   ApprovalData,
   ProgressData
 } from '../types';
+<<<<<<< HEAD
 import { TechnologyStack } from '../types/technologyStacks';
 import { AIIterativeOrchestrator } from '../services/AIIterativeOrchestrator';
 import { generateUniqueId } from '../utils/idGenerator';
 import { useUI } from '../contexts/UIContext';
 import ApprovalMonitoringService from '../services/ApprovalMonitoringService';
+=======
+import { generateUniqueId } from '../utils/idGenerator';
+import { useUI } from '../contexts/UIContext';
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
 import InteractiveChat from '../components/constructor/InteractiveChat';
 import DirectoryExplorer from '../components/constructor/DirectoryExplorer';
 import ErrorNotification from '../components/constructor/ErrorNotification';
 import ProjectTemplateSelector from '../components/constructor/ProjectTemplateSelector';
+<<<<<<< HEAD
 import TechnologyStackCarousel from '../components/constructor/TechnologyStackCarousel';
 import StackDetailModal from '../components/constructor/StackDetailModal';
 import WorkflowSelector from '../components/constructor/WorkflowSelector';
@@ -52,6 +58,10 @@ import ProgressIndicator from '../components/constructor/ProgressIndicator';
 import ApprovalDebugPanel from '../components/constructor/ApprovalDebugPanel';
 import RobustApprovalSystem from '../components/constructor/RobustApprovalSystem';
 import ManualApprovalCommand from '../components/constructor/ManualApprovalCommand';
+=======
+import ApprovalInterface from '../components/constructor/ApprovalInterface';
+import ProgressIndicator from '../components/constructor/ProgressIndicator';
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
 // Nuevos componentes para el Constructor mejorado
 import CodeEditor from '../components/constructor/CodeEditor';
@@ -65,6 +75,10 @@ import { PromptEnhancerService, PromptEnhancerResult, EnhancedPrompt } from '../
 import { PlannerAgent } from '../agents/PlannerAgent';
 import { CodeGeneratorAgent } from '../agents/CodeGeneratorAgent';
 import { CodeModifierAgent } from '../agents/CodeModifierAgent';
+<<<<<<< HEAD
+=======
+import { AIIterativeOrchestrator } from '../services/AIIterativeOrchestrator';
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
 // --- DATA STRUCTURES ---
 export interface TemplateData {
@@ -109,7 +123,10 @@ const plannerAgentInstance = new PlannerAgent();
 const codeGeneratorAgentInstance = new CodeGeneratorAgent();
 const codeModifierAgentInstance = new CodeModifierAgent();
 const aiIterativeOrchestrator = AIIterativeOrchestrator.getInstance();
+<<<<<<< HEAD
 const approvalMonitoring = ApprovalMonitoringService.getInstance();
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
 // Efectos para suscribirse a los cambios en el estado del orquestrador iterativo
 const setupAIOrchestrator = (setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>, setAIState: React.Dispatch<React.SetStateAction<AIConstructorState>>, currentMessages: ChatMessage[]) => {
@@ -178,6 +195,7 @@ const Constructor: React.FC = () => {
     importedRepository: null,
   });
 
+<<<<<<< HEAD
   // Estados para el sistema de stacks de tecnología
   const [selectedStack, setSelectedStack] = useState<TechnologyStack | null>(null);
   const [showStackModal, setShowStackModal] = useState(false);
@@ -210,6 +228,11 @@ const Constructor: React.FC = () => {
   const [lastApprovalError, setLastApprovalError] = useState<string | null>(null);
   const [showManualCommand, setShowManualCommand] = useState(false);
 
+=======
+  const [pendingApproval, setPendingApproval] = useState<ApprovalData | null>(null);
+  const [progress, setProgress] = useState<ProgressData | null>(null);
+
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: generateUniqueId('welcome'), // Use helper for unique ID
@@ -328,8 +351,11 @@ const Constructor: React.FC = () => {
       // Manejar solicitudes de aprobación
       if (state.requiresApproval && state.approvalData) {
         setPendingApproval(state.approvalData);
+<<<<<<< HEAD
         // Iniciar monitoreo de la nueva solicitud
         approvalMonitoring.startMonitoring(state.approvalData);
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
       } else {
         setPendingApproval(null);
       }
@@ -423,7 +449,11 @@ const Constructor: React.FC = () => {
         cleanupVoiceRecognition();
       });
     };
+<<<<<<< HEAD
   }, []); // Empty dependency array is correct here - we only want to set up listeners once
+=======
+  }, []); // Eliminar dependencia de chatMessages para evitar re-renderizados infinitos
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
   const addChatMessage = (message: ChatMessage) => {
     setChatMessages(prev => [...prev, message]);
@@ -485,6 +515,7 @@ const Constructor: React.FC = () => {
     });
   };
 
+<<<<<<< HEAD
   // Función para manejar la selección de stack de tecnología
   const handleStackSelection = async (stack: TechnologyStack) => {
     setSelectedStack(stack);
@@ -793,6 +824,8 @@ const Constructor: React.FC = () => {
     });
   };
 
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const handleTemplateSelection = async (template: TemplateData | null) => {
     setAIConstructorState(prev => ({
       ...prev,
@@ -926,6 +959,7 @@ const Constructor: React.FC = () => {
       )
     );
 
+<<<<<<< HEAD
     // Sistema de recomendación inteligente para la primera instrucción del usuario
     // si aún no se ha elegido un flujo de trabajo y no es una modificación
     if (!hasUserChosenWorkflow && !isModification && chatMessages.filter(m => m.sender === 'user').length === 1) {
@@ -937,11 +971,25 @@ const Constructor: React.FC = () => {
         id: generateUniqueId('analyzing-project'),
         sender: 'ai',
         content: '🧠 Analizando tu proyecto para encontrar el stack tecnológico más apropiado...\n\nEstoy evaluando:\n• Tipo de aplicación y requisitos\n• Complejidad del proyecto\n• Tecnologías mencionadas\n• Mejores prácticas recomendadas',
+=======
+    // Mostrar el selector de plantillas después de la primera instrucción del usuario
+    // si aún no se ha seleccionado una plantilla y no es una modificación
+    if (!aiConstructorState.showTemplateSelector && !aiConstructorState.selectedTemplate && !isModification) {
+      // Guardar la instrucción original para combinarla con la plantilla después
+      localStorage.setItem('originalInstruction', content);
+
+      // Mostrar mensaje informativo sobre la selección de plantilla
+      addChatMessage({
+        id: generateUniqueId('template-prompt'),
+        sender: 'ai',
+        content: 'Ahora puedes seleccionar una plantilla para complementar tu instrucción. La plantilla se combinará con tu descripción inicial para generar un plan más completo.',
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         timestamp: Date.now(),
         type: 'notification',
         senderType: 'ai',
       });
 
+<<<<<<< HEAD
       // Generar recomendación inteligente después de un breve delay para UX
       setTimeout(() => {
         generateStackRecommendation(content);
@@ -960,6 +1008,15 @@ const Constructor: React.FC = () => {
     if (!hasUserChosenWorkflow && !isModification) {
       console.log('🛑 Usuario no ha elegido flujo de trabajo, no procesando instrucción');
       return;
+=======
+      // Mostrar el selector de plantillas
+      setAIConstructorState(prev => ({
+        ...prev,
+        showTemplateSelector: true
+      }));
+
+      return; // Detener el flujo aquí hasta que se seleccione una plantilla
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     }
 
     if (isModification) {
@@ -1008,6 +1065,7 @@ const Constructor: React.FC = () => {
     }
   };
 
+<<<<<<< HEAD
   // Función para abrir el selector de stack desde el modal de mejora de prompt
   const handleOpenStackSelectorFromPrompt = () => {
     console.log('🔧 Constructor: Abriendo selector de stack desde modal de mejora de prompt');
@@ -1031,6 +1089,8 @@ const Constructor: React.FC = () => {
     handleSendMessage(enhancedPrompt);
   };
 
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const handleViewFileContent = async (file: FileItem) => {
     setSelectedFileForViewing(file);
     setAIConstructorState(prev => ({
@@ -1178,6 +1238,7 @@ Instrucciones de uso...`;
     }
   };
 
+<<<<<<< HEAD
   // Métodos para manejar las aprobaciones con sistema robusto
   const handleApprove = (feedback?: string) => {
     console.log('🎯 handleApprove llamado con feedback:', feedback);
@@ -1186,6 +1247,12 @@ Instrucciones de uso...`;
       console.warn('❌ Se intentó aprobar, pero no hay una solicitud de aprobación pendiente');
       setApprovalFailureCount(prev => prev + 1);
       setLastApprovalError('No hay solicitud de aprobación pendiente');
+=======
+  // Métodos para manejar las aprobaciones
+  const handleApprove = (feedback?: string) => {
+    if (!pendingApproval) {
+      console.warn('Se intentó aprobar, pero no hay una solicitud de aprobación pendiente');
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
       // Mostrar mensaje de error
       addChatMessage({
@@ -1196,6 +1263,7 @@ Instrucciones de uso...`;
         type: 'error'
       });
 
+<<<<<<< HEAD
       // Activar sistema robusto después de 2 fallos
       if (approvalFailureCount >= 1) {
         setUseRobustApproval(true);
@@ -1213,6 +1281,12 @@ Instrucciones de uso...`;
       type: pendingApproval.type,
       isCompletePlan: pendingApproval.metadata?.isCompletePlan
     });
+=======
+      return;
+    }
+
+    console.log(`Aprobando solicitud con ID: ${pendingApproval.id}, tipo: ${pendingApproval.type}`);
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
     // Añadir mensaje de chat indicando la aprobación
     addChatMessage({
@@ -1236,6 +1310,7 @@ Instrucciones de uso...`;
     }));
 
     try {
+<<<<<<< HEAD
       // Guardar backup antes de procesar
       const approvalBackup = {
         approvalData: pendingApproval,
@@ -1245,6 +1320,8 @@ Instrucciones de uso...`;
       };
       localStorage.setItem('codestorm_approval_backup', JSON.stringify(approvalBackup));
 
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
       // Para planes completos, no necesitamos pasar approvedItems
       if (pendingApproval.metadata?.isCompletePlan) {
         // Llamar al método de aprobación del orquestrador sin approvedItems
@@ -1255,6 +1332,7 @@ Instrucciones de uso...`;
         aiIterativeOrchestrator.handleApproval(pendingApproval.id, true, feedback, allItems);
       }
 
+<<<<<<< HEAD
       console.log('✅ Solicitud de aprobación enviada correctamente');
 
       // Registrar éxito en el monitoreo
@@ -1294,6 +1372,11 @@ Instrucciones de uso...`;
         setUseRobustApproval(true);
       }
 
+=======
+      console.log('Solicitud de aprobación enviada correctamente');
+    } catch (error) {
+      console.error('Error al procesar la aprobación:', error);
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
       handleError(error, 'el procesamiento de la aprobación');
     }
   };
@@ -1348,6 +1431,7 @@ Instrucciones de uso...`;
     }
   };
 
+<<<<<<< HEAD
   // Funciones para el sistema robusto de aprobación
   const handleForceApproval = () => {
     console.log('🔥 Aprobación forzada activada');
@@ -1428,6 +1512,8 @@ Instrucciones de uso...`;
     });
   };
 
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const handlePartialApprove = (approvedItems: string[], feedback?: string) => {
     if (!pendingApproval) {
       console.warn('Se intentó aprobar parcialmente, pero no hay una solicitud de aprobación pendiente');
@@ -1525,6 +1611,7 @@ Instrucciones de uso...`;
     setShowHelpAssistant(prev => !prev);
   };
 
+<<<<<<< HEAD
   // Debug logs
   console.log('🔍 Debug states:', {
     showStackSelector,
@@ -1534,10 +1621,13 @@ Instrucciones de uso...`;
     selectedStack: selectedStack?.name
   });
 
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   return (
     <div className="flex flex-col min-h-screen bg-codestorm-darker">
       <Header showConstructorButton={false} />
       <main className="container flex-1 px-4 py-4 mx-auto">
+<<<<<<< HEAD
         {/* Recomendación inteligente de stack */}
         {showStackRecommendation && currentRecommendation && (
           <div className="mb-6">
@@ -1676,6 +1766,39 @@ Instrucciones de uso...`;
                 </p>
               </div>
             )}
+=======
+        {aiConstructorState.showTemplateSelector && (
+          <div className="p-6 mb-6 rounded-lg shadow-md bg-codestorm-dark">
+            <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-white mb-3`}>
+              Selecciona una Plantilla para Complementar tu Instrucción
+            </h2>
+            <div className="p-3 mb-4 border rounded-md bg-codestorm-blue/10 border-codestorm-blue/30">
+              <p className="text-sm text-white">
+                <span className="font-semibold">Instrucción recibida:</span> {localStorage.getItem('originalInstruction')}
+              </p>
+              <p className="mt-2 text-sm text-codestorm-accent">
+                Selecciona una plantilla para complementar tu instrucción y crear un plan de desarrollo más completo.
+              </p>
+            </div>
+            <ProjectTemplateSelector onSelectTemplate={handleTemplateSelection} />
+            <button
+              onClick={() => handleTemplateSelection(null)}
+              className="px-4 py-2 mt-4 text-sm text-white bg-gray-600 rounded-md hover:bg-gray-700">
+              Continuar sin plantilla
+            </button>
+          </div>
+        )}
+
+        {!aiConstructorState.showTemplateSelector && (
+          <div className="p-6 mb-6 rounded-lg shadow-md bg-codestorm-dark">
+            <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-white mb-4`}>Constructor de CODESTORM (IA Activa)</h1>
+            <p className="mb-2 text-gray-300">
+              {aiConstructorState.selectedTemplate ? `Plantilla: ${aiConstructorState.selectedTemplate.name}. ` : ''}
+              Describe tu proyecto, tarea o las modificaciones deseadas.
+            </p>
+
+
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
             {aiConstructorState.isAIBusy && (
               <div className="flex items-center p-3 mb-4 border rounded-md bg-codestorm-blue/10 border-codestorm-blue/30">
@@ -1689,6 +1812,7 @@ Instrucciones de uso...`;
         {/* Interfaz de Aprobación */}
         {pendingApproval && (
           <div className="p-6 mb-6 rounded-lg shadow-md bg-codestorm-dark">
+<<<<<<< HEAD
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-white">Aprobación Requerida</h2>
               {(useRobustApproval || approvalFailureCount > 0) && (
@@ -1766,6 +1890,16 @@ Instrucciones de uso...`;
                 </div>
               </div>
             )}
+=======
+            <h2 className="mb-4 text-xl font-bold text-white">Aprobación Requerida</h2>
+            <ApprovalInterface
+              approvalData={pendingApproval}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              onPartialApprove={handlePartialApprove}
+              isLoading={aiConstructorState.isAIBusy}
+            />
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
           </div>
         )}
 
@@ -1802,9 +1936,12 @@ Instrucciones de uso...`;
                   isDisabled={aiConstructorState.showTemplateSelector && !aiConstructorState.selectedTemplate}
                   currentAgent={aiConstructorState.currentAgent || undefined}
                   processingMessage={aiConstructorState.currentAIAction || undefined}
+<<<<<<< HEAD
                   disablePromptEnhancement={false}
                   onOpenStackSelector={handleOpenStackSelectorFromPrompt}
                   onProcessWithStack={handleProcessWithStack}
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
                 />
               </div>
             </CollapsiblePanel>
@@ -2020,6 +2157,7 @@ Instrucciones de uso...`;
         isOpen={showHelpAssistant}
         onClose={handleToggleHelpAssistant}
       />
+<<<<<<< HEAD
 
       {/* Modal de detalles del stack */}
       {selectedStack && (
@@ -2049,6 +2187,8 @@ Instrucciones de uso...`;
         isVisible={showManualCommand}
         onToggleVisibility={() => setShowManualCommand(!showManualCommand)}
       />
+=======
+>>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     </div>
   );
 };
