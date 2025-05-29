@@ -36,7 +36,6 @@ const ApprovalInterface: React.FC<ApprovalInterfaceProps> = ({
       // Seleccionar todos los elementos por defecto para aprobación por lotes o plan completo
       setSelectedItems(approvalData.items.map(item => item.id));
     }
-<<<<<<< HEAD
     // Resetear el estado de loading cuando cambia la data de aprobación
     setIsLoading(false);
   }, [approvalData, isCompletePlan]);
@@ -46,10 +45,6 @@ const ApprovalInterface: React.FC<ApprovalInterfaceProps> = ({
     setIsLoading(initialLoading);
   }, [initialLoading]);
 
-=======
-  }, [approvalData, isCompletePlan]);
-
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const toggleSection = (id: string) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -76,14 +71,11 @@ const ApprovalInterface: React.FC<ApprovalInterfaceProps> = ({
 
     try {
       onApprove(feedback.trim() || undefined);
-<<<<<<< HEAD
 
       // Timeout de seguridad para resetear el estado de loading
       setTimeout(() => {
         setIsLoading(false);
       }, 5000); // 5 segundos de timeout
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     } catch (error) {
       console.error('Error al aprobar:', error);
       alert('Ocurrió un error al procesar la aprobación. Por favor, intenta nuevamente.');
@@ -104,14 +96,11 @@ const ApprovalInterface: React.FC<ApprovalInterfaceProps> = ({
 
     try {
       onReject(feedback);
-<<<<<<< HEAD
 
       // Timeout de seguridad para resetear el estado de loading
       setTimeout(() => {
         setIsLoading(false);
       }, 5000); // 5 segundos de timeout
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     } catch (error) {
       console.error('Error al rechazar:', error);
       alert('Ocurrió un error al procesar el rechazo. Por favor, intenta nuevamente.');
@@ -132,14 +121,11 @@ const ApprovalInterface: React.FC<ApprovalInterfaceProps> = ({
 
     try {
       onPartialApprove(selectedItems, feedback.trim() || undefined);
-<<<<<<< HEAD
 
       // Timeout de seguridad para resetear el estado de loading
       setTimeout(() => {
         setIsLoading(false);
       }, 5000); // 5 segundos de timeout
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     } catch (error) {
       console.error('Error al aprobar parcialmente:', error);
       alert('Ocurrió un error al procesar la aprobación parcial. Por favor, intenta nuevamente.');

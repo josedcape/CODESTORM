@@ -13,35 +13,18 @@ import {
   User,
   Bot,
   Bell,
-<<<<<<< HEAD
-=======
   Clock,
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   Edit,
   Check,
   X,
   Copy,
   Trash,
-<<<<<<< HEAD
-=======
   RotateCcw,
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   ChevronDown,
   ChevronUp,
   Sparkles,
   History,
   Info,
-<<<<<<< HEAD
-  Eye,
-  EyeOff,
-  Mic,
-  MicOff,
-  Volume2,
-  AlertCircle,
-  Clock,
-  Code,
-  FileText
-=======
   Layers,
   MessageSquare,
   Eye,
@@ -53,7 +36,6 @@ import {
   Mic,
   MicOff,
   Volume2
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 } from 'lucide-react';
 import { PromptEnhancerService, EnhancedPrompt } from '../../services/PromptEnhancerService';
 import { SpecializedEnhancerService, SpecializedEnhanceResult } from '../../services/SpecializedEnhancerService';
@@ -84,12 +66,6 @@ interface InteractiveChatProps {
   isDisabled?: boolean;
   currentAgent?: string;
   processingMessage?: string;
-<<<<<<< HEAD
-  disablePromptEnhancement?: boolean; // Nueva prop para desactivar mejora de prompt
-  onOpenStackSelector?: () => void; // Nueva prop para abrir selector de stack
-  onProcessWithStack?: (enhancedPrompt: string) => void; // Nueva prop para procesar con stack
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 }
 
 // Número de mensajes recientes que se mostrarán expandidos por defecto
@@ -365,14 +341,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   isPaused = false,
   isDisabled = false,
   currentAgent,
-<<<<<<< HEAD
-  processingMessage,
-  disablePromptEnhancement = false,
-  onOpenStackSelector,
-  onProcessWithStack
-=======
   processingMessage
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -384,12 +353,8 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
   const [autoPlaySpeech, setAutoPlaySpeech] = useState(false);
 
   // Estado para la funcionalidad de mejora de prompts
-<<<<<<< HEAD
-  const [enhancePromptEnabled, setEnhancePromptEnabled] = useState(true);
-=======
-  const [enhancePromptEnabled, setEnhancePromptEnabled] = useState(false);
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
-  const [isEnhancing, setIsEnhancing] = useState(false);
+const [isEnhancing, setIsEnhancing] = useState(false);
+  const [enhancementHistory, setEnhancementHistory] = useState<Enhancement[]>([]);
   const [currentEnhancedPrompt, setCurrentEnhancedPrompt] = useState<EnhancedPrompt | null>(null);
   const [showEnhancedPromptDialog, setShowEnhancedPromptDialog] = useState(false);
   const [showEnhancementHistory, setShowEnhancementHistory] = useState(false);
@@ -553,11 +518,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
     // Reproducir sonido de envío
     audio.playMessageSent();
 
-<<<<<<< HEAD
-    // Si la mejora de prompts está habilitada, siempre mostrar modal (sin importar disablePromptEnhancement)
-=======
     // Si la mejora de prompts está habilitada, mejorar el prompt
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     if (enhancePromptEnabled && !isEnhancing) {
       setIsEnhancing(true);
       audio.playProcessStart();
@@ -613,26 +574,6 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
     }
   };
 
-<<<<<<< HEAD
-  // Función para seleccionar tecnología
-  const handleSelectTechnology = () => {
-    if (currentEnhancedPrompt && onOpenStackSelector && onProcessWithStack) {
-      console.log('🔧 Constructor: Abriendo selector de stack desde modal de mejora');
-
-      // Guardar el prompt mejorado para procesarlo después de seleccionar stack
-      localStorage.setItem('enhancedPromptForStack', currentEnhancedPrompt.enhancedPrompt);
-
-      // Cerrar el modal de mejora
-      setShowEnhancedPromptDialog(false);
-      setCurrentEnhancedPrompt(null);
-
-      // Abrir el selector de stack
-      onOpenStackSelector();
-    }
-  };
-
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   // Función para alternar la mejora de prompts
   const toggleEnhancePrompt = () => {
     setEnhancePromptEnabled(!enhancePromptEnabled);
@@ -812,7 +753,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
             customStyle={{
               margin: 0,
               padding: '0.75rem',
-              paddingTop: '1.5rem', // Espacio para la etiqueta de lenguaje
+              paddingTop: '1.5rem',
               background: '#0a1120',
               borderRadius: '0.375rem',
               maxHeight: isLongContent ? '300px' : 'none',
@@ -895,9 +836,36 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
     }
   };
 
+  // Función para renderizar el historial de mejoras
+  const renderEnhancementHistory = () => {
+    if (enhancementHistory.length === 0) return null;
+
+    return (
+      <div className="mb-4 p-3 bg-codestorm-blue/10 rounded-lg border border-codestorm-blue/20">
+        <h4 className="text-sm font-medium text-codestorm-blue mb-2 flex items-center gap-2">
+          <History className="h-4 w-4" />
+          Historial de Mejoras ({enhancementHistory.length})
+        </h4>
+        <div className="space-y-2 max-h-32 overflow-y-auto">
+          {enhancementHistory.slice(-3).map((enhancement) => (
+            <div key={enhancement.id} className="text-xs text-gray-400 bg-codestorm-darker/50 p-2 rounded">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">
+                  {enhancement.type === 'code' ? '💻' : enhancement.type === 'ui' ? '🎨' : '🔧'} 
+                  {enhancement.description}
+                </span>
+                <span className="text-green-400">✓</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // Función para renderizar un mensaje
   const renderMessage = (message: ChatMessage) => {
-    // Si estamos editando este mensaje, mostrar el formulario de edición
+    //    // Si estamos editando este mensaje, mostrar el formulario de edición
     if (editingMessageId === message.id) {
       return (
         <div className="p-3 border rounded-lg bg-codestorm-blue/20 border-codestorm-blue/40">
@@ -1329,6 +1297,8 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           </div>
         )}
 
+        {renderEnhancementHistory()}
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -1502,11 +1472,7 @@ const InteractiveChat: React.FC<InteractiveChatProps> = ({
           onUseOriginal={handleUseOriginalPrompt}
           onUseEnhanced={handleUseEnhancedPrompt}
           isVisible={showEnhancedPromptDialog}
-<<<<<<< HEAD
           specializedResult={currentSpecializedResult || undefined}
-          onSelectTechnology={onOpenStackSelector ? handleSelectTechnology : undefined}
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         />
       )}
 

@@ -1,20 +1,11 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
-import {
-  Code,
-  Wrench,
-  Globe,
-  Zap,
-  ArrowRight,
-=======
 import { 
   Code, 
   Wrench, 
   Globe, 
   Zap, 
   ArrowRight, 
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   Sparkles,
   Bot,
   FileCode,
@@ -25,23 +16,11 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import BrandLogo from '../components/BrandLogo';
 import { useUI } from '../contexts/UIContext';
-<<<<<<< HEAD
-import { initializeFreshIntroExperience } from '../utils/introAnimationUtils';
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const { isMobile, isTablet } = useUI();
 
-<<<<<<< HEAD
-  // Initialize fresh intro experience on component mount
-  useEffect(() => {
-    initializeFreshIntroExperience();
-  }, []);
-
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   // Inicializar reconocimiento de voz global
   useEffect(() => {
     console.log('Inicializando reconocimiento de voz global en página de inicio...');
@@ -101,37 +80,20 @@ const Home: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-codestorm-darker">
       <Header showConstructorButton={false} />
-<<<<<<< HEAD
-
-=======
-      
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Hero Section */}
         <div className="text-center mb-16">
           <div className="mb-8">
             <BrandLogo size="xl" showPulse={true} showGlow={true} />
           </div>
-<<<<<<< HEAD
-
-=======
-          
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
           <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl'} font-bold text-white mb-6`}>
             Bienvenido a{' '}
             <span className="bg-gradient-to-r from-codestorm-accent to-blue-400 bg-clip-text text-transparent">
               CODESTORM
             </span>
           </h1>
-<<<<<<< HEAD
-
-          <p className={`${isMobile ? 'text-lg' : 'text-xl'} text-gray-300 mb-8 max-w-3xl mx-auto`}>
-            La plataforma de desarrollo asistido por IA más avanzada. Crea, modifica y optimiza código
-=======
-          
           <p className={`${isMobile ? 'text-lg' : 'text-xl'} text-gray-300 mb-8 max-w-3xl mx-auto`}>
             La plataforma de desarrollo asistido por IA más avanzada. Crea, modifica y optimiza código 
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
             con agentes especializados que trabajan en tiempo real.
           </p>
 
@@ -163,11 +125,6 @@ const Home: React.FC = () => {
               >
                 {/* Gradient Background */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-10 rounded-xl transition-opacity duration-300`} />
-<<<<<<< HEAD
-
-=======
-                
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
                 {/* Icon */}
                 <div className={`w-16 h-16 bg-gradient-to-br ${feature.color} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
                   <IconComponent className="w-8 h-8 text-white" />
@@ -177,11 +134,6 @@ const Home: React.FC = () => {
                 <h3 className="text-xl font-bold text-white mb-3 group-hover:text-codestorm-accent transition-colors">
                   {feature.title}
                 </h3>
-<<<<<<< HEAD
-
-=======
-                
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
                 <p className="text-gray-300 mb-4 text-sm leading-relaxed">
                   {feature.description}
                 </p>
@@ -213,11 +165,6 @@ const Home: React.FC = () => {
           <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-white mb-6 text-center`}>
             Inicio Rápido
           </h2>
-<<<<<<< HEAD
-
-=======
-          
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
           <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-6`}>
             <div className="text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center mx-auto mb-4">
@@ -228,11 +175,6 @@ const Home: React.FC = () => {
                 Usa texto o comandos de voz para describir lo que quieres crear
               </p>
             </div>
-<<<<<<< HEAD
-
-=======
-            
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
             <div className="text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <Bot className="w-6 h-6 text-white" />
@@ -242,11 +184,6 @@ const Home: React.FC = () => {
                 Los agentes especializados crean automáticamente tu proyecto
               </p>
             </div>
-<<<<<<< HEAD
-
-=======
-            
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
             <div className="text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <Terminal className="w-6 h-6 text-white" />

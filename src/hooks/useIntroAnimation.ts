@@ -13,18 +13,6 @@ const useIntroAnimation = (pageKey?: string) => {
 
   useEffect(() => {
     try {
-<<<<<<< HEAD
-      // ALWAYS SHOW INTRO ANIMATION - Clear any existing localStorage flags
-      localStorage.removeItem(storageKey);
-
-      // Always show the intro animation for a fresh experience
-      console.log(`🎬 ALWAYS showing intro animation for ${pageKey || 'página principal'} - Fresh experience guaranteed!`);
-      setShowIntro(true);
-    } catch (error) {
-      console.error('Error al acceder a localStorage:', error);
-      // Even in case of error, show the animation for better UX
-      setShowIntro(true);
-=======
       // Comprobar si el usuario ya ha visto la animación para esta página específica
       const hasSeenIntro = localStorage.getItem(storageKey);
 
@@ -40,18 +28,10 @@ const useIntroAnimation = (pageKey?: string) => {
       console.error('Error al acceder a localStorage:', error);
       // En caso de error, no mostrar la animación
       setShowIntro(false);
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     }
   }, [storageKey, pageKey]);
 
   /**
-<<<<<<< HEAD
-   * Función para completar y ocultar la animación (sin guardar en localStorage)
-   */
-  const completeIntro = () => {
-    // DO NOT save to localStorage - we want the animation to always show
-    console.log(`🎬 Intro animation completed for ${pageKey || 'página principal'} - Will show again on next visit!`);
-=======
    * Función para marcar la animación como vista y ocultarla
    */
   const completeIntro = () => {
@@ -62,22 +42,12 @@ const useIntroAnimation = (pageKey?: string) => {
     } catch (error) {
       console.error('Error al guardar en localStorage:', error);
     }
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
     // Ocultar la animación
     setShowIntro(false);
   };
 
   /**
-<<<<<<< HEAD
-   * Función para resetear el estado de la animación (siempre disponible)
-   */
-  const resetIntro = () => {
-    try {
-      // Clear any localStorage flags (though they shouldn't exist)
-      localStorage.removeItem(storageKey);
-      console.log(`🎬 Animation reset for ${pageKey || 'página principal'} - Showing intro again!`);
-=======
    * Función para resetear el estado de la animación (para pruebas)
    */
   const resetIntro = () => {
@@ -85,7 +55,6 @@ const useIntroAnimation = (pageKey?: string) => {
       // Eliminar la marca de localStorage
       localStorage.removeItem(storageKey);
       console.log(`Estado de la animación reseteado para ${pageKey || 'página principal'}`);
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     } catch (error) {
       console.error('Error al eliminar de localStorage:', error);
     }

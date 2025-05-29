@@ -31,37 +31,13 @@ import {
   ApprovalData,
   ProgressData
 } from '../types';
-<<<<<<< HEAD
-import { TechnologyStack } from '../types/technologyStacks';
-import { AIIterativeOrchestrator } from '../services/AIIterativeOrchestrator';
 import { generateUniqueId } from '../utils/idGenerator';
 import { useUI } from '../contexts/UIContext';
-import ApprovalMonitoringService from '../services/ApprovalMonitoringService';
-=======
-import { generateUniqueId } from '../utils/idGenerator';
-import { useUI } from '../contexts/UIContext';
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
 import InteractiveChat from '../components/constructor/InteractiveChat';
 import DirectoryExplorer from '../components/constructor/DirectoryExplorer';
 import ErrorNotification from '../components/constructor/ErrorNotification';
 import ProjectTemplateSelector from '../components/constructor/ProjectTemplateSelector';
-<<<<<<< HEAD
-import TechnologyStackCarousel from '../components/constructor/TechnologyStackCarousel';
-import StackDetailModal from '../components/constructor/StackDetailModal';
-import WorkflowSelector from '../components/constructor/WorkflowSelector';
-import StackChangeButton from '../components/constructor/StackChangeButton';
-import StackRecommendation from '../components/constructor/StackRecommendation';
-import { StackRecommendationService, StackRecommendation as StackRecommendationType } from '../services/StackRecommendationService';
-import ApprovalInterface from '../components/constructor/ApprovalInterface';
-import ProgressIndicator from '../components/constructor/ProgressIndicator';
-import ApprovalDebugPanel from '../components/constructor/ApprovalDebugPanel';
-import RobustApprovalSystem from '../components/constructor/RobustApprovalSystem';
-import ManualApprovalCommand from '../components/constructor/ManualApprovalCommand';
-=======
-import ApprovalInterface from '../components/constructor/ApprovalInterface';
-import ProgressIndicator from '../components/constructor/ProgressIndicator';
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
 // Nuevos componentes para el Constructor mejorado
 import CodeEditor from '../components/constructor/CodeEditor';
@@ -75,10 +51,7 @@ import { PromptEnhancerService, PromptEnhancerResult, EnhancedPrompt } from '../
 import { PlannerAgent } from '../agents/PlannerAgent';
 import { CodeGeneratorAgent } from '../agents/CodeGeneratorAgent';
 import { CodeModifierAgent } from '../agents/CodeModifierAgent';
-<<<<<<< HEAD
-=======
 import { AIIterativeOrchestrator } from '../services/AIIterativeOrchestrator';
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
 // --- DATA STRUCTURES ---
 export interface TemplateData {
@@ -123,10 +96,6 @@ const plannerAgentInstance = new PlannerAgent();
 const codeGeneratorAgentInstance = new CodeGeneratorAgent();
 const codeModifierAgentInstance = new CodeModifierAgent();
 const aiIterativeOrchestrator = AIIterativeOrchestrator.getInstance();
-<<<<<<< HEAD
-const approvalMonitoring = ApprovalMonitoringService.getInstance();
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
 // Efectos para suscribirse a los cambios en el estado del orquestrador iterativo
 const setupAIOrchestrator = (setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>, setAIState: React.Dispatch<React.SetStateAction<AIConstructorState>>, currentMessages: ChatMessage[]) => {
@@ -195,44 +164,9 @@ const Constructor: React.FC = () => {
     importedRepository: null,
   });
 
-<<<<<<< HEAD
-  // Estados para el sistema de stacks de tecnología
-  const [selectedStack, setSelectedStack] = useState<TechnologyStack | null>(null);
-  const [showStackModal, setShowStackModal] = useState(false);
-  const [showStackSelector, setShowStackSelector] = useState(false);
-
-  // Estados para el flujo de selección flexible
-  const [showWorkflowSelector, setShowWorkflowSelector] = useState(false);
-  const [workflowChoice, setWorkflowChoice] = useState<'stack' | 'generic' | null>(null);
-  const [hasUserChosenWorkflow, setHasUserChosenWorkflow] = useState(false);
-
-  // Estados para el sistema de recomendación inteligente
-  const [showStackRecommendation, setShowStackRecommendation] = useState(false);
-  const [currentRecommendation, setCurrentRecommendation] = useState<StackRecommendationType | null>(null);
-  const [recommendationService] = useState(() => StackRecommendationService.getInstance());
-
-  // Efecto para limpiar el stack al desmontar el componente
-  useEffect(() => {
-    return () => {
-      const orchestrator = AIIterativeOrchestrator.getInstance();
-      orchestrator.clearSelectedStack();
-    };
-  }, []);
-
   const [pendingApproval, setPendingApproval] = useState<ApprovalData | null>(null);
   const [progress, setProgress] = useState<ProgressData | null>(null);
 
-  // Estados para el sistema robusto de aprobación
-  const [useRobustApproval, setUseRobustApproval] = useState(false);
-  const [approvalFailureCount, setApprovalFailureCount] = useState(0);
-  const [lastApprovalError, setLastApprovalError] = useState<string | null>(null);
-  const [showManualCommand, setShowManualCommand] = useState(false);
-
-=======
-  const [pendingApproval, setPendingApproval] = useState<ApprovalData | null>(null);
-  const [progress, setProgress] = useState<ProgressData | null>(null);
-
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: generateUniqueId('welcome'), // Use helper for unique ID
@@ -351,11 +285,6 @@ const Constructor: React.FC = () => {
       // Manejar solicitudes de aprobación
       if (state.requiresApproval && state.approvalData) {
         setPendingApproval(state.approvalData);
-<<<<<<< HEAD
-        // Iniciar monitoreo de la nueva solicitud
-        approvalMonitoring.startMonitoring(state.approvalData);
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
       } else {
         setPendingApproval(null);
       }
@@ -449,11 +378,7 @@ const Constructor: React.FC = () => {
         cleanupVoiceRecognition();
       });
     };
-<<<<<<< HEAD
-  }, []); // Empty dependency array is correct here - we only want to set up listeners once
-=======
   }, []); // Eliminar dependencia de chatMessages para evitar re-renderizados infinitos
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
   const addChatMessage = (message: ChatMessage) => {
     setChatMessages(prev => [...prev, message]);
@@ -515,317 +440,6 @@ const Constructor: React.FC = () => {
     });
   };
 
-<<<<<<< HEAD
-  // Función para manejar la selección de stack de tecnología
-  const handleStackSelection = async (stack: TechnologyStack) => {
-    setSelectedStack(stack);
-    setShowStackSelector(false);
-
-    // Marcar que el usuario ha elegido un flujo de trabajo
-    setHasUserChosenWorkflow(true);
-    setWorkflowChoice('stack');
-
-    // Configurar el stack en el orquestrador de IA
-    const orchestrator = AIIterativeOrchestrator.getInstance();
-    orchestrator.setSelectedStack(stack);
-
-    // Agregar mensaje al chat sobre la selección del stack
-    addChatMessage({
-      id: generateUniqueId('stack-selected'),
-      sender: 'ai',
-      content: `🚀 Excelente elección! Has seleccionado **${stack.name}** para tu proyecto.\n\n**Características principales:**\n• Dificultad: ${stack.difficultyLevel}\n• Popularidad: ${stack.popularity}\n• Ideal para: ${stack.recommendedFor.join(', ')}\n• Tecnologías: ${stack.technologies.map(t => t.name).join(', ')}\n\nComenzaré a generar tu proyecto optimizado para este stack.`,
-      timestamp: Date.now(),
-      type: 'notification',
-      senderType: 'ai',
-    });
-
-    // Verificar si hay un prompt mejorado guardado desde el modal de mejora
-    const enhancedPromptForStack = localStorage.getItem('enhancedPromptForStack');
-    const originalInstruction = localStorage.getItem('originalInstruction');
-
-    if (enhancedPromptForStack) {
-      // Procesar el prompt mejorado con el stack seleccionado
-      console.log('🔧 Constructor: Procesando prompt mejorado con stack seleccionado');
-
-      // Limpiar el prompt mejorado del localStorage
-      localStorage.removeItem('enhancedPromptForStack');
-
-      // Configurar el estado para procesamiento
-      setAIConstructorState(prev => ({
-        ...prev,
-        isAIBusy: true,
-        currentAIAction: 'Generando plan con prompt mejorado y stack seleccionado...',
-        currentAgent: 'planner',
-        showLoadingOverlay: true,
-        loadingProgress: 15
-      }));
-
-      // Procesar el prompt mejorado con el stack seleccionado
-      try {
-        await orchestrator.processUserInstruction(enhancedPromptForStack);
-      } catch (error) {
-        console.error('Error al procesar prompt mejorado con stack:', error);
-        addChatMessage({
-          id: generateUniqueId('enhanced-stack-error'),
-          sender: 'ai',
-          content: `❌ Error al procesar el prompt mejorado con el stack seleccionado: ${error instanceof Error ? error.message : 'Error desconocido'}`,
-          timestamp: Date.now(),
-          type: 'error',
-          senderType: 'ai',
-        });
-
-        setAIConstructorState(prev => ({
-          ...prev,
-          isAIBusy: false,
-          currentAIAction: 'awaitingInput',
-          showLoadingOverlay: false,
-          loadingProgress: 0
-        }));
-      }
-    } else if (originalInstruction) {
-      // Procesar la instrucción original si existe
-      // Limpiar la instrucción del localStorage
-      localStorage.removeItem('originalInstruction');
-
-      // Configurar el estado para procesamiento
-      setAIConstructorState(prev => ({
-        ...prev,
-        isAIBusy: true,
-        currentAIAction: 'Generando plan con stack seleccionado...',
-        currentAgent: 'planner',
-        showLoadingOverlay: true,
-        loadingProgress: 15
-      }));
-
-      // Procesar la instrucción con el stack seleccionado
-      try {
-        await orchestrator.processUserInstruction(originalInstruction);
-      } catch (error) {
-        console.error('Error al procesar instrucción con stack:', error);
-        addChatMessage({
-          id: generateUniqueId('stack-error'),
-          sender: 'ai',
-          content: `❌ Error al procesar la instrucción con el stack seleccionado: ${error instanceof Error ? error.message : 'Error desconocido'}`,
-          timestamp: Date.now(),
-          type: 'error',
-          senderType: 'ai',
-        });
-
-        setAIConstructorState(prev => ({
-          ...prev,
-          isAIBusy: false,
-          currentAIAction: 'awaitingInput',
-          showLoadingOverlay: false,
-          loadingProgress: 0
-        }));
-      }
-    } else {
-      // Configurar el estado para continuar con el desarrollo
-      setAIConstructorState(prev => ({
-        ...prev,
-        isAIBusy: false,
-        currentAIAction: 'awaitingInput'
-      }));
-    }
-  };
-
-  // Función para mostrar el modal de detalles del stack
-  const handleShowStackDetails = (stack: TechnologyStack) => {
-    setSelectedStack(stack);
-    setShowStackModal(true);
-  };
-
-  // Función para seleccionar stack desde el modal
-  const handleSelectStackFromModal = (stack: TechnologyStack) => {
-    handleStackSelection(stack);
-    setShowStackModal(false);
-  };
-
-  // Funciones para el flujo de selección flexible
-  const handleSelectStackWorkflow = () => {
-    console.log('🎯 handleSelectStackWorkflow called');
-    setWorkflowChoice('stack');
-    setHasUserChosenWorkflow(true);
-    setShowWorkflowSelector(false);
-    setShowStackSelector(true);
-    console.log('🎯 States updated - showStackSelector should be true');
-
-    addChatMessage({
-      id: generateUniqueId('workflow-stack-selected'),
-      sender: 'ai',
-      content: '🎯 Perfecto! Has elegido usar un **stack tecnológico específico**. Esto te permitirá obtener código optimizado y archivos de configuración automáticos.\n\nAhora selecciona el stack que mejor se adapte a tu proyecto:',
-      timestamp: Date.now(),
-      type: 'notification',
-      senderType: 'ai',
-    });
-  };
-
-  const handleSelectGenericWorkflow = () => {
-    setWorkflowChoice('generic');
-    setHasUserChosenWorkflow(true);
-    setShowWorkflowSelector(false);
-
-    addChatMessage({
-      id: generateUniqueId('workflow-generic-selected'),
-      sender: 'ai',
-      content: '⚡ Entendido! Has elegido continuar con **configuración genérica**. Esto te da máxima flexibilidad para mencionar cualquier tecnología durante el desarrollo.\n\nProcederé a generar tu proyecto con configuración adaptable. ¡Comencemos!',
-      timestamp: Date.now(),
-      type: 'notification',
-      senderType: 'ai',
-    });
-
-    // Procesar la instrucción original inmediatamente
-    const originalInstruction = localStorage.getItem('originalInstruction');
-    if (originalInstruction) {
-      localStorage.removeItem('originalInstruction');
-
-      setAIConstructorState(prev => ({
-        ...prev,
-        isAIBusy: true,
-        currentAIAction: 'Generando plan con configuración genérica...',
-        currentAgent: 'planner'
-      }));
-
-      // Procesar sin stack específico
-      const orchestrator = AIIterativeOrchestrator.getInstance();
-      orchestrator.processUserInstruction(originalInstruction).catch(error => {
-        console.error('Error al procesar instrucción genérica:', error);
-        addChatMessage({
-          id: generateUniqueId('generic-error'),
-          sender: 'ai',
-          content: `❌ Error al procesar la instrucción: ${error instanceof Error ? error.message : 'Error desconocido'}`,
-          timestamp: Date.now(),
-          type: 'error',
-          senderType: 'ai',
-        });
-
-        setAIConstructorState(prev => ({
-          ...prev,
-          isAIBusy: false,
-          currentAIAction: 'awaitingInput'
-        }));
-      });
-    }
-  };
-
-  // Función para cambiar el stack desde el botón de la interfaz
-  const handleChangeStackFromButton = () => {
-    setShowStackSelector(true);
-
-    addChatMessage({
-      id: generateUniqueId('stack-change-initiated'),
-      sender: 'ai',
-      content: selectedStack
-        ? `🔄 Cambiando desde **${selectedStack.name}**. Selecciona un nuevo stack tecnológico:`
-        : '🚀 Selecciona un stack tecnológico para optimizar tu proyecto:',
-      timestamp: Date.now(),
-      type: 'notification',
-      senderType: 'ai',
-    });
-  };
-
-  // Función para remover el stack actual
-  const handleRemoveStack = () => {
-    const previousStack = selectedStack;
-    setSelectedStack(null);
-    setWorkflowChoice('generic');
-
-    // Limpiar el stack del orquestrador
-    const orchestrator = AIIterativeOrchestrator.getInstance();
-    orchestrator.clearSelectedStack();
-
-    addChatMessage({
-      id: generateUniqueId('stack-removed'),
-      sender: 'ai',
-      content: previousStack
-        ? `🔄 Stack **${previousStack.name}** removido. Ahora continuaré con configuración genérica flexible. Puedes mencionar tecnologías específicas cuando las necesites.`
-        : '✅ Configuración cambiada a modo genérico.',
-      timestamp: Date.now(),
-      type: 'notification',
-      senderType: 'ai',
-    });
-  };
-
-  // Funciones para el sistema de recomendación inteligente
-  const generateStackRecommendation = (instruction: string) => {
-    console.log('🧠 Generando recomendación para:', instruction);
-
-    try {
-      const recommendation = recommendationService.recommendStack(instruction);
-      setCurrentRecommendation(recommendation);
-      setShowStackRecommendation(true);
-
-      console.log('🎯 Recomendación generada:', recommendation);
-
-      addChatMessage({
-        id: generateUniqueId('recommendation-generated'),
-        sender: 'ai',
-        content: `🧠 He analizado tu proyecto y encontré el stack tecnológico más apropiado. **${recommendation.stack.name}** tiene un ${Math.round(recommendation.score)}% de compatibilidad con tus necesidades.\n\n¿Te gustaría usar esta recomendación o prefieres explorar todas las opciones disponibles?`,
-        timestamp: Date.now(),
-        type: 'notification',
-        senderType: 'ai',
-      });
-
-    } catch (error) {
-      console.error('Error al generar recomendación:', error);
-
-      // Fallback al flujo de selección manual
-      setShowWorkflowSelector(true);
-
-      addChatMessage({
-        id: generateUniqueId('recommendation-error'),
-        sender: 'ai',
-        content: '🤔 No pude generar una recomendación automática para tu proyecto. Te mostraré todas las opciones disponibles para que puedas elegir el stack más apropiado.',
-        timestamp: Date.now(),
-        type: 'notification',
-        senderType: 'ai',
-      });
-    }
-  };
-
-  const handleAcceptRecommendation = () => {
-    if (!currentRecommendation) return;
-
-    console.log('✅ Usuario acepta recomendación:', currentRecommendation.stack.name);
-
-    // Marcar que el usuario ha elegido un flujo de trabajo
-    setHasUserChosenWorkflow(true);
-    setWorkflowChoice('stack');
-    setShowStackRecommendation(false);
-
-    // Seleccionar el stack recomendado
-    handleStackSelection(currentRecommendation.stack);
-
-    addChatMessage({
-      id: generateUniqueId('recommendation-accepted'),
-      sender: 'ai',
-      content: `🎉 ¡Excelente! Has aceptado la recomendación de **${currentRecommendation.stack.name}**. Este stack es perfecto para tu proyecto porque:\n\n${currentRecommendation.reasons.slice(0, 3).map(reason => `• ${reason}`).join('\n')}\n\nComenzaré a generar tu proyecto optimizado para este stack.`,
-      timestamp: Date.now(),
-      type: 'notification',
-      senderType: 'ai',
-    });
-  };
-
-  const handleRejectRecommendation = () => {
-    console.log('❌ Usuario rechaza recomendación, mostrando selector manual');
-
-    // Marcar que el usuario ha elegido el flujo de selección manual
-    setWorkflowChoice('stack');
-    setShowStackRecommendation(false);
-    setShowStackSelector(true);
-
-    addChatMessage({
-      id: generateUniqueId('recommendation-rejected'),
-      sender: 'ai',
-      content: '👍 Entendido. Te mostraré todos los stacks tecnológicos disponibles para que puedas explorar y elegir el que más te convenga.',
-      timestamp: Date.now(),
-      type: 'notification',
-      senderType: 'ai',
-    });
-  };
-
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const handleTemplateSelection = async (template: TemplateData | null) => {
     setAIConstructorState(prev => ({
       ...prev,
@@ -959,19 +573,6 @@ const Constructor: React.FC = () => {
       )
     );
 
-<<<<<<< HEAD
-    // Sistema de recomendación inteligente para la primera instrucción del usuario
-    // si aún no se ha elegido un flujo de trabajo y no es una modificación
-    if (!hasUserChosenWorkflow && !isModification && chatMessages.filter(m => m.sender === 'user').length === 1) {
-      // Guardar la instrucción original para procesarla después
-      localStorage.setItem('originalInstruction', content);
-
-      // Mostrar mensaje de análisis
-      addChatMessage({
-        id: generateUniqueId('analyzing-project'),
-        sender: 'ai',
-        content: '🧠 Analizando tu proyecto para encontrar el stack tecnológico más apropiado...\n\nEstoy evaluando:\n• Tipo de aplicación y requisitos\n• Complejidad del proyecto\n• Tecnologías mencionadas\n• Mejores prácticas recomendadas',
-=======
     // Mostrar el selector de plantillas después de la primera instrucción del usuario
     // si aún no se ha seleccionado una plantilla y no es una modificación
     if (!aiConstructorState.showTemplateSelector && !aiConstructorState.selectedTemplate && !isModification) {
@@ -983,32 +584,11 @@ const Constructor: React.FC = () => {
         id: generateUniqueId('template-prompt'),
         sender: 'ai',
         content: 'Ahora puedes seleccionar una plantilla para complementar tu instrucción. La plantilla se combinará con tu descripción inicial para generar un plan más completo.',
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         timestamp: Date.now(),
         type: 'notification',
         senderType: 'ai',
       });
 
-<<<<<<< HEAD
-      // Generar recomendación inteligente después de un breve delay para UX
-      setTimeout(() => {
-        generateStackRecommendation(content);
-      }, 1500);
-
-      return; // Detener el flujo aquí hasta que se procese la recomendación
-    }
-
-    // Verificar si estamos esperando una decisión del usuario sobre el stack
-    if (showStackRecommendation || showWorkflowSelector || showStackSelector) {
-      console.log('🛑 Esperando decisión del usuario sobre stack, no procesando instrucción aún');
-      return;
-    }
-
-    // Verificar si el usuario ha elegido un flujo de trabajo
-    if (!hasUserChosenWorkflow && !isModification) {
-      console.log('🛑 Usuario no ha elegido flujo de trabajo, no procesando instrucción');
-      return;
-=======
       // Mostrar el selector de plantillas
       setAIConstructorState(prev => ({
         ...prev,
@@ -1016,7 +596,6 @@ const Constructor: React.FC = () => {
       }));
 
       return; // Detener el flujo aquí hasta que se seleccione una plantilla
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     }
 
     if (isModification) {
@@ -1065,32 +644,6 @@ const Constructor: React.FC = () => {
     }
   };
 
-<<<<<<< HEAD
-  // Función para abrir el selector de stack desde el modal de mejora de prompt
-  const handleOpenStackSelectorFromPrompt = () => {
-    console.log('🔧 Constructor: Abriendo selector de stack desde modal de mejora de prompt');
-    setShowStackSelector(true);
-
-    addChatMessage({
-      id: generateUniqueId('stack-selector-from-prompt'),
-      sender: 'ai',
-      content: '🚀 Selecciona el stack tecnológico que mejor se adapte a tu proyecto mejorado:',
-      timestamp: Date.now(),
-      type: 'notification',
-      senderType: 'ai',
-    });
-  };
-
-  // Función para procesar instrucción con stack después de selección desde modal de mejora
-  const handleProcessWithStack = (enhancedPrompt: string) => {
-    console.log('🔧 Constructor: Procesando instrucción mejorada con stack seleccionado');
-
-    // Procesar la instrucción mejorada con el stack seleccionado
-    handleSendMessage(enhancedPrompt);
-  };
-
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const handleViewFileContent = async (file: FileItem) => {
     setSelectedFileForViewing(file);
     setAIConstructorState(prev => ({
@@ -1238,21 +791,10 @@ Instrucciones de uso...`;
     }
   };
 
-<<<<<<< HEAD
-  // Métodos para manejar las aprobaciones con sistema robusto
-  const handleApprove = (feedback?: string) => {
-    console.log('🎯 handleApprove llamado con feedback:', feedback);
-
-    if (!pendingApproval) {
-      console.warn('❌ Se intentó aprobar, pero no hay una solicitud de aprobación pendiente');
-      setApprovalFailureCount(prev => prev + 1);
-      setLastApprovalError('No hay solicitud de aprobación pendiente');
-=======
   // Métodos para manejar las aprobaciones
   const handleApprove = (feedback?: string) => {
     if (!pendingApproval) {
       console.warn('Se intentó aprobar, pero no hay una solicitud de aprobación pendiente');
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
       // Mostrar mensaje de error
       addChatMessage({
@@ -1263,30 +805,10 @@ Instrucciones de uso...`;
         type: 'error'
       });
 
-<<<<<<< HEAD
-      // Activar sistema robusto después de 2 fallos
-      if (approvalFailureCount >= 1) {
-        setUseRobustApproval(true);
-        console.log('🛡️ Activando sistema robusto de aprobación');
-      }
-
-      return;
-    }
-
-    console.log(`✅ Aprobando solicitud con ID: ${pendingApproval.id}, tipo: ${pendingApproval.type}`);
-
-    // Registrar intento de aprobación en el monitoreo
-    approvalMonitoring.recordApprovalAttempt(pendingApproval.id, {
-      feedback: feedback?.substring(0, 100), // Limitar longitud
-      type: pendingApproval.type,
-      isCompletePlan: pendingApproval.metadata?.isCompletePlan
-    });
-=======
       return;
     }
 
     console.log(`Aprobando solicitud con ID: ${pendingApproval.id}, tipo: ${pendingApproval.type}`);
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
     // Añadir mensaje de chat indicando la aprobación
     addChatMessage({
@@ -1310,18 +832,6 @@ Instrucciones de uso...`;
     }));
 
     try {
-<<<<<<< HEAD
-      // Guardar backup antes de procesar
-      const approvalBackup = {
-        approvalData: pendingApproval,
-        feedback,
-        timestamp: Date.now(),
-        attempt: approvalFailureCount + 1
-      };
-      localStorage.setItem('codestorm_approval_backup', JSON.stringify(approvalBackup));
-
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
       // Para planes completos, no necesitamos pasar approvedItems
       if (pendingApproval.metadata?.isCompletePlan) {
         // Llamar al método de aprobación del orquestrador sin approvedItems
@@ -1332,51 +842,9 @@ Instrucciones de uso...`;
         aiIterativeOrchestrator.handleApproval(pendingApproval.id, true, feedback, allItems);
       }
 
-<<<<<<< HEAD
-      console.log('✅ Solicitud de aprobación enviada correctamente');
-
-      // Registrar éxito en el monitoreo
-      approvalMonitoring.recordApprovalSuccess(pendingApproval.id, Date.now() - Date.now(), {
-        feedback: feedback?.substring(0, 100)
-      });
-
-      // Resetear contador de fallos en caso de éxito
-      setApprovalFailureCount(0);
-      setLastApprovalError(null);
-
-      // Timeout de seguridad para detectar si la aprobación no se procesa
-      setTimeout(() => {
-        if (pendingApproval && aiConstructorState.isAIBusy) {
-          console.warn('⚠️ La aprobación no se procesó en el tiempo esperado');
-          setApprovalFailureCount(prev => prev + 1);
-          setLastApprovalError('Timeout en procesamiento de aprobación');
-          setUseRobustApproval(true);
-        }
-      }, 15000); // 15 segundos
-
-    } catch (error) {
-      console.error('❌ Error al procesar la aprobación:', error);
-
-      // Registrar fallo en el monitoreo
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      approvalMonitoring.recordApprovalFailure(pendingApproval.id, errorMessage, {
-        feedback: feedback?.substring(0, 100),
-        attempt: approvalFailureCount + 1
-      });
-
-      setApprovalFailureCount(prev => prev + 1);
-      setLastApprovalError(errorMessage);
-
-      // Activar sistema robusto después de errores
-      if (approvalFailureCount >= 1) {
-        setUseRobustApproval(true);
-      }
-
-=======
       console.log('Solicitud de aprobación enviada correctamente');
     } catch (error) {
       console.error('Error al procesar la aprobación:', error);
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
       handleError(error, 'el procesamiento de la aprobación');
     }
   };
@@ -1431,89 +899,6 @@ Instrucciones de uso...`;
     }
   };
 
-<<<<<<< HEAD
-  // Funciones para el sistema robusto de aprobación
-  const handleForceApproval = () => {
-    console.log('🔥 Aprobación forzada activada');
-
-    if (!pendingApproval) {
-      console.error('❌ No hay solicitud de aprobación para forzar');
-      return;
-    }
-
-    // Añadir mensaje de aprobación forzada
-    addChatMessage({
-      id: generateUniqueId('force-approval'),
-      sender: 'user',
-      content: '🔥 He forzado la aprobación del plan debido a problemas técnicos.',
-      timestamp: Date.now(),
-      type: 'approval-response',
-      metadata: {
-        approvalId: pendingApproval.id,
-        approvalStatus: 'force-approved',
-        approvalType: pendingApproval.type
-      }
-    });
-
-    // Intentar múltiples métodos de aprobación
-    try {
-      // Método 1: Aprobación directa
-      aiIterativeOrchestrator.handleApproval(pendingApproval.id, true, 'Aprobación forzada por el usuario');
-
-      // Método 2: Si el anterior falla, intentar con timeout
-      setTimeout(() => {
-        if (pendingApproval) {
-          console.log('🔄 Reintentando aprobación forzada...');
-          aiIterativeOrchestrator.handleApproval(pendingApproval.id, true, 'Aprobación forzada - reintento');
-        }
-      }, 2000);
-
-      // Método 3: Limpiar estado manualmente si es necesario
-      setTimeout(() => {
-        if (pendingApproval) {
-          console.log('🧹 Limpiando estado de aprobación manualmente...');
-          setPendingApproval(null);
-          setAIConstructorState(prev => ({
-            ...prev,
-            isAIBusy: false,
-            currentAIAction: null
-          }));
-        }
-      }, 5000);
-
-    } catch (error) {
-      console.error('❌ Error en aprobación forzada:', error);
-    }
-  };
-
-  const handleResetApprovalState = () => {
-    console.log('🔄 Reseteando estado de aprobación');
-
-    setApprovalFailureCount(0);
-    setLastApprovalError(null);
-    setUseRobustApproval(false);
-
-    // Limpiar estado de AI
-    setAIConstructorState(prev => ({
-      ...prev,
-      isAIBusy: false,
-      currentAIAction: null
-    }));
-
-    // Limpiar backup
-    localStorage.removeItem('codestorm_approval_backup');
-
-    addChatMessage({
-      id: generateUniqueId('reset-approval'),
-      sender: 'system',
-      content: '🔄 Estado de aprobación reseteado. Puedes intentar aprobar nuevamente.',
-      timestamp: Date.now(),
-      type: 'notification'
-    });
-  };
-
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   const handlePartialApprove = (approvedItems: string[], feedback?: string) => {
     if (!pendingApproval) {
       console.warn('Se intentó aprobar parcialmente, pero no hay una solicitud de aprobación pendiente');
@@ -1611,162 +996,10 @@ Instrucciones de uso...`;
     setShowHelpAssistant(prev => !prev);
   };
 
-<<<<<<< HEAD
-  // Debug logs
-  console.log('🔍 Debug states:', {
-    showStackSelector,
-    showWorkflowSelector,
-    hasUserChosenWorkflow,
-    workflowChoice,
-    selectedStack: selectedStack?.name
-  });
-
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
   return (
     <div className="flex flex-col min-h-screen bg-codestorm-darker">
       <Header showConstructorButton={false} />
       <main className="container flex-1 px-4 py-4 mx-auto">
-<<<<<<< HEAD
-        {/* Recomendación inteligente de stack */}
-        {showStackRecommendation && currentRecommendation && (
-          <div className="mb-6">
-            <StackRecommendation
-              recommendation={currentRecommendation}
-              onAcceptRecommendation={handleAcceptRecommendation}
-              onSelectManually={handleRejectRecommendation}
-              originalInstruction={localStorage.getItem('originalInstruction') || ''}
-            />
-          </div>
-        )}
-
-        {/* Selector de flujo de trabajo */}
-        {showWorkflowSelector && (
-          <div className="mb-6">
-            <WorkflowSelector
-              onSelectStackWorkflow={handleSelectStackWorkflow}
-              onSelectGenericWorkflow={handleSelectGenericWorkflow}
-              originalInstruction={localStorage.getItem('originalInstruction') || ''}
-            />
-          </div>
-        )}
-
-        {/* Selector de stack tecnológico */}
-        {showStackSelector && (
-          <div className="mb-6">
-            <div className="p-4 mb-4 rounded-lg shadow-md bg-codestorm-dark">
-              <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-white mb-3`}>
-                🚀 Selecciona tu Stack de Tecnología
-              </h2>
-              <div className="p-3 mb-4 border rounded-md bg-codestorm-blue/10 border-codestorm-blue/30">
-                <p className="text-sm text-white">
-                  <span className="font-semibold">Instrucción recibida:</span> {localStorage.getItem('originalInstruction')}
-                </p>
-                <p className="mt-2 text-sm text-codestorm-accent">
-                  Selecciona el stack tecnológico que mejor se adapte a tu proyecto. Cada opción incluye información detallada sobre facilidad, rendimiento y casos de uso.
-                </p>
-              </div>
-            </div>
-
-            <TechnologyStackCarousel
-              onSelectStack={handleStackSelection}
-              onShowDetails={handleShowStackDetails}
-              selectedStackId={selectedStack?.id}
-              className="mb-4"
-            />
-
-            <div className="flex justify-center">
-              <button
-                onClick={() => {
-                  setShowStackSelector(false);
-                  if (!hasUserChosenWorkflow) {
-                    // Si llegamos aquí desde el flujo de trabajo, cambiar a genérico
-                    handleSelectGenericWorkflow();
-                  } else {
-                    // Si llegamos aquí desde el botón de cambio, mantener estado actual
-                    addChatMessage({
-                      id: generateUniqueId('stack-selection-cancelled'),
-                      sender: 'ai',
-                      content: 'Selección de stack cancelada. Continuando con la configuración actual.',
-                      timestamp: Date.now(),
-                      type: 'notification',
-                      senderType: 'ai',
-                    });
-                  }
-                }}
-                className="px-6 py-2 text-sm text-white bg-gray-600 rounded-md hover:bg-gray-700 transition-colors"
-              >
-                {!hasUserChosenWorkflow ? 'Continuar sin stack específico' : 'Cancelar selección'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {!showStackSelector && !showWorkflowSelector && !showStackRecommendation && (
-          <div className="p-6 mb-6 rounded-lg shadow-md bg-codestorm-dark">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-white`}>
-                Constructor de CODESTORM (IA Activa)
-              </h1>
-
-              {/* Botón de cambio de stack */}
-              {hasUserChosenWorkflow && (
-                <StackChangeButton
-                  currentStack={selectedStack}
-                  onChangeStack={handleChangeStackFromButton}
-                  onRemoveStack={handleRemoveStack}
-                />
-              )}
-            </div>
-
-            <p className="mb-2 text-gray-300">
-              {selectedStack ? (
-                <span className="flex items-center">
-                  <span className="text-2xl mr-2">{selectedStack.icon}</span>
-                  <span>
-                    <strong>Stack seleccionado:</strong> {selectedStack.name}
-                    <span className="ml-2 px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">
-                      {selectedStack.difficultyLevel}
-                    </span>
-                  </span>
-                </span>
-              ) : workflowChoice === 'generic' ? (
-                <span className="flex items-center">
-                  <span className="text-2xl mr-2">⚡</span>
-                  <span>
-                    <strong>Modo:</strong> Configuración Genérica
-                    <span className="ml-2 px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-xs">
-                      Flexible
-                    </span>
-                  </span>
-                </span>
-              ) : ''}
-              {(selectedStack || workflowChoice === 'generic') ? ' | ' : ''}Describe tu proyecto, tarea o las modificaciones deseadas.
-            </p>
-
-            {selectedStack && (
-              <div className="p-3 mb-4 border rounded-md bg-blue-500/10 border-blue-500/30">
-                <p className="text-sm text-blue-300">
-                  <strong>Stack activo:</strong> {selectedStack.shortDescription}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Tecnologías principales: {selectedStack.technologies.slice(0, 3).map(t => t.name).join(', ')}
-                  {selectedStack.technologies.length > 3 && ` y ${selectedStack.technologies.length - 3} más`}
-                </p>
-              </div>
-            )}
-
-            {workflowChoice === 'generic' && !selectedStack && (
-              <div className="p-3 mb-4 border rounded-md bg-yellow-500/10 border-yellow-500/30">
-                <p className="text-sm text-yellow-300">
-                  <strong>Modo genérico activo:</strong> Máxima flexibilidad tecnológica
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Puedes mencionar cualquier tecnología durante el desarrollo. Usa el botón "Stack" para cambiar a modo específico.
-                </p>
-              </div>
-            )}
-=======
         {aiConstructorState.showTemplateSelector && (
           <div className="p-6 mb-6 rounded-lg shadow-md bg-codestorm-dark">
             <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-white mb-3`}>
@@ -1797,9 +1030,6 @@ Instrucciones de uso...`;
               Describe tu proyecto, tarea o las modificaciones deseadas.
             </p>
 
-
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
-
             {aiConstructorState.isAIBusy && (
               <div className="flex items-center p-3 mb-4 border rounded-md bg-codestorm-blue/10 border-codestorm-blue/30">
                 <Loader className="w-5 h-5 mr-2 text-codestorm-accent animate-spin" />
@@ -1812,85 +1042,6 @@ Instrucciones de uso...`;
         {/* Interfaz de Aprobación */}
         {pendingApproval && (
           <div className="p-6 mb-6 rounded-lg shadow-md bg-codestorm-dark">
-<<<<<<< HEAD
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">Aprobación Requerida</h2>
-              {(useRobustApproval || approvalFailureCount > 0) && (
-                <div className="flex items-center space-x-2">
-                  <div className="px-3 py-1 bg-yellow-600 text-yellow-100 text-xs rounded-full">
-                    Sistema Robusto Activo
-                  </div>
-                  {approvalFailureCount > 0 && (
-                    <div className="px-3 py-1 bg-red-600 text-red-100 text-xs rounded-full">
-                      {approvalFailureCount} Fallos
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Mostrar error si existe */}
-            {lastApprovalError && (
-              <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="w-4 h-4 text-red-400" />
-                  <span className="text-red-300 text-sm">Último error: {lastApprovalError}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Sistema de Aprobación Robusto o Normal */}
-            {useRobustApproval ? (
-              <RobustApprovalSystem
-                approvalData={pendingApproval}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                onPartialApprove={handlePartialApprove}
-                isLoading={aiConstructorState.isAIBusy}
-              />
-            ) : (
-              <ApprovalInterface
-                approvalData={pendingApproval}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                onPartialApprove={handlePartialApprove}
-                isLoading={aiConstructorState.isAIBusy}
-              />
-            )}
-
-            {/* Controles de Emergencia */}
-            {(useRobustApproval || approvalFailureCount > 0) && (
-              <div className="mt-4 pt-4 border-t border-gray-700">
-                <h3 className="text-sm font-medium text-white mb-2">Controles de Emergencia</h3>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={handleForceApproval}
-                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
-                  >
-                    🔥 Forzar Aprobación
-                  </button>
-                  <button
-                    onClick={handleResetApprovalState}
-                    className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded transition-colors"
-                  >
-                    🔄 Resetear Estado
-                  </button>
-                  <button
-                    onClick={() => setUseRobustApproval(!useRobustApproval)}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
-                  >
-                    {useRobustApproval ? '📱 Modo Normal' : '🛡️ Modo Robusto'}
-                  </button>
-                  <button
-                    onClick={() => setShowManualCommand(!showManualCommand)}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors"
-                  >
-                    💻 Terminal
-                  </button>
-                </div>
-              </div>
-            )}
-=======
             <h2 className="mb-4 text-xl font-bold text-white">Aprobación Requerida</h2>
             <ApprovalInterface
               approvalData={pendingApproval}
@@ -1899,7 +1050,6 @@ Instrucciones de uso...`;
               onPartialApprove={handlePartialApprove}
               isLoading={aiConstructorState.isAIBusy}
             />
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
           </div>
         )}
 
@@ -1936,12 +1086,6 @@ Instrucciones de uso...`;
                   isDisabled={aiConstructorState.showTemplateSelector && !aiConstructorState.selectedTemplate}
                   currentAgent={aiConstructorState.currentAgent || undefined}
                   processingMessage={aiConstructorState.currentAIAction || undefined}
-<<<<<<< HEAD
-                  disablePromptEnhancement={false}
-                  onOpenStackSelector={handleOpenStackSelectorFromPrompt}
-                  onProcessWithStack={handleProcessWithStack}
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
                 />
               </div>
             </CollapsiblePanel>
@@ -2157,38 +1301,6 @@ Instrucciones de uso...`;
         isOpen={showHelpAssistant}
         onClose={handleToggleHelpAssistant}
       />
-<<<<<<< HEAD
-
-      {/* Modal de detalles del stack */}
-      {selectedStack && (
-        <StackDetailModal
-          stack={selectedStack}
-          isOpen={showStackModal}
-          onClose={() => setShowStackModal(false)}
-          onSelect={handleSelectStackFromModal}
-          isSelected={true}
-        />
-      )}
-
-      {/* Panel de Forzar Aprobación */}
-      <ApprovalDebugPanel
-        approvalData={pendingApproval}
-        isAIBusy={aiConstructorState.isAIBusy}
-        currentAction={aiConstructorState.currentAIAction}
-        onForceApproval={handleForceApproval}
-        onResetState={handleResetApprovalState}
-      />
-
-      {/* Terminal de Comandos Manual */}
-      <ManualApprovalCommand
-        approvalData={pendingApproval}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        isVisible={showManualCommand}
-        onToggleVisibility={() => setShowManualCommand(!showManualCommand)}
-      />
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
     </div>
   );
 };

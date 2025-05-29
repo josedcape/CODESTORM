@@ -79,86 +79,26 @@ export class CodeGeneratorAgent {
       const fileDescriptions: FileDescription[] = task.plan.files;
       const projectContext = task.plan.description || task.instruction;
 
-<<<<<<< HEAD
-      console.log(`🔧 CodeGeneratorAgent: Iniciando generación de ${fileDescriptions.length} archivos según plan aprobado`);
-      console.log('📋 Plan del proyecto:', {
-        title: task.plan.title,
-        description: projectContext,
-        totalFiles: fileDescriptions.length,
-        files: fileDescriptions.map(f => ({ path: f.path, description: f.description }))
-      });
-
-      // Generar cada archivo del plan
-      const generatedFiles: FileItem[] = [];
-      const failedFiles: string[] = [];
-
-      for (let i = 0; i < fileDescriptions.length; i++) {
-        const fileDescription = fileDescriptions[i];
-
-=======
       // Generar cada archivo del plan
       const generatedFiles: FileItem[] = [];
 
       for (const fileDescription of fileDescriptions) {
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         try {
           // Verificar que la descripción del archivo tenga la estructura esperada
           if (!fileDescription.path) {
             console.warn('Descripción de archivo sin ruta, omitiendo:', fileDescription);
-<<<<<<< HEAD
-            failedFiles.push('archivo sin ruta');
-            continue;
-          }
-
-          if (!fileDescription.description) {
-            console.warn(`Archivo ${fileDescription.path} sin descripción, usando descripción genérica`);
-            fileDescription.description = `Archivo ${fileDescription.path} del proyecto`;
-          }
-
-          console.log(`📝 Generando archivo ${i + 1}/${fileDescriptions.length}: ${fileDescription.path}`);
-          console.log(`📄 Descripción: ${fileDescription.description}`);
-
-          // Construir el prompt mejorado para el modelo de IA
-          const prompt = this.buildEnhancedPrompt(fileDescription, projectContext, fileDescriptions, task.plan);
-=======
             continue;
           }
 
           // Construir el prompt para el modelo de IA
           const prompt = this.buildPrompt(fileDescription, projectContext);
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 
           // Procesar la instrucción con el modelo de IA Gemini
           const response = await processInstruction(prompt, 'Gemini 2.5');
 
-<<<<<<< HEAD
-          if (!response.content) {
-            throw new Error(`El modelo de IA no devolvió contenido para ${fileDescription.path}`);
-          }
-
-          // Extraer el contenido del archivo con validación mejorada
-          const fileContent = this.extractCodeContent(response.content, fileDescription.path);
-
-          if (!fileContent || fileContent.trim().length === 0) {
-            throw new Error(`No se pudo extraer contenido válido para ${fileDescription.path}`);
-          }
-
-          // Validar que el contenido generado sea apropiado para el tipo de archivo
-          const validationResult = this.validateGeneratedContent(fileContent, fileDescription.path, fileDescription.description);
-          if (!validationResult.isValid) {
-            console.warn(`⚠️ Contenido generado para ${fileDescription.path} no pasó validación: ${validationResult.reason}`);
-            // Intentar generar contenido por defecto mejorado
-            const defaultContent = this.generateEnhancedDefaultContent(fileDescription.path, fileDescription.description, projectContext);
-            if (defaultContent) {
-              console.log(`🔄 Usando contenido por defecto mejorado para ${fileDescription.path}`);
-            }
-          }
-
-=======
           // Extraer el contenido del archivo
           const fileContent = this.extractCodeContent(response.content, fileDescription.path);
 
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
           // Crear el objeto FileItem
           const file: FileItem = {
             id: generateUniqueId('file'),
@@ -172,38 +112,9 @@ export class CodeGeneratorAgent {
           };
 
           generatedFiles.push(file);
-<<<<<<< HEAD
-          console.log(`✅ Archivo generado exitosamente: ${fileDescription.path} (${fileContent.length} caracteres)`);
-
-        } catch (error) {
-          console.error(`❌ Error al generar el archivo ${fileDescription.path}:`, error);
-          failedFiles.push(fileDescription.path);
-
-          // Intentar generar un archivo básico como fallback
-          try {
-            const fallbackContent = this.generateEnhancedDefaultContent(fileDescription.path, fileDescription.description, projectContext);
-            if (fallbackContent) {
-              const fallbackFile: FileItem = {
-                id: generateUniqueId('file'),
-                name: this.getFileNameFromPath(fileDescription.path),
-                path: fileDescription.path,
-                content: fallbackContent,
-                type: this.getLanguageFromPath(fileDescription.path),
-                isNew: true,
-                timestamp: Date.now(),
-                lastModified: Date.now()
-              };
-              generatedFiles.push(fallbackFile);
-              console.log(`🔄 Archivo de fallback generado para: ${fileDescription.path}`);
-            }
-          } catch (fallbackError) {
-            console.error(`❌ Error al generar fallback para ${fileDescription.path}:`, fallbackError);
-          }
-=======
         } catch (error) {
           console.error(`Error al generar el archivo ${fileDescription.path}:`, error);
           // Continuar con el siguiente archivo
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         }
       }
 
@@ -211,28 +122,12 @@ export class CodeGeneratorAgent {
         throw new Error('No se pudo generar ningún archivo del plan');
       }
 
-<<<<<<< HEAD
-      const successRate = (generatedFiles.length / fileDescriptions.length) * 100;
-      console.log(`📊 Generación completada: ${generatedFiles.length}/${fileDescriptions.length} archivos (${successRate.toFixed(1)}% éxito)`);
-
-      if (failedFiles.length > 0) {
-        console.warn(`⚠️ Archivos que fallaron: ${failedFiles.join(', ')}`);
-      }
-
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
       return {
         success: true,
         data: { files: generatedFiles },
         metadata: {
           totalFiles: generatedFiles.length,
-<<<<<<< HEAD
-          plannedFiles: fileDescriptions.length,
-          successRate: successRate,
-          failedFiles: failedFiles
-=======
           plannedFiles: fileDescriptions.length
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
         }
       };
     } catch (error) {
@@ -314,287 +209,6 @@ export class CodeGeneratorAgent {
   }
 
   /**
-<<<<<<< HEAD
-   * Construye un prompt mejorado que incluye contexto del plan completo
-   * @param fileDescription Descripción del archivo a generar
-   * @param projectContext Contexto general del proyecto
-   * @param allFiles Todas las descripciones de archivos del plan
-   * @param plan Plan completo del proyecto
-   * @returns Prompt mejorado con contexto completo
-   */
-  private static buildEnhancedPrompt(
-    fileDescription: FileDescription,
-    projectContext: string,
-    allFiles: FileDescription[],
-    plan: any
-  ): string {
-    const fileExtension = fileDescription.path.split('.').pop() || '';
-    const language = this.getLanguageFromExtension(fileExtension);
-    const isWebFile = ['html', 'css', 'js'].includes(fileExtension.toLowerCase());
-
-    // Obtener archivos relacionados (dependencias)
-    const relatedFiles = allFiles.filter(f =>
-      fileDescription.dependencies?.includes(f.path) ||
-      f.dependencies?.includes(fileDescription.path)
-    );
-
-    // Construir contexto de archivos relacionados
-    const relatedFilesContext = relatedFiles.length > 0
-      ? `\n\nARCHIVOS RELACIONADOS:\n${relatedFiles.map(f => `- ${f.path}: ${f.description}`).join('\n')}`
-      : '';
-
-    // Construir contexto del plan completo
-    const planContext = `
-CONTEXTO DEL PLAN COMPLETO:
-- Título del proyecto: ${plan.title || 'Proyecto'}
-- Descripción: ${projectContext}
-- Total de archivos: ${allFiles.length}
-- Archivos del proyecto: ${allFiles.map(f => f.path).join(', ')}
-${relatedFilesContext}
-
-ARCHIVO ACTUAL A GENERAR:
-- Ruta: ${fileDescription.path}
-- Descripción: ${fileDescription.description}
-- Lenguaje: ${language}
-- Dependencias: ${fileDescription.dependencies?.join(', ') || 'Ninguna'}
-`;
-
-    if (isWebFile) {
-      return this.buildEnhancedStaticWebPrompt(fileDescription, projectContext, language, planContext);
-    } else {
-      return this.buildEnhancedGeneralPrompt(fileDescription, projectContext, language, planContext);
-    }
-  }
-
-  /**
-   * Valida que el contenido generado sea apropiado para el tipo de archivo
-   * @param content Contenido generado
-   * @param filePath Ruta del archivo
-   * @param description Descripción del archivo
-   * @returns Resultado de la validación
-   */
-  private static validateGeneratedContent(content: string, filePath: string, description: string): {
-    isValid: boolean;
-    reason?: string;
-  } {
-    const fileExtension = filePath.split('.').pop()?.toLowerCase() || '';
-
-    // Validaciones básicas
-    if (!content || content.trim().length === 0) {
-      return { isValid: false, reason: 'Contenido vacío' };
-    }
-
-    if (content.length < 10) {
-      return { isValid: false, reason: 'Contenido demasiado corto' };
-    }
-
-    // Validaciones específicas por tipo de archivo
-    switch (fileExtension) {
-      case 'html':
-        if (!content.includes('<') || !content.includes('>')) {
-          return { isValid: false, reason: 'No contiene etiquetas HTML válidas' };
-        }
-        break;
-
-      case 'css':
-        if (!content.includes('{') || !content.includes('}')) {
-          return { isValid: false, reason: 'No contiene reglas CSS válidas' };
-        }
-        break;
-
-      case 'js':
-      case 'jsx':
-        // Verificar que no sea solo comentarios
-        const codeLines = content.split('\n').filter(line =>
-          line.trim() && !line.trim().startsWith('//') && !line.trim().startsWith('/*')
-        );
-        if (codeLines.length === 0) {
-          return { isValid: false, reason: 'Solo contiene comentarios, sin código ejecutable' };
-        }
-        break;
-
-      case 'json':
-        try {
-          JSON.parse(content);
-        } catch {
-          return { isValid: false, reason: 'JSON inválido' };
-        }
-        break;
-    }
-
-    return { isValid: true };
-  }
-
-  /**
-   * Genera contenido por defecto mejorado basado en el contexto del proyecto
-   * @param filePath Ruta del archivo
-   * @param description Descripción del archivo
-   * @param projectContext Contexto del proyecto
-   * @returns Contenido por defecto mejorado
-   */
-  private static generateEnhancedDefaultContent(filePath: string, description: string, projectContext: string): string {
-    const fileExtension = filePath.split('.').pop()?.toLowerCase() || '';
-    const fileName = filePath.split('/').pop() || '';
-    const projectName = projectContext.split(' ').slice(0, 3).join(' ') || 'Proyecto';
-
-    switch (fileExtension) {
-      case 'html':
-        return `<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${projectName}</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <header>
-        <h1>${projectName}</h1>
-    </header>
-
-    <main>
-        <section>
-            <h2>Bienvenido</h2>
-            <p>${description}</p>
-        </section>
-    </main>
-
-    <footer>
-        <p>&copy; 2024 ${projectName}</p>
-    </footer>
-
-    <script src="script.js"></script>
-</body>
-</html>`;
-
-      case 'css':
-        return `/* ${description} */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Arial', sans-serif;
-    line-height: 1.6;
-    color: #333;
-    background-color: #f4f4f4;
-}
-
-header {
-    background: #333;
-    color: #fff;
-    padding: 1rem 0;
-    text-align: center;
-}
-
-main {
-    max-width: 1200px;
-    margin: 2rem auto;
-    padding: 0 1rem;
-}
-
-section {
-    background: #fff;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-footer {
-    background: #333;
-    color: #fff;
-    text-align: center;
-    padding: 1rem 0;
-    margin-top: 2rem;
-}`;
-
-      case 'js':
-      case 'jsx':
-        return `// ${description}
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('${projectName} - ${fileName} cargado correctamente');
-
-    // Inicialización del proyecto
-    init();
-});
-
-function init() {
-    // Configuración inicial
-    setupEventListeners();
-    loadContent();
-}
-
-function setupEventListeners() {
-    // Configurar event listeners
-    console.log('Event listeners configurados');
-}
-
-function loadContent() {
-    // Cargar contenido dinámico
-    console.log('Contenido cargado');
-}
-
-// Exportar funciones si es necesario
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        init,
-        setupEventListeners,
-        loadContent
-    };
-}`;
-
-      case 'json':
-        return `{
-  "name": "${projectName.toLowerCase().replace(/\s+/g, '-')}",
-  "version": "1.0.0",
-  "description": "${description}",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "echo \\"Error: no test specified\\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
-}`;
-
-      case 'md':
-        return `# ${projectName}
-
-${description}
-
-## Descripción
-
-Este archivo forma parte del proyecto ${projectName}.
-
-## Uso
-
-Instrucciones de uso aquí.
-
-## Contribuir
-
-Instrucciones para contribuir al proyecto.
-`;
-
-      default:
-        return `// ${description}
-// Archivo: ${filePath}
-// Proyecto: ${projectName}
-
-// TODO: Implementar funcionalidad específica para este archivo
-console.log('Archivo ${fileName} inicializado');
-`;
-    }
-  }
-
-  /**
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
    * Construye el prompt específico para archivos de sitios web estáticos
    * @param fileDescription Descripción del archivo a generar
    * @param projectContext Contexto general del proyecto
@@ -649,101 +263,6 @@ Usa el formato de bloque de código con el lenguaje apropiado:
   }
 
   /**
-<<<<<<< HEAD
-   * Construye el prompt mejorado específico para archivos de sitios web estáticos
-   * @param fileDescription Descripción del archivo a generar
-   * @param projectContext Contexto general del proyecto
-   * @param language Lenguaje del archivo
-   * @param planContext Contexto del plan completo
-   * @returns Prompt mejorado para archivos web
-   */
-  private static buildEnhancedStaticWebPrompt(
-    fileDescription: FileDescription,
-    projectContext: string,
-    language: string,
-    planContext: string
-  ): string {
-    return `
-Actúa como un desarrollador web frontend experto especializado en ${language}. Necesito que generes el código para un archivo específico dentro de un proyecto web estático.
-
-${planContext}
-
-INSTRUCCIONES ESPECÍFICAS:
-1. Genera código ${language} limpio, moderno y bien estructurado
-2. Sigue las mejores prácticas de desarrollo web
-3. Asegúrate de que el código sea responsive y accesible
-4. Incluye comentarios explicativos cuando sea necesario
-5. El código debe ser funcional y estar listo para producción
-6. Considera las dependencias y archivos relacionados mencionados
-7. Mantén consistencia con el resto del proyecto
-
-REQUISITOS TÉCNICOS:
-- Usa HTML5 semántico si es un archivo HTML
-- Aplica CSS moderno con Flexbox/Grid si es CSS
-- Usa JavaScript ES6+ si es un archivo JS
-- Optimiza para rendimiento y SEO
-- Asegura compatibilidad cross-browser
-
-FORMATO DE RESPUESTA:
-Devuelve ÚNICAMENTE el código ${language} sin explicaciones adicionales. El código debe estar entre bloques de código:
-
-\`\`\`${language}
-// Tu código aquí
-\`\`\`
-
-IMPORTANTE: El archivo debe cumplir exactamente con la descripción proporcionada y integrarse perfectamente con el resto del proyecto.
-`;
-  }
-
-  /**
-   * Construye el prompt mejorado para archivos no web
-   * @param fileDescription Descripción del archivo a generar
-   * @param projectContext Contexto general del proyecto
-   * @param language Lenguaje del archivo
-   * @param planContext Contexto del plan completo
-   * @returns Prompt mejorado para archivos generales
-   */
-  private static buildEnhancedGeneralPrompt(
-    fileDescription: FileDescription,
-    projectContext: string,
-    language: string,
-    planContext: string
-  ): string {
-    return `
-Actúa como un desarrollador de software experto especializado en ${language}. Necesito que generes el código para un archivo específico dentro de un proyecto de software.
-
-${planContext}
-
-INSTRUCCIONES ESPECÍFICAS:
-1. Genera código ${language} limpio, eficiente y bien documentado
-2. Sigue las mejores prácticas y convenciones del lenguaje
-3. Implementa patrones de diseño apropiados cuando sea necesario
-4. Incluye manejo de errores robusto
-5. El código debe ser mantenible y escalable
-6. Considera las dependencias y archivos relacionados mencionados
-7. Mantén consistencia con la arquitectura del proyecto
-
-REQUISITOS TÉCNICOS:
-- Usa las características modernas del lenguaje ${language}
-- Implementa validaciones apropiadas
-- Optimiza para rendimiento
-- Incluye documentación en el código
-- Sigue principios SOLID cuando sea aplicable
-
-FORMATO DE RESPUESTA:
-Devuelve ÚNICAMENTE el código ${language} sin explicaciones adicionales. El código debe estar entre bloques de código:
-
-\`\`\`${language}
-// Tu código aquí
-\`\`\`
-
-IMPORTANTE: El archivo debe cumplir exactamente con la descripción proporcionada y integrarse perfectamente con el resto del proyecto.
-`;
-  }
-
-  /**
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
    * Construye el prompt general para archivos no web
    * @param fileDescription Descripción del archivo a generar
    * @param projectContext Contexto general del proyecto
