@@ -135,6 +135,20 @@ export function applyFileSystemCommands(
           const fileToRename = updatedFiles.find(f => f.path === command.path);
           if (fileToRename) {
             const newName = getFileNameFromPath(command.newPath);
+          if (fileToRename) {
+            updatedFiles = updatedFiles.filter(f => f.path !== command.path);
+            updatedFiles.push({
+              ...fileToRename,
+              name: newName,
+              path: command.newPath
+            });
+          }
+        }
+        break;
+    }
+  }
+  
+  return updatedFiles;d.newPath);
             updatedFiles = updatedFiles.filter(f => f.path !== command.path);
             updatedFiles.push({
               ...fileToRename,
