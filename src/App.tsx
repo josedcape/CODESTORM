@@ -30,10 +30,7 @@ import HelpAssistant from './components/HelpAssistant';
 import CodeModifierPanel from './components/codemodifier/CodeModifierPanel';
 import IntroAnimation from './components/IntroAnimation';
 import useIntroAnimation from './hooks/useIntroAnimation';
-<<<<<<< HEAD
 import { initializeFreshIntroExperience } from './utils/introAnimationUtils';
-=======
->>>>>>> f8bc7e627aae05b91394794e61b3ad52fb438c1c
 import { availableModels } from './data/models';
 import {
   ProjectState,
