@@ -1,0 +1,221 @@
+/* Animaciones personalizadas para el carrusel de stacks tecnológicos */
+
+/* Animación de pulso sutil */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
+}
+
+/* Animación de glow láser */
+@keyframes laser-glow {
+  0% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* Animación de barrido láser */
+@keyframes laser-sweep {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Animación de rebote para los dots */
+@keyframes bounce-dot {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  40%, 43% {
+    transform: translate3d(0, -8px, 0) scale(1.1);
+  }
+  70% {
+    transform: translate3d(0, -4px, 0) scale(1.05);
+  }
+  90% {
+    transform: translate3d(0, -1px, 0) scale(1.02);
+  }
+}
+
+/* Animación de shimmer para loading */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+/* Clases de utilidad */
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-laser-glow {
+  animation: laser-glow 2s ease-in-out infinite;
+}
+
+.animate-laser-sweep {
+  animation: laser-sweep 1.5s ease-in-out;
+}
+
+.animate-bounce-dot {
+  animation: bounce-dot 1s ease-in-out;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200px 100%;
+}
+
+/* Efectos de hover mejorados */
+.stack-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stack-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+  z-index: 1;
+}
+
+.stack-card:hover::before {
+  left: 100%;
+}
+
+/* Efecto de glow en selección */
+.stack-card-selected {
+  position: relative;
+}
+
+.stack-card-selected::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  padding: 2px;
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6, #06b6d4, #3b82f6);
+  border-radius: inherit;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: laser-glow 2s ease-in-out infinite;
+  z-index: -1;
+}
+
+/* Transiciones suaves para el carrusel */
+.carousel-container {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.carousel-track {
+  will-change: transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Efectos de loading para lazy loading */
+.stack-card-loading {
+  background: linear-gradient(
+    90deg,
+    rgba(55, 65, 81, 0.1) 25%,
+    rgba(55, 65, 81, 0.2) 50%,
+    rgba(55, 65, 81, 0.1) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stack-card {
+    margin: 0 4px;
+  }
+  
+  .carousel-track {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .animate-pulse-subtle {
+    animation-duration: 3s;
+  }
+  
+  .animate-laser-glow {
+    animation-duration: 3s;
+  }
+}
+
+/* Accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-subtle,
+  .animate-laser-glow,
+  .animate-laser-sweep,
+  .animate-bounce-dot,
+  .animate-shimmer {
+    animation: none;
+  }
+  
+  .stack-card::before {
+    transition: none;
+  }
+  
+  .carousel-track {
+    transition: transform 0.1s ease;
+  }
+}
+
+/* Focus states para accesibilidad */
+.stack-card:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.carousel-nav-button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.carousel-dot:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  transform: scale(1.5);
+}
