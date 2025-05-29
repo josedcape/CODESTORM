@@ -1362,63 +1362,260 @@ export class AIIterativeOrchestrator {
   }
 
   /**
-   * Maneja errores en el flujo de trabajo
+   * Maneja errores en el flujo de trabajo con mecanismos de fallback mejorados
    * @param error Error a manejar
    */
   private handleError(error: any): void {
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     console.error('Error en AIIterativeOrchestrator:', errorMessage);
 
-    // Determinar el tipo de error y proporcionar mensaje específico
-    let userFriendlyMessage = '';
-    let suggestions: string[] = [];
-
-    if (errorMessage.includes('429') || errorMessage.includes('quota')) {
-      userFriendlyMessage = '🚫 **Límite de API Alcanzado**\n\nSe ha excedido la cuota de la API de Gemini. El sistema intentó usar modelos alternativos pero todos están temporalmente limitados.';
-      suggestions = [
-        '⏰ **Espera 15-30 minutos** y vuelve a intentar',
-        '🔄 **Refresca la página** y prueba con una instrucción más simple',
-        '📝 **Divide tu proyecto** en partes más pequeñas',
-        '🎯 **Usa instrucciones más específicas** para reducir el uso de tokens'
-      ];
-    } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
-      userFriendlyMessage = '⏱️ **Tiempo de Espera Agotado**\n\nLa generación del plan tomó más tiempo del esperado.';
-      suggestions = [
-        '🔄 **Intenta nuevamente** con una instrucción más simple',
-        '📝 **Divide el proyecto** en componentes más pequeños',
-        '🎯 **Sé más específico** en los requerimientos'
-      ];
-    } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
-      userFriendlyMessage = '🌐 **Error de Conexión**\n\nNo se pudo conectar con los servicios de IA.';
-      suggestions = [
-        '📡 **Verifica tu conexión a internet**',
-        '🔄 **Refresca la página** e intenta nuevamente',
-        '⏰ **Espera unos minutos** y vuelve a intentar'
-      ];
-    } else {
-      userFriendlyMessage = `❌ **Error Inesperado**\n\n${errorMessage}`;
-      suggestions = [
-        '🔄 **Intenta nuevamente** con una instrucción diferente',
-        '📝 **Simplifica tu solicitud** y vuelve a intentar',
-        '💬 **Contacta al soporte** si el problema persiste'
-      ];
-    }
-
-    // Crear mensaje completo con sugerencias
-    const fullMessage = `${userFriendlyMessage}\n\n**💡 Sugerencias:**\n${suggestions.map(s => `• ${s}`).join('\n')}\n\n**🔧 Detalles técnicos:** ${errorMessage}`;
-
-    // Añadir mensaje de error al chat
-    this.addChatMessage({
-      id: generateUniqueId('msg-error'),
-      sender: 'system',
-      content: fullMessage,
+    // Registrar el error en el log
+    this.addLogEntry({
+      id: generateUniqueId('log'),
       timestamp: Date.now(),
-      type: 'error'
+      phase: this.currentPhase,
+      agentType: this.currentAgentType,
+      action: 'error',
+      details: `Error: ${errorMessage}`,
+      relatedFiles: []
     });
+
+    // Determinar el tipo de error y proporcionar mensaje específico
+    const isQuotaError = this.isQuotaError(error);
+    const isConnectionError = this.isConnectionError(error);
+    const isTimeoutError = this.isTimeoutError(error);
+    const isAPIError = this.isAPIError(error);
+
+    if (isQuotaError) {
+      this.handleQuotaError(errorMessage);
+    } else if (isConnectionError) {
+      this.handleConnectionError(errorMessage);
+    } else if (isTimeoutError) {
+      this.handleTimeoutError(errorMessage);
+    } else if (isAPIError) {
+      this.handleAPIError(errorMessage);
+    } else {
+      this.handleGenericError(errorMessage);
+    }
 
     // Actualizar el estado para permitir al usuario continuar
     this.updatePhase('awaitingInput', null);
     this.notifyStateListeners();
+  }
+
+  /**
+   * Verifica si el error es de cuota excedida
+   */
+  private isQuotaError(error: any): boolean {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return errorMessage.includes('429') ||
+           errorMessage.includes('quota') ||
+           errorMessage.includes('exceeded') ||
+           errorMessage.includes('rate limit') ||
+           errorMessage.includes('too many requests');
+  }
+
+  /**
+   * Verifica si el error es de conexión
+   */
+  private isConnectionError(error: any): boolean {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return errorMessage.includes('ERR_CONNECTION_REFUSED') ||
+           errorMessage.includes('ECONNREFUSED') ||
+           errorMessage.includes('connection refused') ||
+           errorMessage.includes('network error') ||
+           errorMessage.includes('Failed to fetch');
+  }
+
+  /**
+   * Verifica si el error es de timeout
+   */
+  private isTimeoutError(error: any): boolean {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return errorMessage.includes('timeout') ||
+           errorMessage.includes('Timeout') ||
+           errorMessage.includes('ETIMEDOUT');
+  }
+
+  /**
+   * Verifica si el error es relacionado con APIs
+   */
+  private isAPIError(error: any): boolean {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return errorMessage.includes('API') ||
+           errorMessage.includes('fetch') ||
+           errorMessage.includes('network') ||
+           errorMessage.includes('HTTP');
+  }
+
+  /**
+   * Maneja errores de cuota excedida
+   */
+  private handleQuotaError(errorMessage: string): void {
+    this.addChatMessage({
+      id: generateUniqueId('msg-quota-error'),
+      sender: 'system',
+      content: `🚫 **Límite de API Alcanzado**
+
+Se ha excedido la cuota de la API de IA. Esto es temporal y se puede resolver de las siguientes maneras:
+
+**Opciones disponibles:**
+• ⏰ **Esperar**: Los límites se restablecen automáticamente en 15-30 minutos
+• 🔄 **Reintentar**: Puedes intentar nuevamente en unos minutos
+• 🛠️ **Modo Offline**: Continúa trabajando con los archivos ya generados
+
+**¿Qué puedes hacer mientras tanto?**
+• Revisar y editar los archivos existentes
+• Planificar las próximas funcionalidades
+• Usar el editor de código integrado
+
+El sistema intentará usar modelos alternativos automáticamente en el próximo intento.
+
+**🔧 Detalles técnicos:** ${errorMessage}`,
+      timestamp: Date.now(),
+      type: 'error',
+      metadata: {
+        errorType: 'quota',
+        canRetry: true,
+        retryDelay: 900000 // 15 minutos
+      }
+    });
+  }
+
+  /**
+   * Maneja errores de conexión
+   */
+  private handleConnectionError(errorMessage: string): void {
+    this.addChatMessage({
+      id: generateUniqueId('msg-connection-error'),
+      sender: 'system',
+      content: `🔌 **Error de Conexión**
+
+No se pudo conectar con los servicios de IA. Esto puede deberse a:
+
+**Posibles causas:**
+• 🌐 Problemas de conectividad a internet
+• 🔧 Servicios de IA temporalmente no disponibles
+• 🚫 Firewall o proxy bloqueando la conexión
+
+**Soluciones recomendadas:**
+• ✅ Verificar tu conexión a internet
+• 🔄 Reintentar en unos momentos
+• 🛠️ Continuar trabajando en modo offline
+
+**Modo Offline disponible:**
+Puedes seguir editando archivos existentes y planificando tu proyecto mientras se restablece la conexión.
+
+**🔧 Detalles técnicos:** ${errorMessage}`,
+      timestamp: Date.now(),
+      type: 'error',
+      metadata: {
+        errorType: 'connection',
+        canRetry: true,
+        retryDelay: 30000 // 30 segundos
+      }
+    });
+  }
+
+  /**
+   * Maneja errores de timeout
+   */
+  private handleTimeoutError(errorMessage: string): void {
+    this.addChatMessage({
+      id: generateUniqueId('msg-timeout-error'),
+      sender: 'system',
+      content: `⏱️ **Tiempo de Espera Agotado**
+
+La operación tomó más tiempo del esperado. Esto puede deberse a:
+
+**Posibles causas:**
+• 🔄 Sobrecarga temporal de los servicios de IA
+• 📊 Instrucción muy compleja que requiere más procesamiento
+• 🌐 Latencia de red elevada
+
+**Soluciones recomendadas:**
+• 🔄 **Intenta nuevamente** con una instrucción más simple
+• 📝 **Divide el proyecto** en componentes más pequeños
+• 🎯 **Sé más específico** en los requerimientos
+• ⏰ **Espera unos minutos** antes de reintentar
+
+**🔧 Detalles técnicos:** ${errorMessage}`,
+      timestamp: Date.now(),
+      type: 'error',
+      metadata: {
+        errorType: 'timeout',
+        canRetry: true,
+        retryDelay: 60000 // 1 minuto
+      }
+    });
+  }
+
+  /**
+   * Maneja errores generales de API
+   */
+  private handleAPIError(errorMessage: string): void {
+    this.addChatMessage({
+      id: generateUniqueId('msg-api-error'),
+      sender: 'system',
+      content: `⚠️ **Error de Servicio de IA**
+
+Se ha producido un error temporal en los servicios de IA:
+
+**Acciones automáticas:**
+• 🔄 El sistema intentará usar modelos alternativos
+• 🛡️ Implementando mecanismos de fallback
+• 📝 Guardando el progreso actual
+
+**Puedes continuar:**
+• ✏️ Editando archivos existentes
+• 📋 Revisando el código generado
+• 🎯 Planificando próximas funcionalidades
+
+Intenta nuevamente en unos momentos.
+
+**🔧 Detalles técnicos:** ${errorMessage}`,
+      timestamp: Date.now(),
+      type: 'error',
+      metadata: {
+        errorType: 'api',
+        canRetry: true,
+        retryDelay: 60000 // 1 minuto
+      }
+    });
+  }
+
+  /**
+   * Maneja errores genéricos
+   */
+  private handleGenericError(errorMessage: string): void {
+    this.addChatMessage({
+      id: generateUniqueId('msg-generic-error'),
+      sender: 'system',
+      content: `❌ **Error del Sistema**
+
+Se ha producido un error inesperado:
+
+**Acciones recomendadas:**
+• 🔄 Reintentar la operación
+• 📝 Verificar que la instrucción sea clara
+• 🛠️ Continuar con el trabajo existente
+
+Si el problema persiste, puedes:
+• ✏️ Editar archivos manualmente
+• 📋 Revisar el código ya generado
+• 🎯 Simplificar la instrucción
+
+El sistema está diseñado para ser resiliente y continuar funcionando.
+
+**🔧 Detalles técnicos:** ${errorMessage}`,
+      timestamp: Date.now(),
+      type: 'error',
+      metadata: {
+        errorType: 'generic',
+        canRetry: true,
+        retryDelay: 5000 // 5 segundos
+      }
+    });
   }
 
   /**

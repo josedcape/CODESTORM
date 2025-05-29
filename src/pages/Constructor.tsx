@@ -8,6 +8,9 @@ import CodeModifierPanel from '../components/codemodifier/CodeModifierPanel';
 import LoadingOverlay from '../components/LoadingOverlay';
 import HelpAssistant from '../components/HelpAssistant';
 import FloatingActionButtons from '../components/FloatingActionButtons';
+import ErrorBoundary from '../components/ErrorBoundary';
+import AIProviderStatus from '../components/AIProviderStatus';
+import AIFallbackNotifications from '../components/AIFallbackNotifications';
 import {
   Loader,
   AlertTriangle,
@@ -46,6 +49,7 @@ import CodeEditor from '../components/constructor/CodeEditor';
 import TerminalOutput from '../components/constructor/TerminalOutput';
 import EnhancedPreviewPanel from '../components/constructor/EnhancedPreviewPanel';
 import RepositoryImporter from '../components/constructor/RepositoryImporter';
+import ProgressIndicator from '../components/constructor/ProgressIndicator';
 import { ImportedRepository } from '../services/RepositoryImportService';
 
 // --- AGENT AND SERVICE IMPORTS (USER TO VERIFY PATHS AND EXPORTS) ---
@@ -205,6 +209,7 @@ const Constructor: React.FC = () => {
   const [showHelpAssistant, setShowHelpAssistant] = useState(false);
   const [showQuotaError, setShowQuotaError] = useState(false);
   const [quotaErrorDetails, setQuotaErrorDetails] = useState('');
+  const [showAIProviderStatus, setShowAIProviderStatus] = useState(false);
 
   // Efecto para suscribirse a los cambios en el estado del orquestrador iterativo
   useEffect(() => {
@@ -1193,10 +1198,34 @@ Instrucciones de uso...`;
     }
   };
 
+  // Función de prueba para verificar el manejo de errores (temporal)
+  const testErrorHandling = () => {
+    console.log('🧪 Probando manejo de errores...');
+
+    // Probar error de cuota
+    const quotaError = new Error('Request failed with status code 429: Quota exceeded');
+    handleError(quotaError, 'prueba de error de cuota');
+
+    // Añadir mensaje informativo
+    addChatMessage({
+      id: generateUniqueId('error-test'),
+      sender: 'system',
+      content: '🧪 **Prueba de Manejo de Errores** - Se ha simulado un error de cuota para verificar que el sistema lo maneja correctamente. Deberías ver un mensaje de error específico arriba.',
+      timestamp: Date.now(),
+      type: 'notification'
+    });
+  };
+
   return (
-    <div className="flex flex-col min-h-screen bg-codestorm-darker">
-      <Header showConstructorButton={false} />
-      <main className="container flex-1 px-4 py-4 mx-auto">
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('Error en Constructor:', error, errorInfo);
+        // Aquí podrías enviar el error a un servicio de logging
+      }}
+    >
+      <div className="flex flex-col min-h-screen bg-codestorm-darker">
+        <Header showConstructorButton={false} />
+        <main className="container flex-1 px-4 py-4 mx-auto">
         {aiConstructorState.showTemplateSelector && (
           <div className="p-6 mb-6 rounded-lg shadow-md bg-codestorm-dark">
             <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-white mb-3`}>
@@ -1529,7 +1558,21 @@ Instrucciones de uso...`;
         onRetry={handleRetryAfterQuotaError}
         errorDetails={quotaErrorDetails}
       />
-    </div>
+
+      {/* Componente de estado de APIs de IA */}
+      <AIProviderStatus
+        isVisible={showAIProviderStatus}
+        onToggle={() => setShowAIProviderStatus(!showAIProviderStatus)}
+      />
+
+      {/* Notificaciones de fallback de IA */}
+      <AIFallbackNotifications
+        maxNotifications={3}
+        defaultDuration={5000}
+        position="top-right"
+      />
+      </div>
+    </ErrorBoundary>
   );
 };
 

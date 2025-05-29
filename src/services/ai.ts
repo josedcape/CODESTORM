@@ -1,5 +1,7 @@
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AIFallbackService } from './AIFallbackService';
+import { AIProviderManager } from './AIProviderManager';
 
 // Initialize AI clients
 const openai = new OpenAI({
@@ -19,70 +21,80 @@ export interface AIResponse {
   isProjectRequest?: boolean;
 }
 
+/**
+ * Función mejorada con sistema de fallback robusto
+ * Utiliza AIFallbackService para manejo inteligente de errores
+ */
 async function tryWithFallback(instruction: string, model: string): Promise<AIResponse> {
-  const startTime = Date.now();
-  let lastError: Error | null = null;
+  console.log(`[AI Service] Iniciando solicitud con fallback robusto para modelo: ${model}`);
 
   try {
-    // First try with the requested model
-    console.log(`[AI Service] Intentando con modelo principal: ${model}`);
-    return await processInstruction(instruction, model);
-  } catch (error) {
-    lastError = error instanceof Error ? error : new Error('Error desconocido');
+    // Usar el nuevo sistema de fallback
+    const fallbackService = AIFallbackService.getInstance();
 
-    if (lastError.message.includes('429') || lastError.message.includes('quota')) {
-      // If we get a quota error, try with alternative models in sequence
-      console.log(`[AI Service] ${model} cuota excedida, probando modelos alternativos...`);
+    const result = await fallbackService.executeWithFallback({
+      instruction,
+      model,
+      timeout: 30000 // 30 segundos de timeout
+    });
 
-      // Define fallback order - prioritize different providers
-      const fallbackOrder = [
-        'Claude 3.5 Sonnet V2',  // Cambiar a Claude primero
-        'Qwen2.5-Omni-7B',      // Luego modelo alternativo
-        'Gemini 2.0 Flash',     // Gemini alternativo al final
-        'Gemini 2.5'            // Último recurso
-      ];
+    if (result.success && result.response) {
+      console.log(`[AI Service] ✅ Éxito con ${result.finalProvider} después de ${result.fallbacksUsed} fallbacks`);
 
-      // Try each fallback model with delay between attempts
-      for (let i = 0; i < fallbackOrder.length; i++) {
-        const fallbackModel = fallbackOrder[i];
+      return {
+        content: result.response.content,
+        model: result.response.model,
+        fallbackUsed: result.fallbacksUsed > 0,
+        executionTime: result.totalTime,
+        isProjectRequest: instruction.toLowerCase().includes('crea') &&
+          (instruction.toLowerCase().includes('proyecto') ||
+           instruction.toLowerCase().includes('aplicación') ||
+           instruction.toLowerCase().includes('programa') ||
+           instruction.toLowerCase().includes('calculadora') ||
+           instruction.toLowerCase().includes('juego') ||
+           instruction.toLowerCase().includes('web'))
+      };
+    } else {
+      // Si el sistema de fallback falló completamente
+      const lastAttempt = result.attempts[result.attempts.length - 1];
+      const errorMessage = lastAttempt?.error || 'Todos los proveedores de IA están temporalmente no disponibles';
 
-        if (fallbackModel !== model) { // Skip if it's the original model
-          try {
-            // Add delay between attempts to respect rate limits
-            if (i > 0) {
-              console.log(`[AI Service] Esperando 2 segundos antes del siguiente intento...`);
-              await new Promise(resolve => setTimeout(resolve, 2000));
-            }
+      console.error(`[AI Service] ❌ Sistema de fallback falló completamente: ${errorMessage}`);
 
-            console.log(`[AI Service] Probando modelo alternativo: ${fallbackModel}`);
-            const response = await processInstruction(instruction, fallbackModel);
+      // Generar mensaje de error informativo basado en los intentos
+      let detailedError = '🚫 **Todos los servicios de IA están temporalmente no disponibles**\n\n';
+      detailedError += '**Intentos realizados:**\n';
 
-            const executionTime = Date.now() - startTime;
-            console.log(`[AI Service] ✅ Éxito con modelo alternativo ${fallbackModel} en ${executionTime}ms`);
-
-            return {
-              ...response,
-              fallbackUsed: true,
-              executionTime
-            };
-          } catch (fallbackError) {
-            const fallbackErrorMsg = fallbackError instanceof Error ? fallbackError.message : 'Error desconocido';
-            console.log(`[AI Service] ❌ Modelo alternativo ${fallbackModel} falló: ${fallbackErrorMsg}`);
-            lastError = fallbackError instanceof Error ? fallbackError : lastError;
-            // Continue to next fallback model
-          }
+      result.attempts.forEach((attempt, index) => {
+        const status = attempt.success ? '✅' : '❌';
+        detailedError += `${index + 1}. ${status} ${attempt.providerId} (${attempt.model})\n`;
+        if (attempt.error) {
+          detailedError += `   Error: ${attempt.error}\n`;
         }
-      }
+      });
 
-      // If all fallbacks failed, throw a comprehensive error
-      const executionTime = Date.now() - startTime;
-      console.error(`[AI Service] ❌ Todos los modelos fallaron después de ${executionTime}ms`);
+      detailedError += '\n**Recomendaciones:**\n';
+      detailedError += '• ⏰ Espera 15-30 minutos y vuelve a intentar\n';
+      detailedError += '• 🔄 Verifica tu conexión a internet\n';
+      detailedError += '• 🛠️ Continúa trabajando con archivos existentes\n';
+      detailedError += '• 📝 Simplifica tu solicitud y reintenta\n';
 
-      throw new Error(`Todos los modelos de IA están temporalmente no disponibles. Último error: ${lastError.message}`);
+      throw new Error(detailedError);
     }
+  } catch (error) {
+    // Si hay un error en el sistema de fallback mismo, usar el método original como último recurso
+    console.warn(`[AI Service] Error en sistema de fallback, usando método original: ${error}`);
 
-    // For non-quota errors, throw immediately
-    throw lastError;
+    try {
+      const response = await processInstruction(instruction, model);
+      return {
+        ...response,
+        fallbackUsed: false
+      };
+    } catch (originalError) {
+      console.error(`[AI Service] ❌ Método original también falló: ${originalError}`);
+      throw originalError;
+    }
   }
 }
 
