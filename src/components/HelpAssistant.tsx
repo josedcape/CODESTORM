@@ -301,7 +301,7 @@ CONSULTA DEL USUARIO: ${userInput}`;
     try {
       // Llamar a la API real usando tryWithFallback
       console.log('🤖 [HelpAssistant] Generando respuesta con IA real...');
-      const response = await tryWithFallback(systemPrompt, 'Gemini 2.5');
+      const response = await tryWithFallback(systemPrompt, 'Gemini 2.5 Flash');
 
       if (response.error) {
         throw new Error(response.error);

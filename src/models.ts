@@ -17,8 +17,8 @@ export const availableModels: AIModel[] = [
     icon: 'Code2'
   },
   {
-    id: 'gemini-2.5',
-    name: 'Gemini 2.5',
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
     description: 'Sobresale en pruebas, documentación y características multimedia',
     strengths: ['Pruebas', 'Documentación', 'Integración Multimedia'],
     icon: 'TestTube'

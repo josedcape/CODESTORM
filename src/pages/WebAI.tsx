@@ -516,8 +516,26 @@ const WebAI: React.FC = () => {
   };
 
   const handlePublishWebsite = () => {
-    // Implementar la lógica para publicar el sitio web
-    console.log('Publicar sitio web');
+    const payload = {
+      html: generatedHtml,
+      css: generatedCss,
+      js: generatedJs
+    };
+
+    fetch('/deploy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.url) {
+          window.open(data.url, '_blank');
+        } else {
+          console.error('Error al publicar sitio:', data);
+        }
+      })
+      .catch(err => console.error('Error al publicar sitio', err));
   };
 
   // Función para manejar la vista previa automática

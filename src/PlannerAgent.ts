@@ -19,7 +19,7 @@ export class PlannerAgent {
       const prompt = this.buildPrompt(task.instruction);
 
       // Procesar la instrucción con el modelo de IA Gemini
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
 
       // Extraer la estructura del proyecto y los pasos de implementación
       const result = this.parseResponse(response.content);

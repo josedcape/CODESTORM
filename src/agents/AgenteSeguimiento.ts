@@ -87,7 +87,7 @@ export class AgenteSeguimiento {
       const prompt = this.buildDocumentationPrompt(currentStage, projectHistory, files);
       
       // Procesar la instrucción con el modelo de IA
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
       
       // Analizar la respuesta para extraer la documentación
       const stageDocumentation = this.parseDocumentationResponse(response.content, currentStage);
@@ -190,7 +190,7 @@ export class AgenteSeguimiento {
       const prompt = this.buildUserMessagePrompt(userMessage, currentStage, projectHistory);
       
       // Procesar la instrucción con el modelo de IA
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
       
       // Crear evento de feedback del usuario
       const event: HistoryEvent = {
@@ -245,7 +245,7 @@ export class AgenteSeguimiento {
       const prompt = this.buildTransferPrompt(currentStage, previousStage, projectHistory);
       
       // Procesar la instrucción con el modelo de IA
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
       
       // Crear evento de transferencia de información
       const event: HistoryEvent = {
@@ -302,7 +302,7 @@ export class AgenteSeguimiento {
       const prompt = this.buildSummaryPrompt(projectHistory);
       
       // Procesar la instrucción con el modelo de IA
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
       
       // Crear evento de resumen
       const event: HistoryEvent = {
@@ -369,7 +369,7 @@ export class AgenteSeguimiento {
       `;
       
       // Procesar la instrucción con el modelo de IA
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
       
       return {
         success: true,

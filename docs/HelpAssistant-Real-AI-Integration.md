@@ -19,14 +19,14 @@ if (userInput.toLowerCase().includes('agente')) {
 #### **Después (IA Real):**
 ```typescript
 // Llamada real a la API de IA
-const response = await tryWithFallback(systemPrompt, 'Gemini 2.5');
+const response = await tryWithFallback(systemPrompt, 'Gemini 2.5 Flash');
 ```
 
 ### 🤖 **Integración con APIs Reales**
 
 #### **Servicio Utilizado:**
 - **Función**: `tryWithFallback` del servicio `ai.ts`
-- **Modelo Principal**: Gemini 2.5
+- **Modelo Principal**: Gemini 2.5 Flash
 - **Fallbacks**: Gemini 2.0 Flash, Claude 3.5 Sonnet V2, Qwen2.5-Omni-7B
 - **Manejo de Errores**: Sistema robusto con respuestas de fallback
 
@@ -34,7 +34,7 @@ const response = await tryWithFallback(systemPrompt, 'Gemini 2.5');
 ```typescript
 import { tryWithFallback } from '../services/ai';
 
-const response = await tryWithFallback(systemPrompt, 'Gemini 2.5');
+const response = await tryWithFallback(systemPrompt, 'Gemini 2.5 Flash');
 ```
 
 ### 📝 **Prompt Especializado Mejorado**
@@ -137,7 +137,7 @@ return {
     context,
     confidence: 0.95,
     sources: ['CODESTORM Knowledge Base', 'BOTIDINAMIX AI Documentation', 'IA Real'],
-    model: response.model,      // Gemini 2.5, Claude, etc.
+    model: response.model,      // Gemini 2.5 Flash, Claude, etc.
     executionTime              // Tiempo real de procesamiento
   }
 };
@@ -179,7 +179,7 @@ generateAssistantResponse → systemPrompt (especializado) → tryWithFallback
 
 ### **3. Llamada a la API**
 ```
-tryWithFallback → Gemini 2.5 → (fallback si es necesario) → respuesta
+tryWithFallback → Gemini 2.5 Flash → (fallback si es necesario) → respuesta
 ```
 
 ### **4. Procesamiento de Respuesta**
@@ -200,7 +200,7 @@ error → errorMessage → ChatMessage → UI con mensaje de error
 - Variables de entorno para claves de API
 
 ### **Modelos Soportados:**
-1. **Gemini 2.5** (Principal)
+1. **Gemini 2.5 Flash** (Principal)
 2. **Gemini 2.0 Flash** (Fallback 1)
 3. **Claude 3.5 Sonnet V2** (Fallback 2)
 4. **Qwen2.5-Omni-7B** (Fallback 3)
@@ -209,7 +209,7 @@ error → errorMessage → ChatMessage → UI con mensaje de error
 ```typescript
 // Orden de fallback automático en tryWithFallback
 const fallbackOrder = [
-  'Gemini 2.5',
+  'Gemini 2.5 Flash',
   'Gemini 2.0 Flash', 
   'Claude 3.5 Sonnet V2',
   'Qwen2.5-Omni-7B'

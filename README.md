@@ -363,6 +363,12 @@ El modal de vista previa web es una característica revolucionaria que permite v
 - **Gestión de memoria**: Limpieza automática para evitar memory leaks
 - **Manejo de errores**: Mensajes informativos si hay problemas de renderizado
 
+## 🚀 Despliegue Rápido de Aplicaciones
+
+1. En el paso **Publicar** del constructor WebAI presiona **Publicar sitio web**.
+2. CODESTORM enviará el código al servidor y abrirá una nueva pestaña con la URL de despliegue.
+3. La aplicación se guarda en la carpeta `deployments` y queda disponible en `http://tu-ip:3001/deployments/ID/index.html`.
+
 ## 🎤 Sistema de Reconocimiento de Voz
 
 CODESTORM incluye un sistema avanzado de reconocimiento de voz con las siguientes características:

@@ -92,7 +92,7 @@ export class OptimizedPlannerAgent {
           
           // Procesar instrucción con timeout
           const response = await Promise.race([
-            processInstruction(prompt, 'Gemini 2.5'),
+            processInstruction(prompt, 'Gemini 2.5 Flash'),
             new Promise((_, reject) => 
               setTimeout(() => reject(new Error('Timeout')), this.TIMEOUT_MS)
             )
@@ -113,7 +113,7 @@ export class OptimizedPlannerAgent {
             success: true,
             data: parsedData,
             metadata: {
-              model: response.model || 'Gemini 2.5',
+              model: response.model || 'Gemini 2.5 Flash',
               executionTime,
               promptTokens: response.promptTokens,
               responseTokens: response.responseTokens
@@ -142,7 +142,7 @@ export class OptimizedPlannerAgent {
         success: false,
         error: error instanceof Error ? error.message : 'Error desconocido en el agente de planificación',
         metadata: {
-          model: 'Gemini 2.5',
+          model: 'Gemini 2.5 Flash',
           executionTime
         }
       };

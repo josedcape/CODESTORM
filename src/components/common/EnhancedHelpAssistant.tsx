@@ -593,7 +593,7 @@ CONSULTA: ${userInput}`;
 
     try {
       console.log('🤖 [EnhancedHelpAssistant] Generando respuesta con IA...');
-      const response = await tryWithFallback(systemPrompt, 'Gemini 2.5');
+      const response = await tryWithFallback(systemPrompt, 'Gemini 2.5 Flash');
 
       if (response.error) {
         throw new Error(response.error);

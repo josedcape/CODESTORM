@@ -30,7 +30,7 @@ async function tryWithFallback(instruction: string, model: string): Promise<AIRe
 
       // Define fallback order - Gemini models first
       const fallbackOrder = [
-        'Gemini 2.5',
+        'Gemini 2.5 Flash',
         'Gemini 2.0 Flash',
         'Claude 3.5 Sonnet V2',
         'Qwen2.5-Omni-7B'
@@ -121,19 +121,19 @@ export async function processInstruction(instruction: string, model: string): Pr
           throw error;
         }
 
-      case 'Gemini 2.5':
+      case 'Gemini 2.5 Flash':
         try {
-          console.log('Using Gemini 2.5 API');
-          const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+          console.log('Using Gemini 2.5 Flash API');
+          const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
           const result = await geminiModel.generateContent(instruction);
           const response = await result.response;
           return {
             content: response.text(),
-            model: 'Gemini 2.5',
+            model: 'Gemini 2.5 Flash',
             isProjectRequest
           };
         } catch (error) {
-          console.error('Error with Gemini 2.5 API:', error);
+          console.error('Error with Gemini 2.5 Flash API:', error);
           throw error;
         }
 
