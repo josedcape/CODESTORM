@@ -504,6 +504,122 @@ export default Home;`,
   const handleSendMessage = async (message: string) => {
     if (!message.trim() || agentState.isProcessing) return;
 
+    const lower = message.toLowerCase();
+    // Comandos de control: pausar, reanudar, añadir/modificar pasos
+    if (lower.includes('pausar')) {
+      executionService.pause();
+      setAgentState(prev => ({
+        ...prev,
+        execution: prev.execution ? { ...prev.execution, status: 'paused' } : null
+      }));
+      addChatMessage({
+        id: generateUniqueId('paused'),
+        sender: 'ai-agent',
+        content: '⏸️ Ejecución pausada.',
+        timestamp: Date.now(),
+        type: 'notification'
+      });
+      return;
+    }
+
+    if (lower.includes('reanudar')) {
+      executionService.resume();
+      setAgentState(prev => ({
+        ...prev,
+        execution: prev.execution ? { ...prev.execution, status: 'running' } : null
+      }));
+      addChatMessage({
+        id: generateUniqueId('resumed'),
+        sender: 'ai-agent',
+        content: '▶️ Ejecución reanudada.',
+        timestamp: Date.now(),
+        type: 'notification'
+      });
+      return;
+    }
+
+    if (lower.startsWith('añadir paso')) {
+      if (agentState.currentPlan) {
+        const descIndex = message.indexOf(':');
+        const description = descIndex !== -1 ? message.slice(descIndex + 1).trim() : 'Paso añadido por el usuario';
+        const newStep: PlanStep = {
+          id: generateUniqueId('step'),
+          title: `Paso ${agentState.currentPlan.steps.length + 1}`,
+          description,
+          type: 'modify',
+          targetFiles: [],
+          estimatedTime: 10,
+          order: agentState.currentPlan.steps.length + 1,
+          status: 'pending',
+          dependencies: []
+        };
+        setAgentState(prev => ({
+          ...prev,
+          currentPlan: prev.currentPlan
+            ? { ...prev.currentPlan, steps: [...prev.currentPlan.steps, newStep] }
+            : prev.currentPlan
+        }));
+        addChatMessage({
+          id: generateUniqueId('step-added'),
+          sender: 'ai-agent',
+          content: `➕ Paso agregado al plan: "${description}"`,
+          timestamp: Date.now(),
+          type: 'success'
+        });
+      } else {
+        addChatMessage({
+          id: generateUniqueId('no-plan'),
+          sender: 'ai-agent',
+          content: '⚠️ No hay un plan activo para modificar.',
+          timestamp: Date.now(),
+          type: 'warning'
+        });
+      }
+      return;
+    }
+
+    if (lower.startsWith('modificar paso')) {
+      if (agentState.currentPlan) {
+        const match = lower.match(/modificar paso\s+(\d+)/);
+        const descIndex = message.indexOf(':');
+        const description = descIndex !== -1 ? message.slice(descIndex + 1).trim() : '';
+        if (match) {
+          const index = parseInt(match[1], 10) - 1;
+          setAgentState(prev => {
+            if (!prev.currentPlan) return prev;
+            const steps = prev.currentPlan.steps.map((s, i) =>
+              i === index ? { ...s, description: description || s.description } : s
+            );
+            return { ...prev, currentPlan: { ...prev.currentPlan!, steps } };
+          });
+          addChatMessage({
+            id: generateUniqueId('step-modified'),
+            sender: 'ai-agent',
+            content: `✏️ Paso ${match[1]} modificado.`,
+            timestamp: Date.now(),
+            type: 'success'
+          });
+        } else {
+          addChatMessage({
+            id: generateUniqueId('invalid-step'),
+            sender: 'ai-agent',
+            content: '⚠️ Formato "modificar paso <n>: <descripción>".',
+            timestamp: Date.now(),
+            type: 'warning'
+          });
+        }
+      } else {
+        addChatMessage({
+          id: generateUniqueId('no-plan'),
+          sender: 'ai-agent',
+          content: '⚠️ No hay un plan activo para modificar.',
+          timestamp: Date.now(),
+          type: 'warning'
+        });
+      }
+      return;
+    }
+
     // Añadir mensaje del usuario
     const userMessage: ChatMessage = {
       id: generateUniqueId('user'),
@@ -514,6 +630,40 @@ export default Home;`,
     };
     addChatMessage(userMessage);
 
+    // Si existe un plan aprobado o en ejecución, agregar la instrucción como un nuevo paso
+    if (
+      agentState.currentPlan &&
+      ['approved', 'executing', 'completed'].includes(agentState.currentPlan.status)
+    ) {
+      const nextOrder = agentState.currentPlan.steps.length + 1;
+      const newStep: PlanStep = {
+        id: generateUniqueId('step'),
+        title: `Paso ${nextOrder}`,
+        description: message,
+        type: 'modify',
+        targetFiles: [],
+        estimatedTime: 20,
+        order: nextOrder,
+        status: 'pending',
+        dependencies: []
+      };
+
+      setAgentState(prev => ({
+        ...prev,
+        currentPlan: prev.currentPlan
+          ? { ...prev.currentPlan, steps: [...prev.currentPlan.steps, newStep] }
+          : null
+      }));
+
+      addChatMessage({
+        id: generateUniqueId('step-added'),
+        sender: 'ai-agent',
+        content: `🆕 Instrucción agregada al plan como Paso ${nextOrder}.`,
+        timestamp: Date.now(),
+        type: 'notification'
+      });
+    }
+
     // Iniciar procesamiento
     setAgentState(prev => ({
       ...prev,
@@ -522,11 +672,16 @@ export default Home;`,
     }));
 
     try {
-      // Si hay un proyecto cargado, usar el flujo de planificación
-      if (agentState.projectManagementMode && agentState.currentProject) {
+      // Si hay un proyecto cargado pero no hay un plan activo o está pendiente
+      // de aprobación, se genera un nuevo plan. En caso contrario, se procesa
+      // la instrucción como una modificación directa.
+      if (
+        agentState.projectManagementMode &&
+        agentState.currentProject &&
+        (!agentState.currentPlan || agentState.currentPlan.status === 'pending-approval')
+      ) {
         await generateProjectPlan(message);
       } else {
-        // Flujo original para proyectos simples
         await simulateAgentWorkflow(message);
       }
     } catch (error) {
