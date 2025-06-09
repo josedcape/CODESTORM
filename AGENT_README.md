@@ -150,6 +150,16 @@ src/components/agent/
 "Sugiere mejoras de performance"
 ```
 
+#### **Control de Plan y Ejecución**
+Puedes modificar el plan o controlar la ejecución directamente desde el chat:
+
+```text
+"añadir paso: <descripción>"                # Agrega un nuevo paso al plan activo
+"modificar paso <n>: <nueva descripción>"    # Cambia la descripción del paso n
+"pausar"                                     # Pausa la ejecución en curso
+"reanudar"                                   # Reanuda la ejecución pausada
+```
+
 ## 📊 Métricas y Estadísticas
 
 El sistema proporciona métricas en tiempo real:
