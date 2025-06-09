@@ -132,7 +132,7 @@ Un sistema completo de previsualización web que funciona en todas las páginas 
 - Diseño adaptable para dispositivos móviles y de escritorio
 - Animaciones sutiles inspiradas en el concepto de "tormenta de código"
 - Paneles colapsables para optimizar el espacio de trabajo
-- Botones flotantes mejorados con navegación al menú principal
+- Botones flotantes optimizados (se eliminaron duplicados y permiten navegar al menú principal)
 - Logo de BOTIDINAMIX AI posicionado en la esquina superior izquierda
 - Temas visuales personalizables con efectos futuristas
 - **Modal responsivo universal**: Todos los modales se adaptan perfectamente a cualquier pantalla
