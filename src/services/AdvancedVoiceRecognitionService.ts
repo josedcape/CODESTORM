@@ -135,13 +135,16 @@ class AdvancedVoiceRecognitionService {
 
     try {
       this.log('🎤 Iniciando reconocimiento de voz...');
-      
+
       // Marcar reconocimiento como activo
       if (!voiceCoordinator.markRecognitionActive('advanced')) {
         this.log('⚠️ No se pudo marcar reconocimiento como activo');
         return false;
       }
-      
+
+      // Reaplicar configuración de idioma por si el navegador la perdió
+      this.recognition.lang = 'es-ES';
+
       this.recognition.start();
       
       // Timeout de 20 segundos

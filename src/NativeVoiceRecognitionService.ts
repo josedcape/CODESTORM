@@ -538,6 +538,9 @@ class NativeVoiceRecognitionService {
         return;
       }
 
+      // Reaplicar idioma configurado
+      this.mainRecognition.lang = this.settings.language;
+
       this.mainRecognition.start();
     } catch (error) {
       console.error('Error al iniciar reconocimiento principal:', error);

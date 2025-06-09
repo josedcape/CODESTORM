@@ -300,6 +300,11 @@ class UnifiedVoiceService {
         this.activeComponents.add(componentName);
       }
 
+      // Asegurar que el idioma esté configurado correctamente antes de iniciar
+      // Algunos navegadores pueden restablecer la configuración después de un
+      // reconocimiento previo
+      this.recognition.lang = this.currentConfig.language!;
+
       this.log(`🎤 Iniciando escucha${componentName ? ` para ${componentName}` : ''}...`);
       this.recognition.start();
       return true;

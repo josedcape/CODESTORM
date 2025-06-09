@@ -280,6 +280,10 @@ export const useAdvancedVoiceRecognition = (
       setError(null);
       setTranscript('');
       setConfidence(0);
+
+      // Reaplicar idioma por si el navegador lo restableció
+      recognitionRef.current.lang = language;
+
       debugLog('Iniciando escucha...');
       recognitionRef.current.start();
     } catch (error) {
