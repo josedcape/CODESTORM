@@ -273,6 +273,8 @@ CODESTORM puede ser configurado para acceso público desde cualquier dispositivo
    http://localhost:5173
    ```
 
+   Luego navega a `http://localhost:5173/agent` y sigue la [Guía de Uso de la página Agent](docs/AgentPageUsage.md) para cargar un proyecto y visualizar el árbol de archivos.
+
    #### Acceso Público (cuando esté configurado):
    ```url
    http://181.58.39.18:5173
