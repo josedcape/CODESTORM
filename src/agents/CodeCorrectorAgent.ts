@@ -50,14 +50,14 @@ export class CodeCorrectorAgent {
       // Procesar la instrucción con el modelo de IA Gemini
       let response;
       try {
-        response = await processInstruction(prompt, 'Gemini 2.5');
+        response = await processInstruction(prompt, 'Gemini 2.5 Flash');
         console.log('Respuesta recibida del modelo:', {
           model: response.model,
           contentLength: response.content?.length || 0,
           executionTime: response.executionTime
         });
       } catch (aiError) {
-        console.error('Error al procesar con Gemini 2.5, intentando con modelo alternativo:', aiError);
+        console.error('Error al procesar con Gemini 2.5 Flash, intentando con modelo alternativo:', aiError);
         // Intentar con un modelo alternativo si Gemini falla
         response = await processInstruction(prompt, 'Gemini 2.0 Flash');
         console.log('Respuesta recibida del modelo alternativo:', {

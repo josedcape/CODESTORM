@@ -33,7 +33,7 @@ export class CodeModifierAgent {
       const prompt = this.buildPrompt(task.instruction, file);
 
       // Procesar la instrucción con el modelo de IA Gemini
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
 
       // Extraer el contenido modificado y los cambios
       const { modifiedContent, changes } = this.extractModifications(response.content, file.content);
@@ -128,7 +128,7 @@ Formato de respuesta:
 `;
 
       // Procesar la instrucción con el modelo de IA Gemini
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
 
       // Extraer el contenido del archivo index.html
       const { modifiedContent, changes } = this.extractModifications(response.content, indexHtmlFile.content);

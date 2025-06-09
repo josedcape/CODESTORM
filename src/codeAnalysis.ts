@@ -19,7 +19,7 @@ export class CodeAnalysisService {
       const prompt = this.buildAnalysisPrompt(file, analysisType);
       
       // Procesar la instrucción con el modelo de IA
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
       
       // Extraer los problemas del código
       const issues = this.parseAnalysisResponse(response.content, file.path);
@@ -220,7 +220,7 @@ IMPORTANTE:
       const prompt = this.buildFixPrompt(file, issue);
       
       // Procesar la instrucción con el modelo de IA
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
       
       // Extraer el código corregido
       const fixedCode = this.extractFixedCode(response.content, file.language);

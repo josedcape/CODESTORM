@@ -97,7 +97,7 @@ const MainApp: React.FC = () => {
 
   const [projectState, setProjectState] = useState<ProjectState>({
     phase: 'planning',
-    currentModel: 'Gemini 2.5',
+    currentModel: 'Gemini 2.5 Flash',
     currentTask: null,
     tasks: [],
     files: [
@@ -340,7 +340,7 @@ const MainApp: React.FC = () => {
       } else {
         // Comportamiento original para instrucciones simples
         // Process the instruction with Gemini
-        const response = await tryWithFallback(instruction, 'Gemini 2.5');
+        const response = await tryWithFallback(instruction, 'Gemini 2.5 Flash');
 
         if (response.error) {
           throw new Error(response.error);

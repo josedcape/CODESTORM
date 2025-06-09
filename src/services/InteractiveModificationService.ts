@@ -161,7 +161,7 @@ REGLAS:
 RESPONDE SOLO CON EL JSON:`;
 
     try {
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
       const analysis = JSON.parse(response.content);
 
       return {

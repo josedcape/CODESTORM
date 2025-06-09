@@ -19,8 +19,8 @@ export async function callGeminiAPI(prompt: string, options?: {
     console.log('Llamando a la API de Gemini con prompt:', prompt.substring(0, 100) + '...');
     
     // Configurar el modelo de Gemini
-    const geminiModel = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-pro",
+    const geminiModel = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
       generationConfig: {
         temperature: options?.temperature || 0.7,
         maxOutputTokens: options?.maxOutputTokens || 8192,

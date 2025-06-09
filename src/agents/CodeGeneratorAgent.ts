@@ -98,7 +98,7 @@ export class CodeGeneratorAgent {
           const prompt = this.buildPrompt(fileDescription, projectContext, technologyStack);
 
           // Procesar la instrucción con el modelo de IA Gemini
-          const response = await processInstruction(prompt, 'Gemini 2.5');
+          const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
 
           // Extraer el contenido del archivo
           const fileContent = this.extractCodeContent(response.content, fileDescription.path);
@@ -162,7 +162,7 @@ export class CodeGeneratorAgent {
       const prompt = this.buildPrompt(fileDescription, projectContext, technologyStack);
 
       // Procesar la instrucción con el modelo de IA Gemini
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
 
       // Extraer el contenido del archivo
       const fileContent = this.extractCodeContent(response.content, fileDescription.path);

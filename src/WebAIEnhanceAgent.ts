@@ -111,7 +111,7 @@ export class WebAIEnhanceAgent {
     `;
 
     try {
-      const response = await processInstruction(prompt, 'Gemini 2.5');
+      const response = await processInstruction(prompt, 'Gemini 2.5 Flash');
 
       const jsonMatch = response.content.match(/{[\s\S]*}/);
       if (!jsonMatch) {
