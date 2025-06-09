@@ -2,8 +2,9 @@ import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -12,6 +13,9 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Analizar JSON con un límite razonable
+app.use(express.json({ limit: '10mb' }));
 
 // Habilitar CORS para todas las rutas con configuración específica
 app.use(cors({
@@ -98,6 +102,32 @@ app.use('/api/gemini', createProxyMiddleware({
     console.log('Proxy response from Gemini:', proxyRes.statusCode);
   }
 }));
+
+// Servir aplicaciones desplegadas
+const deploymentsDir = path.join(__dirname, 'deployments');
+if (!fs.existsSync(deploymentsDir)) {
+  fs.mkdirSync(deploymentsDir);
+}
+app.use('/deployments', express.static(deploymentsDir));
+
+// Endpoint para publicar una aplicación web generada
+app.post('/deploy', (req, res) => {
+  const { html, css = '', js = '' } = req.body || {};
+  if (!html) {
+    return res.status(400).json({ error: 'Missing HTML content' });
+  }
+
+  const id = `site-${Date.now()}`;
+  const dir = path.join(deploymentsDir, id);
+  fs.mkdirSync(dir, { recursive: true });
+
+  const content = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>${css}</style></head><body>${html}<script>${js}</script></body></html>`;
+  fs.writeFileSync(path.join(dir, 'index.html'), content, 'utf8');
+
+  const url = `/deployments/${id}/index.html`;
+  console.log('📦 Aplicación desplegada en', url);
+  res.json({ url });
+});
 
 // Ruta para verificar que el servidor está funcionando
 app.get('/', (req, res) => {
