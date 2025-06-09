@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 // Initialize AI clients
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  baseURL: 'http://localhost:3001/api/openai',
+  baseURL: '/api/openai',
   dangerouslyAllowBrowser: true
 });
 
@@ -158,7 +158,7 @@ export async function processInstruction(instruction: string, model: string): Pr
           console.log('Using Claude 3.7 API');
 
           // Usar fetch directamente para tener más control sobre los encabezados
-          const response = await fetch('http://localhost:3001/api/anthropic/v1/messages', {
+          const response = await fetch('/api/anthropic/v1/messages', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -199,7 +199,7 @@ export async function processInstruction(instruction: string, model: string): Pr
           console.log('Using Claude 3.5 Sonnet V2 API');
 
           // Usar fetch directamente para tener más control sobre los encabezados
-          const response = await fetch('http://localhost:3001/api/anthropic/v1/messages', {
+          const response = await fetch('/api/anthropic/v1/messages', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
