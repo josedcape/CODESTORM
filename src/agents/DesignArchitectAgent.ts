@@ -252,14 +252,15 @@ export class DesignArchitectAgent {
                         instruction.toLowerCase().includes('tecnología') || instruction.toLowerCase().includes('software') ? 'tecnología' :
                         instruction.toLowerCase().includes('salud') || instruction.toLowerCase().includes('médico') ? 'salud' :
                         'negocio';
+    const mainTopic = this.extractMainTopic(instruction);
 
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sitio web profesional con paleta de colores ${palette.name}">
-    <title>Sitio Web - ${palette.name}</title>
+    <meta name="description" content="Sitio web profesional sobre ${mainTopic} con paleta de colores ${palette.name}">
+    <title>${mainTopic} - ${palette.name}</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -269,7 +270,7 @@ export class DesignArchitectAgent {
     <header role="banner">
         <nav role="navigation" aria-label="Navegación principal" class="container">
             <div class="nav-brand">
-                <h1>Mi ${businessType.charAt(0).toUpperCase() + businessType.slice(1)}</h1>
+                <h1>${mainTopic}</h1>
             </div>
             <ul class="nav-links">
                 <li><a href="#inicio">Inicio</a></li>
@@ -283,7 +284,7 @@ export class DesignArchitectAgent {
     <main role="main">
         <section id="inicio" class="hero" aria-labelledby="hero-title">
             <div class="container">
-                <h1 id="hero-title">Bienvenido a Nuestro ${businessType.charAt(0).toUpperCase() + businessType.slice(1)}</h1>
+                <h1 id="hero-title">${mainTopic}</h1>
                 <p>Descubre la excelencia en cada detalle con nuestra nueva paleta de colores ${palette.name}.</p>
                 <a href="#servicios" class="btn btn-primary">Conoce Más</a>
             </div>
@@ -583,6 +584,7 @@ export class DesignArchitectAgent {
   private buildDesignProposalPrompt(instruction: string, plan?: any): string {
     const projectName = plan?.name || 'Sitio Web Moderno';
     const projectDescription = plan?.description || instruction;
+    const mainTopic = this.extractMainTopic(instruction);
 
     return `
     Eres un DISEÑADOR WEB SENIOR especializado en crear sitios web ULTRA-MODERNOS, ATRACTIVOS y PROFESIONALES usando HTML5, CSS3 avanzado y JavaScript vanilla. Tu especialidad es generar páginas web que impresionen visualmente y tengan una experiencia de usuario excepcional.
@@ -591,6 +593,9 @@ export class DesignArchitectAgent {
 
     NOMBRE DEL PROYECTO: ${projectName}
     DESCRIPCIÓN: ${projectDescription}
+    TEMA PRINCIPAL: ${mainTopic}
+
+    Asegúrate de que el título principal y los textos mencionen literalmente "${mainTopic}".
 
     ${plan ? `PLAN DEL PROYECTO: ${JSON.stringify(plan, null, 2)}` : ''}
 
@@ -773,7 +778,7 @@ export class DesignArchitectAgent {
         <header class="header-modern" role="banner">
             <nav class="nav-container" role="navigation" aria-label="Navegación principal">
                 <div class="nav-brand">
-                    <a href="#inicio" class="brand-logo">[LOGO/MARCA ESPECÍFICA]</a>
+                    <a href="#inicio" class="brand-logo">${mainTopic}</a>
                 </div>
                 <ul class="nav-menu">
                     <li><a href="#inicio" class="nav-link active">Inicio</a></li>
@@ -1387,19 +1392,20 @@ export class DesignArchitectAgent {
   private generateBasicPersonalizedHTML(projectTitle: string, instruction: string): string {
     // Extraer palabras clave de la instrucción para personalizar el contenido
     const keywords = this.extractKeywordsFromInstruction(instruction);
+    const mainTopic = this.extractMainTopic(instruction);
 
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${projectTitle}</title>
+    <title>${mainTopic}</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header class="header">
         <div class="container">
-            <h1 class="header-title">${projectTitle}</h1>
+            <h1 class="header-title">${mainTopic}</h1>
             <nav class="nav">
                 <ul class="nav-list">
                     <li><a href="#inicio" class="nav-link">Inicio</a></li>
@@ -1413,7 +1419,7 @@ export class DesignArchitectAgent {
     <main class="main">
         <section id="inicio" class="hero">
             <div class="container">
-                <h2 class="hero-title">${projectTitle}</h2>
+                <h2 class="hero-title">${mainTopic}</h2>
                 <p class="hero-description">Basado en su solicitud: ${instruction}</p>
                 <p class="hero-note">Esta es una versión básica. Para obtener contenido completamente personalizado, por favor proporcione más detalles específicos sobre su negocio o proyecto.</p>
                 <button class="btn btn-primary">Más Información</button>
@@ -1458,6 +1464,17 @@ export class DesignArchitectAgent {
     const stopWords = ['el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'es', 'se', 'no', 'te', 'lo', 'le', 'da', 'su', 'por', 'son', 'con', 'para', 'una', 'crear', 'generar', 'hacer', 'página', 'web', 'sitio'];
     const words = instruction.toLowerCase().split(/\s+/);
     return words.filter(word => word.length > 3 && !stopWords.includes(word)).slice(0, 5);
+  }
+
+  /**
+   * Extrae la temática principal de la instrucción para incluirla en el contenido generado
+   */
+  private extractMainTopic(instruction: string): string {
+    const topicMatch = instruction.match(/(?:para|sobre)\s+([^\.]+)$/i);
+    if (topicMatch) {
+      return topicMatch[1].trim();
+    }
+    return instruction.trim();
   }
 
   /**
