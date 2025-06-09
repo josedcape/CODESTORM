@@ -36,7 +36,7 @@ interface CodeModificationContext {
 
 class ClaudeAPIService {
   private apiKey: string;
-  private baseURL: string = 'http://localhost:3001/api/anthropic/v1/messages';
+  private baseURL: string = '/api/anthropic/v1/messages';
   private model: string = 'claude-3-5-sonnet-20241022';
   private maxTokens: number = 4000;
 
