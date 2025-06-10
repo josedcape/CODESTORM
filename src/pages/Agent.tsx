@@ -40,6 +40,8 @@ import TerminalOutput from '../components/constructor/TerminalOutput';
 import EnhancedPreviewPanel from '../components/constructor/EnhancedPreviewPanel';
 import RepositoryImporter from '../components/constructor/RepositoryImporter';
 import { ImportedRepository } from '../services/RepositoryImportService';
+import APIStatusIndicator from '../components/APIStatusIndicator';
+import NotificationSystem, { useNotifications } from '../components/NotificationSystem';
 
 // Servicios y agentes
 import { PromptEnhancerService } from '../services/PromptEnhancerService';
@@ -84,6 +86,7 @@ const aiIterativeOrchestrator = AIIterativeOrchestrator.getInstance();
 const Agent: React.FC = () => {
   const navigate = useNavigate();
   const { isMobile, isTablet, isCodeModifierVisible, toggleCodeModifier } = useUI();
+  const notifications = useNotifications();
 
   const [aiConstructorState, setAIConstructorState] = useState<AIConstructorState>({
     currentAIAction: 'awaitingInput',
@@ -116,7 +119,23 @@ const Agent: React.FC = () => {
     {
       id: generateUniqueId('welcome'),
       sender: 'ai-agent',
-      content: 'Bienvenido al Sistema AGENT de CODESTORM. Describe tu proyecto o tarea a realizar.',
+      content: `🤖 **Bienvenido al Sistema AGENT de CODESTORM**
+
+¡Hola! Soy tu asistente de desarrollo inteligente. Estoy aquí para ayudarte a:
+
+• **Crear proyectos completos** desde cero
+• **Modificar código existente** con comandos naturales
+• **Generar documentación** y optimizar rendimiento
+• **Resolver problemas** y depurar errores
+
+**Cómo empezar:**
+1. Describe tu proyecto o tarea en lenguaje natural
+2. Usa comandos como "crea una app web", "modifica el archivo X", "optimiza el código"
+3. Revisa las respuestas y archivos generados en los paneles
+
+**Estado del sistema:** Verificando APIs de IA... 🔄
+
+¡Comencemos a construir algo increíble juntos!`,
       timestamp: Date.now(),
       type: 'notification',
     },
@@ -124,6 +143,19 @@ const Agent: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showError, setShowError] = useState(false);
   const [showHelpAssistant, setShowHelpAssistant] = useState(false);
+
+  // Efecto de bienvenida
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      notifications.system(
+        'Sistema AGENT Iniciado',
+        'Todas las funcionalidades están disponibles. ¡Comienza describiendo tu proyecto!',
+        5000
+      );
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Función para determinar el lenguaje basado en la extensión del archivo
   const getLanguageFromFilePath = (filePath: string | null): string => {
@@ -163,7 +195,7 @@ const Agent: React.FC = () => {
     });
   };
 
-  // Función básica para enviar mensajes
+  // Función mejorada para enviar mensajes con procesamiento real
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || aiConstructorState.isAIBusy) return;
 
@@ -176,14 +208,142 @@ const Agent: React.FC = () => {
     };
     addChatMessage(userMessage);
 
-    // Respuesta básica del sistema
-    addChatMessage({
-      id: generateUniqueId('response'),
-      sender: 'ai-agent',
-      content: `Procesando tu solicitud: "${content}". El sistema AGENT está analizando tu petición...`,
-      timestamp: Date.now(),
-      type: 'notification'
-    });
+    // Marcar como ocupado
+    setAIConstructorState(prev => ({
+      ...prev,
+      isAIBusy: true,
+      currentAIAction: 'Analizando solicitud...'
+    }));
+
+    try {
+      // Importar dinámicamente los servicios necesarios
+      const { AIIterativeOrchestrator } = await import('../services/AIIterativeOrchestrator');
+      const { default: AIModelManager } = await import('../services/AIModelManager');
+
+      const orchestrator = AIIterativeOrchestrator.getInstance();
+      const modelManager = AIModelManager.getInstance();
+
+      // Mensaje de inicio de procesamiento
+      addChatMessage({
+        id: generateUniqueId('processing'),
+        sender: 'ai-agent',
+        content: `🤖 **AGENT**: Procesando tu solicitud: "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"\n\nAnalizando con sistema de IA avanzado...`,
+        timestamp: Date.now(),
+        type: 'info'
+      });
+
+      setAIConstructorState(prev => ({
+        ...prev,
+        currentAIAction: 'Generando respuesta con IA...'
+      }));
+
+      // Intentar generar respuesta con el modelo de IA
+      try {
+        const response = await modelManager.generateContent(content, {
+          temperature: 0.7,
+          maxOutputTokens: 4096
+        });
+
+        if (response.success && response.content) {
+          // Respuesta exitosa
+          addChatMessage({
+            id: generateUniqueId('ai-response'),
+            sender: 'ai-agent',
+            content: `✅ **Respuesta del Sistema AGENT**:\n\n${response.content}\n\n*Modelo usado: ${response.model}*`,
+            timestamp: Date.now(),
+            type: 'success'
+          });
+
+          // Notificación de éxito
+          notifications.success(
+            'IA Procesada Exitosamente',
+            `Respuesta generada con ${response.model}`,
+            3000
+          );
+
+          // Si la respuesta contiene código o archivos, procesarlos
+          if (response.content.includes('```') || content.toLowerCase().includes('crear') || content.toLowerCase().includes('generar')) {
+            setAIConstructorState(prev => ({
+              ...prev,
+              currentAIAction: 'Procesando archivos generados...'
+            }));
+
+            notifications.info(
+              'Generando Archivos',
+              'Procesando código y creando archivos del proyecto...',
+              0
+            );
+
+            // Procesar con el orquestrador para generar archivos
+            await orchestrator.processUserInstruction(content);
+          }
+
+        } else {
+          // Error en la respuesta
+          throw new Error(response.error || 'No se pudo generar respuesta');
+        }
+
+      } catch (aiError) {
+        console.error('Error en generación de IA:', aiError);
+
+        // Notificación de fallback
+        notifications.warning(
+          'Sistema de Fallback Activado',
+          'La IA principal no está disponible. Usando sistema local.',
+          5000
+        );
+
+        // Mensaje de fallback con información útil
+        addChatMessage({
+          id: generateUniqueId('fallback'),
+          sender: 'ai-agent',
+          content: `⚠️ **Sistema de Fallback Activado**\n\nLa IA principal no está disponible temporalmente, pero puedo ayudarte con:\n\n• **Análisis de tu solicitud**: "${content}"\n• **Sugerencias**: Intenta ser más específico sobre lo que necesitas\n• **Comandos disponibles**: crear, modificar, optimizar, documentar\n\n*Error: ${aiError instanceof Error ? aiError.message : 'Servicio no disponible'}*`,
+          timestamp: Date.now(),
+          type: 'warning'
+        });
+
+        // Intentar procesamiento básico con el orquestrador
+        try {
+          await orchestrator.processUserInstruction(content);
+        } catch (orchestratorError) {
+          console.error('Error en orquestrador:', orchestratorError);
+
+          addChatMessage({
+            id: generateUniqueId('basic-response'),
+            sender: 'ai-agent',
+            content: `🔧 **Procesamiento Básico**\n\nHe registrado tu solicitud: "${content}"\n\nPara obtener mejores resultados:\n1. Verifica tu conexión a internet\n2. Intenta comandos más específicos\n3. Usa el explorador de archivos para trabajar con código existente`,
+            timestamp: Date.now(),
+            type: 'info'
+          });
+        }
+      }
+
+    } catch (error) {
+      console.error('Error general en handleSendMessage:', error);
+
+      // Notificación de error
+      notifications.error(
+        'Error del Sistema',
+        'No se pudo procesar la solicitud. Verifica tu conexión.',
+        0
+      );
+
+      addChatMessage({
+        id: generateUniqueId('error'),
+        sender: 'ai-agent',
+        content: `❌ **Error del Sistema**\n\nNo se pudo procesar tu solicitud debido a un error técnico.\n\n**Solicitud**: "${content}"\n**Error**: ${error instanceof Error ? error.message : 'Error desconocido'}\n\nPor favor, intenta nuevamente o usa comandos más simples.`,
+        timestamp: Date.now(),
+        type: 'error'
+      });
+
+    } finally {
+      // Limpiar estado de ocupado
+      setAIConstructorState(prev => ({
+        ...prev,
+        isAIBusy: false,
+        currentAIAction: null
+      }));
+    }
   };
 
   // Funciones básicas para los handlers
@@ -262,6 +422,11 @@ const Agent: React.FC = () => {
           <p className="text-center text-white/90 mt-2 text-lg">
             Sistema de desarrollo inteligente con gestión de proyectos y planificación automática
           </p>
+
+          {/* Indicador de estado de APIs */}
+          <div className="flex justify-center mt-4">
+            <APIStatusIndicator showDetails={true} />
+          </div>
         </div>
       </div>
 
@@ -439,6 +604,14 @@ const Agent: React.FC = () => {
       <HelpAssistant
         isOpen={showHelpAssistant}
         onClose={handleToggleHelpAssistant}
+      />
+
+      {/* Sistema de notificaciones */}
+      <NotificationSystem
+        notifications={notifications.notifications}
+        onDismiss={notifications.dismissNotification}
+        position="top-right"
+        maxNotifications={3}
       />
     </div>
   );

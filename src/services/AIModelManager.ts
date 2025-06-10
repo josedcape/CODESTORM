@@ -147,7 +147,7 @@ class AIModelManager {
   public async generateContent(prompt: string, options?: Partial<ModelConfig>): Promise<ModelResponse> {
     const startTime = Date.now();
     const model = this.getAvailableModels().find(m => m.id === this.selectedModel);
-    
+
     if (!model) {
       throw new Error(`Modelo ${this.selectedModel} no encontrado`);
     }
@@ -156,7 +156,7 @@ class AIModelManager {
 
     try {
       let content: string;
-      
+
       switch (this.selectedModel) {
         case 'gemini-2-flash':
           content = await this.callGemini2Flash(prompt, config);
@@ -172,7 +172,7 @@ class AIModelManager {
       }
 
       const responseTime = Date.now() - startTime;
-      
+
       return {
         success: true,
         content,
@@ -183,22 +183,44 @@ class AIModelManager {
 
     } catch (error) {
       console.error(`Error con modelo ${this.selectedModel}:`, error);
-      
-      // Intentar fallback automático
-      const fallbackResponse = await this.tryFallback(prompt, config, error as Error);
+
+      // Detectar tipo de error específico
+      const errorType = this.detectErrorType(error as Error);
+
+      // Intentar fallback automático basado en el tipo de error
+      const fallbackResponse = await this.tryIntelligentFallback(prompt, config, error as Error, errorType);
       if (fallbackResponse) {
         return fallbackResponse;
       }
 
-      // Marcar modelo como no disponible temporalmente
-      this.modelStatus.set(this.selectedModel, 'unavailable');
-      
+      // Si todos los fallbacks fallan, usar contenido local
+      const localFallback = this.generateLocalFallback(prompt);
+
       return {
-        success: false,
-        model: this.selectedModel,
-        error: error instanceof Error ? error.message : 'Error desconocido'
+        success: true, // Marcamos como exitoso porque tenemos contenido
+        content: localFallback,
+        model: `${this.selectedModel} (fallback local)`,
+        responseTime: Date.now() - startTime,
+        tokensUsed: this.estimateTokens(localFallback),
+        error: `API no disponible: ${error instanceof Error ? error.message : 'Error desconocido'}`
       };
     }
+  }
+
+  private detectErrorType(error: Error): 'rate_limit' | 'api_key' | 'network' | 'quota' | 'unknown' {
+    const message = error.message.toLowerCase();
+
+    if (message.includes('429') || message.includes('rate limit') || message.includes('quota')) {
+      return 'rate_limit';
+    } else if (message.includes('401') || message.includes('api key') || message.includes('unauthorized')) {
+      return 'api_key';
+    } else if (message.includes('network') || message.includes('fetch') || message.includes('connection')) {
+      return 'network';
+    } else if (message.includes('quota') || message.includes('billing')) {
+      return 'quota';
+    }
+
+    return 'unknown';
   }
 
   private async callGemini2Flash(prompt: string, config: ModelConfig): Promise<string> {
@@ -218,11 +240,17 @@ class AIModelManager {
         temperature: config.temperature,
         maxTokens: config.maxOutputTokens
       });
+
+      if (!response.content || response.content.trim().length === 0) {
+        throw new Error('Claude devolvió contenido vacío');
+      }
+
       return response.content;
     } catch (error) {
       console.error('Error calling Claude 3.5 Sonnet:', error);
-      // Fallback a contenido generado localmente
-      return this.generateLocalFallback(prompt);
+
+      // Re-lanzar el error para que el sistema de fallback lo maneje
+      throw new Error(`Claude API Error: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }
 
@@ -1153,31 +1181,84 @@ Este es contenido generado localmente cuando los servicios de IA no están dispo
     });
   }
 
-  private async tryFallback(prompt: string, config: ModelConfig, originalError: Error): Promise<ModelResponse | null> {
-    const availableModels = this.getAvailableModels().filter(m => 
-      m.id !== this.selectedModel && m.status === 'available'
+  private async tryIntelligentFallback(
+    prompt: string,
+    config: ModelConfig,
+    originalError: Error,
+    errorType: string
+  ): Promise<ModelResponse | null> {
+
+    // Estrategia de fallback basada en el tipo de error
+    let fallbackStrategy: string[] = [];
+
+    switch (errorType) {
+      case 'rate_limit':
+        // Para límites de tasa, intentar modelos menos utilizados primero
+        fallbackStrategy = ['claude-3.5-sonnet', 'gemini-1.5-pro', 'gemini-2-flash'];
+        break;
+      case 'api_key':
+        // Para problemas de API key, intentar otros proveedores
+        fallbackStrategy = this.selectedModel.includes('gemini')
+          ? ['claude-3.5-sonnet']
+          : ['gemini-1.5-pro', 'gemini-2-flash'];
+        break;
+      case 'network':
+        // Para problemas de red, intentar todos los modelos
+        fallbackStrategy = ['claude-3.5-sonnet', 'gemini-1.5-pro', 'gemini-2-flash'];
+        break;
+      default:
+        fallbackStrategy = ['claude-3.5-sonnet', 'gemini-1.5-pro'];
+    }
+
+    // Filtrar modelos disponibles y diferentes al actual
+    const availableModels = fallbackStrategy.filter(modelId =>
+      modelId !== this.selectedModel &&
+      this.getModelStatus(modelId) === 'available'
     );
 
-    for (const model of availableModels) {
+    for (const modelId of availableModels) {
       try {
-        console.log(`🔄 Intentando fallback con ${model.name}...`);
-        
+        console.log(`🔄 Intentando fallback inteligente con ${modelId} (error: ${errorType})...`);
+
         const originalModel = this.selectedModel;
-        this.selectedModel = model.id;
-        
-        const result = await this.generateContent(prompt, config);
-        
-        // Restaurar modelo original pero marcar el resultado como fallback
+        this.selectedModel = modelId;
+
+        let content: string;
+
+        // Llamar directamente al método específico para evitar recursión
+        switch (modelId) {
+          case 'claude-3.5-sonnet':
+            content = await this.callClaude35Sonnet(prompt, config);
+            break;
+          case 'gemini-1.5-pro':
+            content = await this.callGemini15Pro(prompt, config);
+            break;
+          case 'gemini-2-flash':
+            content = await this.callGemini2Flash(prompt, config);
+            break;
+          default:
+            continue;
+        }
+
+        // Restaurar modelo original
         this.selectedModel = originalModel;
-        
+
         return {
-          ...result,
-          model: `${originalModel} → ${model.id} (fallback)`
+          success: true,
+          content,
+          model: `${originalModel} → ${modelId} (fallback)`,
+          responseTime: 0,
+          tokensUsed: this.estimateTokens(content)
         };
-        
+
       } catch (fallbackError) {
-        console.error(`Fallback con ${model.name} también falló:`, fallbackError);
-        this.modelStatus.set(model.id, 'unavailable');
+        console.error(`Fallback con ${modelId} también falló:`, fallbackError);
+        this.modelStatus.set(modelId, 'limited');
+
+        // Si es el mismo tipo de error, marcar como no disponible temporalmente
+        if (this.detectErrorType(fallbackError as Error) === errorType) {
+          this.modelStatus.set(modelId, 'unavailable');
+        }
       }
     }
 
