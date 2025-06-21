@@ -1,0 +1,87 @@
+{
+  "application": {
+    "name": "CODESTORM WebAI",
+    "version": "2.0.0",
+    "description": "Sistema de desarrollo web con IA y carga de archivos comprimidos",
+    "features": {
+      "fileCompression": {
+        "enabled": true,
+        "maxFileSize": "100MB",
+        "maxStorageSize": "1GB",
+        "supportedFormats": ["ZIP", "RAR"],
+        "autoExtraction": true,
+        "progressTracking": true
+      },
+      "webAI": {
+        "enabled": true,
+        "models": ["GPT-4", "Claude", "Gemini"],
+        "workflows": ["guided", "direct"],
+        "codeGeneration": true,
+        "preview": true
+      },
+      "constructor": {
+        "enabled": true,
+        "realTimeGeneration": true,
+        "fileExplorer": true,
+        "codeEditor": true,
+        "preview": true
+      }
+    }
+  },
+  "storage": {
+    "limits": {
+      "individual_file": {
+        "size": 104857600,
+        "unit": "bytes",
+        "formatted": "100MB"
+      },
+      "total_storage": {
+        "size": 1073741824,
+        "unit": "bytes",
+        "formatted": "1GB"
+      }
+    },
+    "compression": {
+      "zip": {
+        "enabled": true,
+        "library": "JSZip",
+        "version": "3.10.1"
+      },
+      "rar": {
+        "enabled": false,
+        "reason": "Limited browser support",
+        "alternative": "Use ZIP format"
+      }
+    }
+  },
+  "ui": {
+    "theme": "dark",
+    "colors": {
+      "primary": "#3b82f6",
+      "secondary": "#10b981",
+      "accent": "#8b5cf6",
+      "background": "#0f172a",
+      "surface": "#1e293b"
+    },
+    "components": {
+      "fileUploader": {
+        "dragAndDrop": true,
+        "progressBar": true,
+        "filePreview": true,
+        "errorHandling": true
+      }
+    }
+  },
+  "performance": {
+    "optimization": {
+      "chunkProcessing": true,
+      "memoryManagement": true,
+      "progressiveLoading": true
+    },
+    "monitoring": {
+      "fileSize": true,
+      "extractionTime": true,
+      "memoryUsage": true
+    }
+  }
+}
