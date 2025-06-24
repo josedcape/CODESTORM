@@ -1,0 +1,414 @@
+/* ===== OPTIMIZACIÓN MÓVIL PARA CODESTORM ===== */
+
+/* Variables CSS para móviles */
+:root {
+  --mobile-touch-target: 44px;
+  --mobile-padding: 16px;
+  --mobile-margin: 8px;
+  --mobile-border-radius: 8px;
+  --mobile-font-size-small: 14px;
+  --mobile-font-size-base: 16px;
+  --mobile-font-size-large: 18px;
+  --mobile-line-height: 1.5;
+  --mobile-animation-duration: 0.2s;
+  --mobile-scroll-padding: 20px;
+}
+
+/* ===== BREAKPOINTS Y MEDIA QUERIES ===== */
+
+/* Móvil pequeño (320px - 480px) */
+@media (max-width: 480px) {
+  /* Reducir animaciones para mejor rendimiento */
+  .chat-message-pulse,
+  .chat-message-pulse-user,
+  .chat-message-pulse-system,
+  .chat-message-pulse-code {
+    animation-duration: 4s;
+    animation-timing-function: ease-in-out;
+  }
+
+  /* Optimizar tamaños de fuente */
+  .text-xs { font-size: 12px; }
+  .text-sm { font-size: 14px; }
+  .text-base { font-size: 16px; }
+  .text-lg { font-size: 18px; }
+  .text-xl { font-size: 20px; }
+  .text-2xl { font-size: 22px; }
+
+  /* Espaciado optimizado */
+  .p-1 { padding: 4px; }
+  .p-2 { padding: 8px; }
+  .p-3 { padding: 12px; }
+  .p-4 { padding: 16px; }
+
+  .m-1 { margin: 4px; }
+  .m-2 { margin: 8px; }
+  .m-3 { margin: 12px; }
+  .m-4 { margin: 16px; }
+}
+
+/* Móvil estándar (481px - 640px) */
+@media (min-width: 481px) and (max-width: 640px) {
+  /* Animaciones estándar */
+  .chat-message-pulse,
+  .chat-message-pulse-user,
+  .chat-message-pulse-system,
+  .chat-message-pulse-code {
+    animation-duration: 3.5s;
+  }
+}
+
+/* Tablet pequeña (641px - 768px) */
+@media (min-width: 641px) and (max-width: 768px) {
+  /* Animaciones completas */
+  .chat-message-pulse,
+  .chat-message-pulse-user,
+  .chat-message-pulse-system,
+  .chat-message-pulse-code {
+    animation-duration: 3s;
+  }
+}
+
+/* ===== BOTONES FLOTANTES OPTIMIZADOS ===== */
+
+/* Botones flotantes con áreas de toque adecuadas */
+.mobile-floating-button {
+  min-width: var(--mobile-touch-target);
+  min-height: var(--mobile-touch-target);
+  padding: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--mobile-animation-duration) ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.mobile-floating-button:active {
+  transform: scale(0.95);
+  transition-duration: 0.1s;
+}
+
+/* Posicionamiento mejorado para móviles */
+@media (max-width: 640px) {
+  .mobile-floating-menu {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .mobile-floating-menu.horizontal {
+    flex-direction: row;
+    justify-content: space-around;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+  }
+}
+
+/* ===== PANELES MÓVILES ===== */
+
+/* Sistema de pestañas para móviles */
+.mobile-tab-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.mobile-tab-header {
+  display: flex;
+  background: rgba(10, 17, 32, 0.95);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobile-tab-header::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-tab-button {
+  min-width: var(--mobile-touch-target);
+  height: var(--mobile-touch-target);
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  font-size: var(--mobile-font-size-small);
+  white-space: nowrap;
+  transition: all var(--mobile-animation-duration) ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.mobile-tab-button.active {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+  border-bottom: 2px solid #3b82f6;
+}
+
+.mobile-tab-button:active {
+  background: rgba(59, 130, 246, 0.2);
+  transform: scale(0.98);
+}
+
+.mobile-tab-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.mobile-tab-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+  padding: var(--mobile-padding);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+}
+
+.mobile-tab-panel.active {
+  transform: translateX(0);
+}
+
+.mobile-tab-panel.prev {
+  transform: translateX(-100%);
+}
+
+/* ===== CHAT MÓVIL OPTIMIZADO ===== */
+
+/* Contenedor de chat móvil */
+.mobile-chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: calc(100vh - 120px);
+}
+
+.mobile-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--mobile-padding);
+  scroll-padding-bottom: var(--mobile-scroll-padding);
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-chat-input {
+  padding: var(--mobile-padding);
+  background: rgba(10, 17, 32, 0.95);
+  border-top: 1px solid rgba(59, 130, 246, 0.3);
+  min-height: 80px;
+}
+
+/* Optimización específica para el área de texto del chat */
+.mobile-chat-input textarea {
+  min-height: 44px !important;
+  font-size: 16px !important; /* Evita zoom en iOS */
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .mobile-chat-input textarea {
+    min-height: 50px !important;
+    padding: 12px !important;
+  }
+
+  .mobile-chat-input .flex > div {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Mensajes de chat optimizados para móvil */
+.mobile-chat-message {
+  margin-bottom: var(--mobile-margin);
+  padding: 12px;
+  border-radius: var(--mobile-border-radius);
+  max-width: 85%;
+  word-wrap: break-word;
+  line-height: var(--mobile-line-height);
+}
+
+.mobile-chat-message.user {
+  margin-left: auto;
+  background: #3b82f6;
+  color: white;
+}
+
+.mobile-chat-message.assistant {
+  margin-right: auto;
+  background: rgba(59, 130, 246, 0.2);
+  color: white;
+}
+
+/* ===== EXPLORADOR DE ARCHIVOS MÓVIL ===== */
+
+.mobile-file-explorer {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-file-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-file-item {
+  min-height: var(--mobile-touch-target);
+  padding: 12px var(--mobile-padding);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.mobile-file-item:active {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* ===== EDITOR DE CÓDIGO MÓVIL ===== */
+
+.mobile-code-editor {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-code-toolbar {
+  padding: 8px var(--mobile-padding);
+  background: rgba(10, 17, 32, 0.95);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.mobile-code-content {
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ===== TERMINAL MÓVIL ===== */
+
+.mobile-terminal {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.mobile-terminal-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--mobile-padding);
+  background: #000;
+  color: #00ff00;
+  font-size: var(--mobile-font-size-small);
+  line-height: var(--mobile-line-height);
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-terminal-input {
+  padding: var(--mobile-padding);
+  background: rgba(0, 0, 0, 0.8);
+  border-top: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* ===== GESTOS TÁCTILES ===== */
+
+/* Área de deslizamiento para cambiar pestañas */
+.mobile-swipe-area {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-x;
+}
+
+/* Indicador de deslizamiento */
+.mobile-swipe-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 40px;
+  background: rgba(59, 130, 246, 0.5);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.mobile-swipe-indicator.left {
+  left: 10px;
+}
+
+.mobile-swipe-indicator.right {
+  right: 10px;
+}
+
+.mobile-swipe-area.swiping .mobile-swipe-indicator {
+  opacity: 1;
+}
+
+/* ===== UTILIDADES MÓVILES ===== */
+
+/* Ocultar elementos en móvil */
+@media (max-width: 640px) {
+  .hidden-mobile {
+    display: none !important;
+  }
+
+  .visible-mobile {
+    display: block !important;
+  }
+}
+
+/* Espaciado seguro para dispositivos con notch */
+@supports (padding: max(0px)) {
+  .mobile-safe-area {
+    padding-left: max(var(--mobile-padding), env(safe-area-inset-left));
+    padding-right: max(var(--mobile-padding), env(safe-area-inset-right));
+    padding-top: max(var(--mobile-padding), env(safe-area-inset-top));
+    padding-bottom: max(var(--mobile-padding), env(safe-area-inset-bottom));
+  }
+}
+
+/* Optimización de rendimiento para móviles */
+@media (max-width: 640px) {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Reducir complejidad de sombras en móvil */
+  .shadow-lg {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .shadow-xl {
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Simplificar gradientes */
+  .bg-gradient-to-r {
+    background: var(--codestorm-accent);
+  }
+}

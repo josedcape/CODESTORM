@@ -1,0 +1,679 @@
+import {
+  AgentTask,
+  FileItem,
+  ChatMessage,
+  AIPhase,
+  AILogEntry,
+  AIWorkflowState,
+  ApprovalData,
+  ApprovalItem,
+  ProgressData
+} from '../types';
+import { PromptEnhancerService } from './PromptEnhancerService';
+import { PlannerAgent } from '../agents/PlannerAgent';
+import { CodeGeneratorAgent } from '../agents/CodeGeneratorAgent';
+import { CodeModifierAgent } from '../agents/CodeModifierAgent';
+import { FileObserverAgent } from '../agents/FileObserverAgent';
+import { generateUniqueId } from '../utils/idGenerator';
+import { createFile } from './createFile';
+
+/**
+ * Servicio de Orquestación Iterativa de Agentes de IA
+ *
+ * Este servicio implementa un flujo de trabajo iterativo guiado por IA,
+ * donde los agentes trabajan de forma continua y transparente, registrando
+ * todas sus acciones en una bitácora detallada.
+ */
+export class AIIterativeOrchestrator {
+  private static instance: AIIterativeOrchestrator;
+  private tasks: AgentTask[] = [];
+  private files: FileItem[] = [];
+  private chatMessages: ChatMessage[] = [];
+  private aiLog: AILogEntry[] = [];
+  private projectPlan: any = null;
+
+  private listeners: ((messages: ChatMessage[]) => void)[] = [];
+  private fileListeners: ((files: FileItem[]) => void)[] = [];
+  private logListeners: ((log: AILogEntry[]) => void)[] = [];
+  private stateListeners: ((state: AIWorkflowState) => void)[] = [];
+  private planListeners: ((plan: any) => void)[] = [];
+
+  private currentPhase: AIPhase = 'awaitingInput';
+  private currentAgentType: string | null = null;
+  private lastInstruction: string = '';
+  private isProcessing: boolean = false;
+  private requiresApproval: boolean = false;
+  private approvalData: ApprovalData | null = null;
+  private progress: ProgressData | null = null;
+  private isPaused: boolean = false;
+
+  // Manejadores de aprobación
+  private approvalHandlers: ((approvalId: string, approved: boolean, approvedItems?: string[]) => void)[] = [];
+
+  /**
+   * Constructor privado para implementar el patrón Singleton
+   */
+  private constructor() {}
+
+  /**
+   * Obtiene la instancia única del servicio
+   * @returns Instancia del servicio
+   */
+  public static getInstance(): AIIterativeOrchestrator {
+    if (!AIIterativeOrchestrator.instance) {
+      AIIterativeOrchestrator.instance = new AIIterativeOrchestrator();
+    }
+    return AIIterativeOrchestrator.instance;
+  }
+
+  /**
+   * Modifica el plan actual
+   * @param instruction Instrucción de modificación
+   */
+  private async modifyPlan(instruction: string): Promise<void> {
+    try {
+      this.updatePhase('planning', 'planner');
+
+      this.addLogEntry({
+        id: generateUniqueId('log'),
+        timestamp: Date.now(),
+        phase: 'planning',
+        agentType: 'planner',
+        action: 'modifyPlan',
+        details: 'Modificando el plan según las nuevas instrucciones...',
+        relatedFiles: []
+      });
+
+      const plannerTask: AgentTask = {
+        id: generateUniqueId('task'),
+        type: 'planner',
+        instruction,
+        status: 'working',
+        startTime: Date.now()
+      };
+
+      const planResult = await PlannerAgent.execute(plannerTask);
+
+      if (!planResult.success || !planResult.data) {
+        throw new Error(`Error al modificar el plan: ${planResult.error}`);
+      }
+
+      // Verificar que el resultado tenga la estructura esperada
+      if (!planResult.data.projectStructure) {
+        throw new Error('El plan modificado no contiene una estructura de proyecto válida');
+      }
+
+      // Adaptar el plan para el CodeGeneratorAgent
+      const updatedPlan = {
+        projectStructure: planResult.data.projectStructure,
+        implementationSteps: planResult.data.implementationSteps || []
+      };
+
+      this.addLogEntry({
+        id: generateUniqueId('log'),
+        timestamp: Date.now(),
+        phase: 'planning',
+        agentType: 'planner',
+        action: 'planModified',
+        details: 'Plan modificado exitosamente. Preparando la generación de código actualizado...',
+        relatedFiles: []
+      });
+
+      // Generar código con el plan actualizado
+      await this.generateCodeFromPlan(updatedPlan);
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  /**
+   * Modifica el trabajo actual (código o archivos)
+   * @param instruction Instrucción de modificación
+   */
+  private async modifyCurrentWork(instruction: string): Promise<void> {
+    try {
+      // Si no hay archivos para modificar, generar un error
+      if (this.files.length === 0) {
+        throw new Error('No hay archivos para modificar. Por favor, genera primero un proyecto.');
+      }
+
+      this.updatePhase('modifyingFile', 'codeModifier');
+
+      this.addLogEntry({
+        id: generateUniqueId('log'),
+        timestamp: Date.now(),
+        phase: 'modifyingFile',
+        agentType: 'codeModifier',
+        action: 'modifyCode',
+        details: 'Modificando el código según las nuevas instrucciones...',
+        relatedFiles: this.files.map(file => file.path)
+      });
+
+      // Crear una tarea para el agente de modificación
+      const modifierTask: AgentTask = {
+        id: generateUniqueId('task'),
+        type: 'codeModifier',
+        instruction,
+        status: 'working',
+        startTime: Date.now()
+      };
+
+      // Modificar cada archivo relevante
+      const modifiedFiles: FileItem[] = [];
+
+      for (const file of this.files) {
+        try {
+          const result = await CodeModifierAgent.execute(modifierTask, file);
+
+          if (result.success && result.data) {
+            const modifiedFile = result.data.modifiedFile;
+            modifiedFiles.push(modifiedFile);
+
+            // Actualizar el archivo en el estado
+            this.files = this.files.map(f => f.id === modifiedFile.id ? modifiedFile : f);
+          }
+        } catch (error) {
+          console.error(`Error al modificar el archivo ${file.path}:`, error);
+        }
+      }
+
+      // Notificar a los listeners
+      this.notifyFileListeners();
+
+      this.addLogEntry({
+        id: generateUniqueId('log'),
+        timestamp: Date.now(),
+        phase: 'modifyingFile',
+        agentType: 'codeModifier',
+        action: 'codeModified',
+        details: `Código modificado exitosamente. Se han actualizado ${modifiedFiles.length} archivos.`,
+        relatedFiles: modifiedFiles.map(file => file.path)
+      });
+
+      // Finalizar el flujo de trabajo
+      this.updatePhase('complete', null);
+
+      this.addChatMessage({
+        id: generateUniqueId('msg'),
+        sender: 'assistant',
+        content: `He completado las modificaciones solicitadas. Se han actualizado ${modifiedFiles.length} archivos.`,
+        timestamp: Date.now(),
+        type: 'text'
+      });
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  /**
+   * Genera código a partir de un plan
+   * @param plan Plan del proyecto
+   */
+  private async generateCodeFromPlan(plan: any): Promise<void> {
+    try {
+      this.updatePhase('generatingCode', 'codeGenerator');
+
+      // Verificar si el plan ya tiene la estructura esperada por el CodeGeneratorAgent
+      let adaptedPlan = plan;
+
+      // Si el plan tiene la estructura del PlannerAgent, adaptarlo
+      if (plan.projectStructure && plan.implementationSteps) {
+        const projectStructure = plan.projectStructure;
+
+        // Verificar que la estructura del proyecto sea válida
+        if (!projectStructure.files || !Array.isArray(projectStructure.files)) {
+          throw new Error('El plan generado no contiene una estructura de proyecto válida');
+        }
+
+        // Adaptar el plan para el CodeGeneratorAgent
+        adaptedPlan = {
+          files: projectStructure.files,
+          description: projectStructure.description || this.lastInstruction,
+          name: projectStructure.name || 'Proyecto sin nombre',
+          implementationSteps: plan.implementationSteps || []
+        };
+      }
+
+      // Verificar que el plan adaptado tenga la estructura esperada
+      if (!adaptedPlan.files || !Array.isArray(adaptedPlan.files)) {
+        throw new Error('El plan no contiene una lista de archivos para generar');
+      }
+
+      // Preparar para solicitar aprobación por lotes en lugar de archivo por archivo
+      this.prepareFileBatchApproval(adaptedPlan.files);
+      return;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  /**
+   * Prepara la aprobación por lotes de archivos
+   * @param files Archivos a aprobar en lote
+   */
+  private prepareFileBatchApproval(files: any[]): void {
+    try {
+      console.log(`Preparando aprobación por lotes para ${files.length} archivos`);
+
+      // Limpiar cualquier manejador de aprobación anterior para evitar duplicados
+      this.approvalHandlers = [];
+
+      // Crear los elementos de aprobación para cada archivo
+      const approvalItems: ApprovalItem[] = files.map((file, index) => {
+        // Asegurarse de que file.path no sea undefined
+        const filePath = file.path || `archivo-${index + 1}`;
+
+        // Verificar si el archivo ya existe
+        const existingFile = this.files.find(f => f.path === filePath);
+        const fileExists = !!existingFile;
+
+        // Generar contenido para el archivo si no lo tiene
+        if (!file.content) {
+          console.log(`Generando contenido para archivo ${filePath}`);
+          file.content = `// Contenido generado para ${filePath}\n// Este es un archivo de ejemplo`;
+        }
+
+        // Si el archivo ya existe, obtener el contenido actual
+        let existingContent = '';
+        if (fileExists && existingFile) {
+          existingContent = existingFile.content || '';
+        }
+
+        return {
+          id: generateUniqueId(`approval-item-${index}`),
+          title: fileExists ? `Actualizar: ${filePath}` : filePath,
+          description: file.description || `Archivo generado para ${filePath}. Revisa el contenido y aprueba si es correcto.`,
+          type: 'file',
+          path: filePath,
+          language: this.detectLanguageFromPath(filePath),
+          estimatedTime: this.estimateFileGenerationTime(file),
+          priority: this.determinePriority(file, files),
+          dependencies: this.findDependencies(file, files),
+          content: file.content,
+          metadata: fileExists ? {
+            fileExists: true,
+            existingContent: existingContent,
+            action: 'update'
+          } : {
+            fileExists: false,
+            action: 'create'
+          }
+        };
+      });
+
+      // Crear la solicitud de aprobación por lotes
+      const approvalData: ApprovalData = {
+        id: generateUniqueId('batch-approval'),
+        title: `Aprobación de archivos (${files.length} archivos)`,
+        description: `Por favor, revisa y aprueba la generación de estos ${files.length} archivos. Puedes aprobar todos, rechazar todos, o seleccionar archivos específicos para aprobar.`,
+        type: 'batch',
+        items: approvalItems,
+        timestamp: Date.now(),
+        metadata: {
+          totalFiles: files.length,
+          batchApproval: true
+        }
+      };
+
+      // Mensaje del AgenteLector sobre la solicitud de aprobación por lotes
+      this.addChatMessage({
+        id: generateUniqueId('msg-lector-batch-approval'),
+        sender: 'ai-agent',
+        content: `📝 **AgenteLector**: El Agente Diseñador ha preparado ${files.length} archivos para tu revisión. Por favor, revisa y aprueba estos archivos para continuar con el proceso.`,
+        timestamp: Date.now(),
+        type: 'agent-report',
+        metadata: {
+          agentType: 'lector',
+          phase: 'awaitingApproval',
+          totalFiles: files.length
+        }
+      });
+
+      // Actualizar el estado para requerir aprobación
+      this.requiresApproval = true;
+      this.approvalData = approvalData;
+      this.updatePhase('awaitingApproval', 'codeGenerator');
+
+      // Configurar el manejador de aprobación para el lote
+      this.approvalHandlers.push((approvalId: string, approved: boolean, approvedItems?: string[]) => {
+        if (approvalId === approvalData.id) {
+          this.handleBatchApproval(approvalId, approved, approvedItems);
+        }
+      });
+
+      // Notificar a los listeners
+      this.notifyApprovalListeners();
+
+      // Añadir mensaje de chat solicitando la aprobación
+      this.addChatMessage({
+        id: generateUniqueId('msg-batch-approval'),
+        sender: 'assistant',
+        content: `Necesito tu aprobación para generar ${files.length} archivos. Por favor, revisa los archivos y aprueba para continuar.`,
+        timestamp: Date.now(),
+        type: 'approval-request',
+        metadata: {
+          approvalId: approvalData.id,
+          totalFiles: files.length,
+          batchApproval: true
+        }
+      });
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  /**
+   * Maneja la aprobación por lotes de archivos
+   * @param approvalId ID de la solicitud de aprobación
+   * @param approved Indica si fue aprobada
+   * @param approvedItems IDs de los elementos aprobados (para aprobación parcial)
+   */
+  private handleBatchApproval(approvalId: string, approved: boolean, approvedItems?: string[]): void {
+    try {
+      console.log(`Manejando aprobación por lotes con ID ${approvalId}, aprobado: ${approved}`);
+
+      if (!this.approvalData || this.approvalData.id !== approvalId) {
+        console.warn('No hay una solicitud de aprobación por lotes pendiente o el ID no coincide');
+        return;
+      }
+
+      // Obtener los elementos aprobados
+      const items = this.approvalData.items || [];
+      let itemsToProcess: ApprovalItem[] = [];
+
+      if (approved) {
+        // Si se aprobaron todos los archivos
+        itemsToProcess = items;
+
+        this.addChatMessage({
+          id: generateUniqueId('msg-batch-approved'),
+          sender: 'ai-agent',
+          content: `✅ **AgenteLector**: El usuario ha aprobado todos los archivos. Procediendo a crear ${items.length} archivos.`,
+          timestamp: Date.now(),
+          type: 'agent-report',
+          metadata: {
+            agentType: 'lector',
+            phase: 'generatingCode',
+            totalFiles: items.length
+          }
+        });
+      } else if (approvedItems && approvedItems.length > 0) {
+        // Si se aprobaron algunos archivos específicos
+        itemsToProcess = items.filter(item => approvedItems.includes(item.id));
+
+        this.addChatMessage({
+          id: generateUniqueId('msg-batch-partially-approved'),
+          sender: 'ai-agent',
+          content: `✅ **AgenteLector**: El usuario ha aprobado ${itemsToProcess.length} de ${items.length} archivos. Procediendo a crear los archivos seleccionados.`,
+          timestamp: Date.now(),
+          type: 'agent-report',
+          metadata: {
+            agentType: 'lector',
+            phase: 'generatingCode',
+            approvedFiles: itemsToProcess.length,
+            totalFiles: items.length
+          }
+        });
+      } else {
+        // Si se rechazaron todos los archivos
+        this.addChatMessage({
+          id: generateUniqueId('msg-batch-rejected'),
+          sender: 'ai-agent',
+          content: `❌ **AgenteLector**: El usuario ha rechazado todos los archivos. Se detendrá el proceso de generación.`,
+          timestamp: Date.now(),
+          type: 'agent-report',
+          metadata: {
+            agentType: 'lector',
+            phase: 'awaitingInput'
+          }
+        });
+
+        // Limpiar el estado de aprobación
+        this.requiresApproval = false;
+        this.approvalData = null;
+        this.approvalHandlers = [];
+        this.updatePhase('awaitingInput', null);
+        return;
+      }
+
+      // Procesar los archivos aprobados
+      this.processApprovedFiles(itemsToProcess);
+
+      // Limpiar el estado de aprobación
+      this.requiresApproval = false;
+      this.approvalData = null;
+      this.approvalHandlers = [];
+      this.updatePhase('generatingCode', 'codeGenerator');
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  /**
+   * Procesa los archivos aprobados creándolos en el sistema
+   * @param approvedItems Elementos aprobados para crear
+   */
+  private processApprovedFiles(approvedItems: ApprovalItem[]): void {
+    try {
+      console.log(`Procesando ${approvedItems.length} archivos aprobados`);
+
+      // Crear cada archivo aprobado
+      for (const item of approvedItems) {
+        if (item.content) {
+          const filePath = item.path;
+          const fileExists = this.files.some(f => f.path === filePath);
+
+          // Crear o actualizar el archivo
+          const result = this.writeFile(filePath, item.content);
+
+          if (result) {
+            console.log(`Archivo ${fileExists ? 'actualizado' : 'creado'} exitosamente: ${filePath}`);
+
+            // Añadir mensaje informativo al chat
+            this.addChatMessage({
+              id: generateUniqueId(`msg-file-${fileExists ? 'updated' : 'created'}`),
+              sender: 'ai-agent',
+              content: `✅ **AgenteLector**: Archivo ${fileExists ? 'actualizado' : 'creado'} exitosamente: ${filePath}`,
+              timestamp: Date.now(),
+              type: 'agent-report',
+              metadata: {
+                agentType: 'lector',
+                phase: 'generatingCode',
+                filePath: filePath,
+                action: fileExists ? 'update' : 'create'
+              }
+            });
+          } else {
+            console.error(`Error al ${fileExists ? 'actualizar' : 'crear'} archivo: ${filePath}`);
+
+            // Añadir mensaje de error al chat
+            this.addChatMessage({
+              id: generateUniqueId('msg-file-error'),
+              sender: 'system',
+              content: `Error al ${fileExists ? 'actualizar' : 'crear'} el archivo ${filePath}. Por favor, intenta nuevamente.`,
+              timestamp: Date.now(),
+              type: 'error'
+            });
+          }
+        }
+      }
+
+      // Notificar que se completó la generación de archivos
+      this.addChatMessage({
+        id: generateUniqueId('msg-batch-complete'),
+        sender: 'ai-agent',
+        content: `🎉 **AgenteLector**: Se ha completado la generación de ${approvedItems.length} archivos. El proyecto está listo para su uso.`,
+        timestamp: Date.now(),
+        type: 'agent-report',
+        metadata: {
+          agentType: 'lector',
+          phase: 'complete',
+          totalFiles: approvedItems.length
+        }
+      });
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  /**
+   * Escribe un archivo en el sistema
+   * @param filePath Ruta del archivo
+   * @param content Contenido del archivo
+   * @returns True si se creó o actualizó correctamente, false en caso contrario
+   */
+  private writeFile(filePath: string, content: string): boolean {
+    try {
+      // Crear o actualizar el archivo en el sistema usando la función importada
+      const result = createFile(
+        {
+          path: filePath,
+          content: content,
+          language: this.detectLanguageFromPath(filePath)
+        },
+        this.files,
+        this.fileListeners,
+        this.addChatMessage.bind(this),
+        generateUniqueId
+      );
+
+      return !!result;
+    } catch (error) {
+      console.error(`Error al escribir el archivo ${filePath}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Detecta el lenguaje de programación a partir de la extensión del archivo
+   * @param filePath Ruta del archivo
+   * @returns Lenguaje de programación detectado
+   */
+  private detectLanguageFromPath(filePath: string): string {
+    const extension = filePath.split('.').pop()?.toLowerCase() || '';
+
+    const extensionMap: { [key: string]: string } = {
+      'js': 'javascript',
+      'jsx': 'javascript',
+      'ts': 'typescript',
+      'tsx': 'typescript',
+      'html': 'html',
+      'css': 'css',
+      'scss': 'scss',
+      'json': 'json',
+      'md': 'markdown',
+      'py': 'python',
+      'java': 'java',
+      'c': 'c',
+      'cpp': 'cpp',
+      'cs': 'csharp',
+      'go': 'go',
+      'rb': 'ruby',
+      'php': 'php',
+      'swift': 'swift',
+      'kt': 'kotlin',
+      'rs': 'rust'
+    };
+
+    return extensionMap[extension] || 'plaintext';
+  }
+
+  /**
+   * Estima el tiempo de generación de un archivo
+   * @param file Archivo a estimar
+   * @returns Tiempo estimado en segundos
+   */
+  private estimateFileGenerationTime(file: any): number {
+    // Implementación básica: estimar basado en el tipo de archivo
+    const fileType = file.type || this.detectLanguageFromPath(file.path || '');
+
+    // Valores por defecto según el tipo de archivo
+    const typeTimeMap: { [key: string]: number } = {
+      'javascript': 30,
+      'typescript': 45,
+      'html': 20,
+      'css': 15,
+      'json': 10,
+      'markdown': 5,
+      'python': 40,
+      'java': 50
+    };
+
+    return typeTimeMap[fileType] || 30; // 30 segundos por defecto
+  }
+
+  /**
+   * Determina la prioridad de un archivo en el proceso de generación
+   * @param file Archivo a priorizar
+   * @param allFiles Todos los archivos del proyecto
+   * @returns Prioridad (1-10, donde 10 es la más alta)
+   */
+  private determinePriority(file: any, allFiles: any[]): number {
+    // Implementación básica: priorizar archivos de configuración y principales
+    const filePath = file.path || '';
+
+    if (filePath.includes('package.json') || filePath.includes('tsconfig.json')) {
+      return 10; // Máxima prioridad para archivos de configuración
+    }
+
+    if (filePath.includes('index') || filePath.includes('main')) {
+      return 9; // Alta prioridad para archivos principales
+    }
+
+    if (filePath.includes('component') || filePath.includes('service')) {
+      return 8; // Prioridad para componentes y servicios
+    }
+
+    return 5; // Prioridad media por defecto
+  }
+
+  /**
+   * Encuentra las dependencias de un archivo
+   * @param file Archivo a analizar
+   * @param allFiles Todos los archivos del proyecto
+   * @returns Lista de IDs de archivos de los que depende
+   */
+  private findDependencies(file: any, allFiles: any[]): string[] {
+    // Implementación básica: buscar dependencias por nombre
+    const dependencies: string[] = [];
+
+    // Si no hay path, no podemos determinar dependencias
+    if (!file.path) {
+      return dependencies;
+    }
+
+    // Lógica simple: los componentes dependen de los servicios, los servicios de los modelos, etc.
+    if (file.path.includes('component')) {
+      // Buscar servicios relacionados
+      const serviceFiles = allFiles.filter(f =>
+        f.path && f.path.includes('service') && f.id !== file.id
+      );
+
+      dependencies.push(...serviceFiles.map(f => f.id));
+    }
+
+    return dependencies;
+  }
+
+  /**
+   * Maneja errores en el flujo de trabajo
+   * @param error Error a manejar
+   */
+  private handleError(error: any): void {
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    console.error('Error en AIIterativeOrchestrator:', errorMessage);
+
+    // Añadir mensaje de error al chat
+    this.addChatMessage({
+      id: generateUniqueId('msg-error'),
+      sender: 'system',
+      content: `Error: ${errorMessage}`,
+      timestamp: Date.now(),
+      type: 'error'
+    });
+
+    // Actualizar el estado para permitir al usuario continuar
+    this.updatePhase('awaitingInput', null);
+    this.notifyStateListeners();
+  }
+}

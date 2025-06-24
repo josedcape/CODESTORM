@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Carga de Archivos Comprimidos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .container {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .upload-area {
+            border: 2px dashed #4a90e2;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #357abd;
+            background-color: #1e3a5f;
+        }
+        .upload-area.dragover {
+            border-color: #357abd;
+            background-color: #1e3a5f;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #4a90e2;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #2d5a2d;
+            border: 1px solid #4a8f4a;
+        }
+        .error {
+            background-color: #5a2d2d;
+            border: 1px solid #8f4a4a;
+        }
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .file-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .stat-item {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4a90e2;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test - Funcionalidad de Carga de Archivos Comprimidos</h1>
+    
+    <div class="container">
+        <h2>📦 Cargar Archivo ZIP/RAR</h2>
+        <div class="upload-area" id="uploadArea">
+            <div>
+                <h3>📁 Arrastra un archivo aquí o haz clic para seleccionar</h3>
+                <p>Formatos soportados: ZIP, RAR</p>
+                <p>Límites: 50MB por archivo, 500MB total</p>
+            </div>
+            <input type="file" id="fileInput" accept=".zip,.rar">
+        </div>
+        
+        <div id="progressContainer" style="display: none;">
+            <h3>Procesando archivo...</h3>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p id="progressText">Iniciando...</p>
+        </div>
+        
+        <div id="result" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Información del Sistema</h2>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="maxFileSize">50</div>
+                <div class="stat-label">MB máximo por archivo</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="maxTotalSize">500</div>
+                <div class="stat-label">MB máximo total</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="supportedFormats">2</div>
+                <div class="stat-label">Formatos soportados</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📋 Instrucciones de Prueba</h2>
+        <ol>
+            <li><strong>Crear un archivo ZIP de prueba:</strong>
+                <ul>
+                    <li>Crear algunos archivos de texto (.txt, .js, .html, .css)</li>
+                    <li>Comprimirlos en un archivo ZIP</li>
+                    <li>Asegurarse de que sea menor a 50MB</li>
+                </ul>
+            </li>
+            <li><strong>Probar la carga:</strong>
+                <ul>
+                    <li>Arrastrar el archivo ZIP al área de carga</li>
+                    <li>O hacer clic y seleccionar el archivo</li>
+                    <li>Observar la barra de progreso</li>
+                </ul>
+            </li>
+            <li><strong>Verificar resultados:</strong>
+                <ul>
+                    <li>Ver la lista de archivos extraídos</li>
+                    <li>Verificar el tamaño total</li>
+                    <li>Comprobar que no hay errores</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <script type="module">
+        // Simulación de la funcionalidad para testing
+        // En el entorno real, esto usaría FileCompressionService
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const result = document.getElementById('result');
+
+        // Event listeners
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        async function processFile(file) {
+            // Validar tipo de archivo
+            const extension = file.name.split('.').pop().toLowerCase();
+            if (!['zip', 'rar'].includes(extension)) {
+                showResult(false, `Tipo de archivo no soportado: ${file.name}`, []);
+                return;
+            }
+
+            // Validar tamaño
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            if (file.size > maxSize) {
+                showResult(false, `El archivo excede el límite de 50MB: ${(file.size / 1024 / 1024).toFixed(2)}MB`, []);
+                return;
+            }
+
+            // Mostrar progreso
+            showProgress(true);
+            
+            // Simular procesamiento
+            await simulateProcessing(file);
+        }
+
+        async function simulateProcessing(file) {
+            const stages = [
+                { progress: 10, text: 'Leyendo archivo...' },
+                { progress: 30, text: 'Extrayendo contenido...' },
+                { progress: 60, text: 'Procesando archivos...' },
+                { progress: 90, text: 'Finalizando...' },
+                { progress: 100, text: 'Completado' }
+            ];
+
+            for (const stage of stages) {
+                updateProgress(stage.progress, stage.text);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            // Simular resultado exitoso
+            const mockFiles = [
+                { name: 'index.html', path: '/index.html', size: 1024 },
+                { name: 'style.css', path: '/css/style.css', size: 2048 },
+                { name: 'script.js', path: '/js/script.js', size: 1536 },
+                { name: 'README.md', path: '/README.md', size: 512 }
+            ];
+
+            showProgress(false);
+            showResult(true, 'Extracción completada exitosamente', mockFiles);
+        }
+
+        function showProgress(show) {
+            progressContainer.style.display = show ? 'block' : 'none';
+            if (!show) {
+                progressFill.style.width = '0%';
+            }
+        }
+
+        function updateProgress(progress, text) {
+            progressFill.style.width = progress + '%';
+            progressText.textContent = text;
+        }
+
+        function showResult(success, message, files) {
+            result.style.display = 'block';
+            result.className = 'result ' + (success ? 'success' : 'error');
+            
+            let html = `<h3>${success ? '✅' : '❌'} ${message}</h3>`;
+            
+            if (success && files.length > 0) {
+                const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+                html += `
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${files.length}</div>
+                            <div class="stat-label">Archivos extraídos</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${(totalSize / 1024).toFixed(1)}</div>
+                            <div class="stat-label">KB total</div>
+                        </div>
+                    </div>
+                    <div class="file-list">
+                        <h4>Archivos extraídos:</h4>
+                        ${files.map(file => `
+                            <div class="file-item">
+                                📄 ${file.path} (${file.size} bytes)
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            result.innerHTML = html;
+        }
+
+        // Mostrar información inicial
+        console.log('🧪 Test de carga de archivos comprimidos iniciado');
+        console.log('📦 Formatos soportados: ZIP, RAR');
+        console.log('💾 Límites: 50MB por archivo, 500MB total');
+    </script>
+</body>
+</html>

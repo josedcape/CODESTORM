@@ -1,0 +1,84 @@
+{
+  "title": "Archivo de datos de prueba para límites de 1GB",
+  "description": "Este archivo contiene datos de prueba para verificar los nuevos límites de almacenamiento",
+  "version": "2.0.0",
+  "limits": {
+    "maxFileSize": "100MB",
+    "maxStorageSize": "1GB",
+    "previousLimits": {
+      "maxFileSize": "50MB",
+      "maxStorageSize": "500MB"
+    }
+  },
+  "testData": {
+    "users": [
+      {
+        "id": 1,
+        "name": "Usuario de Prueba 1",
+        "email": "usuario1@test.com",
+        "profile": {
+          "bio": "Este es un usuario de prueba para verificar que el sistema puede manejar archivos más grandes con los nuevos límites de 1GB de almacenamiento total y 100MB por archivo individual.",
+          "preferences": {
+            "theme": "dark",
+            "language": "es",
+            "notifications": true,
+            "features": ["compression", "upload", "download", "preview"]
+          }
+        }
+      },
+      {
+        "id": 2,
+        "name": "Usuario de Prueba 2",
+        "email": "usuario2@test.com",
+        "profile": {
+          "bio": "Segundo usuario de prueba para el sistema de compresión y descompresión de archivos ZIP con límites incrementados.",
+          "preferences": {
+            "theme": "light",
+            "language": "en",
+            "notifications": false,
+            "features": ["compression", "upload"]
+          }
+        }
+      }
+    ],
+    "projects": [
+      {
+        "id": 1,
+        "name": "Proyecto de Prueba Grande",
+        "description": "Este proyecto contiene múltiples archivos para probar los límites de almacenamiento incrementados a 1GB",
+        "files": [
+          "index.html",
+          "styles.css",
+          "script.js",
+          "large-data.json",
+          "config.json"
+        ],
+        "size": "Aproximadamente 50MB",
+        "status": "active"
+      }
+    ],
+    "configuration": {
+      "compression": {
+        "enabled": true,
+        "formats": ["ZIP", "RAR"],
+        "maxFileSize": 104857600,
+        "maxStorageSize": 1073741824,
+        "autoExtract": true,
+        "preserveStructure": true
+      },
+      "upload": {
+        "allowedTypes": [".zip", ".rar"],
+        "maxConcurrentUploads": 5,
+        "chunkSize": 1048576,
+        "timeout": 300000
+      }
+    }
+  },
+  "metadata": {
+    "created": "2024-01-01T00:00:00Z",
+    "updated": "2024-01-01T12:00:00Z",
+    "version": "2.0.0",
+    "author": "CODESTORM WebAI",
+    "purpose": "Testing increased storage limits"
+  }
+}

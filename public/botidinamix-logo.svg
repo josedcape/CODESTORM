@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100%" height="100%" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="blue-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0099ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0055ff;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <clipPath id="circleClip">
+      <circle cx="400" cy="400" r="380" />
+    </clipPath>
+
+    <!-- Definición del patrón de robot -->
+    <pattern id="robotPattern" patternUnits="userSpaceOnUse" width="800" height="800">
+      <rect width="800" height="800" fill="#0a1120" />
+      <!-- Cabeza del robot -->
+      <ellipse cx="400" cy="250" rx="150" ry="170" fill="#333" />
+      <ellipse cx="400" cy="250" rx="130" ry="150" fill="#444" />
+      <circle cx="400" cy="250" r="50" fill="#222" />
+      <circle cx="400" cy="250" r="40" fill="#00aaff" />
+      <circle cx="400" cy="250" r="20" fill="#00ccff" filter="url(#glow)" />
+
+      <!-- Cuerpo del robot -->
+      <rect x="250" y="350" width="300" height="250" rx="20" ry="20" fill="#333" />
+      <rect x="270" y="370" width="260" height="210" rx="10" ry="10" fill="#444" />
+
+      <!-- Detalles del cuerpo -->
+      <rect x="350" y="400" width="100" height="50" rx="5" ry="5" fill="#222" />
+      <rect x="370" y="420" width="60" height="20" fill="#00aaff" />
+
+      <!-- Hombros -->
+      <circle cx="250" cy="400" r="50" fill="#333" />
+      <circle cx="550" cy="400" r="50" fill="#333" />
+
+      <!-- Brazos -->
+      <rect x="180" y="400" width="70" height="200" rx="20" ry="20" fill="#444" />
+      <rect x="550" y="400" width="70" height="200" rx="20" ry="20" fill="#444" />
+
+      <!-- Detalles de luz -->
+      <circle cx="400" cy="500" r="30" fill="#00aaff" filter="url(#glow)" />
+      <rect x="370" y="550" width="60" height="10" fill="#00aaff" />
+      <rect x="370" y="570" width="60" height="10" fill="#00aaff" />
+    </pattern>
+  </defs>
+
+  <!-- Fondo oscuro -->
+  <circle cx="400" cy="400" r="400" fill="#0a1120" />
+
+  <!-- Imagen recortada en círculo -->
+  <g clip-path="url(#circleClip)">
+    <!-- Silueta del robot usando el patrón -->
+    <rect x="0" y="0" width="800" height="800" fill="url(#robotPattern)" />
+
+    <!-- Texto BOTIDINAMIX -->
+    <text x="400" y="700" font-family="Arial, sans-serif" font-size="60" font-weight="bold" text-anchor="middle" fill="#00aaff" filter="url(#glow)">BOTIDINAMIX</text>
+
+    <!-- Capa de brillo azul -->
+    <circle cx="400" cy="400" r="380" fill="url(#blue-glow)" fill-opacity="0.15" />
+  </g>
+
+  <!-- Borde brillante -->
+  <circle cx="400" cy="400" r="380" fill="none" stroke="url(#blue-glow)" stroke-width="4" filter="url(#glow)" />
+
+  <!-- Destellos -->
+  <circle cx="400" cy="150" r="5" fill="#00ccff" filter="url(#glow)" />
+  <circle cx="650" cy="400" r="5" fill="#00ccff" filter="url(#glow)" />
+  <circle cx="400" cy="650" r="5" fill="#00ccff" filter="url(#glow)" />
+  <circle cx="150" cy="400" r="5" fill="#00ccff" filter="url(#glow)" />
+</svg>

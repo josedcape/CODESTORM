@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Comportamiento del Botón de Modificación</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        .test-container {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .modification-panel {
+            background-color: #3a2a5a;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #5a4a7a;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            background-color: #1a1a1a;
+            border: 1px solid #5a4a7a;
+            border-radius: 4px;
+            padding: 10px;
+            color: white;
+            resize: none;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            border-radius: 4px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-enabled {
+            background-color: #6b46c1;
+            color: white;
+        }
+        .btn-enabled:hover {
+            background-color: #7c3aed;
+        }
+        .btn-disabled {
+            background-color: #6b7280;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .btn-loading {
+            background-color: #6b7280;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .test-pass {
+            background-color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .test-fail {
+            background-color: #7f1d1d;
+            border: 1px solid #ef4444;
+        }
+        .log {
+            background-color: #1f2937;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test - Comportamiento del Botón de Modificación</h1>
+    
+    <div class="test-container">
+        <h2>Simulación de la Interfaz del Agent</h2>
+        <div class="modification-panel">
+            <h3>Chat de Modificaciones</h3>
+            <p>Describe los cambios que quieres hacer a tu proyecto.</p>
+            
+            <textarea 
+                id="modificationInput" 
+                placeholder="Ejemplo: Cambia el color del header a azul, agrega un botón de logout..."
+                data-testid="modification-textarea">
+            </textarea>
+            
+            <button 
+                id="modificationButton" 
+                class="btn-disabled" 
+                disabled
+                data-testid="modification-button">
+                <span id="buttonIcon">✏️</span>
+                <span id="buttonText">Aplicar Modificación</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Resultados de Tests</h2>
+        <div id="testResults"></div>
+        
+        <h3>Ejecutar Tests</h3>
+        <button onclick="runAllTests()" style="background-color: #059669; color: white; margin-right: 10px;">
+            🚀 Ejecutar Todos los Tests
+        </button>
+        <button onclick="clearResults()" style="background-color: #dc2626; color: white;">
+            🗑️ Limpiar Resultados
+        </button>
+        
+        <div id="testLog" class="log"></div>
+    </div>
+
+    <script>
+        // Estado simulado del componente Agent
+        let state = {
+            modificationInput: '',
+            isModifying: false,
+            isPostGeneration: true,
+            generatedFiles: [
+                { path: 'index.html', content: '<html><body>Test</body></html>' },
+                { path: 'styles.css', content: 'body { margin: 0; }' }
+            ]
+        };
+
+        // Referencias a elementos DOM
+        const textarea = document.getElementById('modificationInput');
+        const button = document.getElementById('modificationButton');
+        const buttonIcon = document.getElementById('buttonIcon');
+        const buttonText = document.getElementById('buttonText');
+        const testResults = document.getElementById('testResults');
+        const testLog = document.getElementById('testLog');
+
+        // Función para log
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            testLog.innerHTML += `[${timestamp}] ${message}\n`;
+            testLog.scrollTop = testLog.scrollHeight;
+        }
+
+        // Función para actualizar el estado del botón
+        function updateButtonState() {
+            const shouldBeEnabled = state.modificationInput.trim() && 
+                                  !state.isModifying && 
+                                  state.isPostGeneration;
+
+            if (state.isModifying) {
+                button.className = 'btn-loading';
+                button.disabled = true;
+                buttonIcon.textContent = '⏳';
+                buttonText.textContent = 'Modificando...';
+            } else if (shouldBeEnabled) {
+                button.className = 'btn-enabled';
+                button.disabled = false;
+                buttonIcon.textContent = '✏️';
+                buttonText.textContent = 'Aplicar Modificación';
+            } else {
+                button.className = 'btn-disabled';
+                button.disabled = true;
+                buttonIcon.textContent = '✏️';
+                buttonText.textContent = 'Aplicar Modificación';
+            }
+
+            log(`🔍 Estado del botón actualizado: ${shouldBeEnabled ? 'HABILITADO' : 'DESHABILITADO'} (isModifying: ${state.isModifying}, input: "${state.modificationInput}")`);
+        }
+
+        // Simulación de handleModificationRequest
+        async function handleModificationRequest() {
+            if (!state.modificationInput.trim() || state.isModifying || !state.isPostGeneration) {
+                log('❌ Modificación bloqueada por condiciones de validación');
+                return;
+            }
+
+            log('🚀 Iniciando modificación...');
+            state.isModifying = true;
+            updateButtonState();
+
+            try {
+                // Simular procesamiento
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Simular modificación exitosa
+                state.generatedFiles = state.generatedFiles.map(file => ({
+                    ...file,
+                    content: file.content + '\n// Modificación aplicada: ' + state.modificationInput
+                }));
+
+                log('✅ Modificación completada exitosamente');
+                state.modificationInput = '';
+                textarea.value = '';
+
+            } catch (error) {
+                log('❌ Error en la modificación: ' + error.message);
+            } finally {
+                state.isModifying = false;
+                updateButtonState();
+                log('🔄 Estado isModifying reseteado a false');
+            }
+        }
+
+        // Event listeners
+        textarea.addEventListener('input', (e) => {
+            state.modificationInput = e.target.value;
+            updateButtonState();
+        });
+
+        button.addEventListener('click', () => {
+            log('🖱️ Click en botón detectado');
+            handleModificationRequest();
+        });
+
+        // Funciones de test
+        function addTestResult(testName, passed, details = '') {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${passed ? 'test-pass' : 'test-fail'}`;
+            resultDiv.innerHTML = `
+                <strong>${passed ? '✅' : '❌'} ${testName}</strong>
+                ${details ? `<br><small>${details}</small>` : ''}
+            `;
+            testResults.appendChild(resultDiv);
+        }
+
+        async function testButtonDisabledWhenEmpty() {
+            log('🧪 Test 1: Botón deshabilitado cuando input está vacío');
+            
+            // Limpiar input
+            textarea.value = '';
+            state.modificationInput = '';
+            state.isModifying = false;
+            updateButtonState();
+
+            const isDisabled = button.disabled;
+            const hasCorrectClass = button.className === 'btn-disabled';
+
+            addTestResult(
+                'Botón deshabilitado cuando input está vacío',
+                isDisabled && hasCorrectClass,
+                `Disabled: ${isDisabled}, Class: ${button.className}`
+            );
+
+            return isDisabled && hasCorrectClass;
+        }
+
+        async function testButtonEnabledWithInput() {
+            log('🧪 Test 2: Botón habilitado cuando hay input válido');
+            
+            // Agregar input
+            textarea.value = 'Test modification';
+            state.modificationInput = 'Test modification';
+            state.isModifying = false;
+            updateButtonState();
+
+            const isEnabled = !button.disabled;
+            const hasCorrectClass = button.className === 'btn-enabled';
+
+            addTestResult(
+                'Botón habilitado cuando hay input válido',
+                isEnabled && hasCorrectClass,
+                `Enabled: ${isEnabled}, Class: ${button.className}`
+            );
+
+            return isEnabled && hasCorrectClass;
+        }
+
+        async function testButtonDisabledWhenModifying() {
+            log('🧪 Test 3: Botón deshabilitado cuando está modificando');
+            
+            // Simular estado de modificación
+            textarea.value = 'Test modification';
+            state.modificationInput = 'Test modification';
+            state.isModifying = true;
+            updateButtonState();
+
+            const isDisabled = button.disabled;
+            const hasCorrectClass = button.className === 'btn-loading';
+            const hasCorrectText = buttonText.textContent === 'Modificando...';
+
+            addTestResult(
+                'Botón deshabilitado cuando está modificando',
+                isDisabled && hasCorrectClass && hasCorrectText,
+                `Disabled: ${isDisabled}, Class: ${button.className}, Text: ${buttonText.textContent}`
+            );
+
+            // Resetear estado
+            state.isModifying = false;
+            updateButtonState();
+
+            return isDisabled && hasCorrectClass && hasCorrectText;
+        }
+
+        async function testModificationProcess() {
+            log('🧪 Test 4: Proceso completo de modificación');
+            
+            // Configurar estado inicial
+            textarea.value = 'Test modification process';
+            state.modificationInput = 'Test modification process';
+            state.isModifying = false;
+            updateButtonState();
+
+            // Verificar que el botón está habilitado
+            if (button.disabled) {
+                addTestResult('Proceso completo de modificación', false, 'Botón no estaba habilitado al inicio');
+                return false;
+            }
+
+            // Simular click
+            const initialFilesCount = state.generatedFiles.length;
+            button.click();
+
+            // Esperar a que termine el proceso
+            await new Promise(resolve => {
+                const checkInterval = setInterval(() => {
+                    if (!state.isModifying) {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                }, 100);
+            });
+
+            // Verificar resultados
+            const inputCleared = state.modificationInput === '';
+            const textareaCleared = textarea.value === '';
+            const buttonEnabled = !button.disabled;
+            const filesModified = state.generatedFiles.every(file => 
+                file.content.includes('Modificación aplicada: Test modification process')
+            );
+
+            const allConditionsMet = inputCleared && textareaCleared && buttonEnabled && filesModified;
+
+            addTestResult(
+                'Proceso completo de modificación',
+                allConditionsMet,
+                `Input cleared: ${inputCleared}, Textarea cleared: ${textareaCleared}, Button enabled: ${buttonEnabled}, Files modified: ${filesModified}`
+            );
+
+            return allConditionsMet;
+        }
+
+        async function testMultipleModifications() {
+            log('🧪 Test 5: Múltiples modificaciones consecutivas');
+            
+            let allPassed = true;
+
+            for (let i = 1; i <= 3; i++) {
+                log(`🔄 Modificación ${i}/3`);
+                
+                // Configurar input
+                textarea.value = `Modificación ${i}`;
+                state.modificationInput = `Modificación ${i}`;
+                updateButtonState();
+
+                // Ejecutar modificación
+                button.click();
+
+                // Esperar a que termine
+                await new Promise(resolve => {
+                    const checkInterval = setInterval(() => {
+                        if (!state.isModifying) {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 100);
+                });
+
+                // Verificar que el botón se habilitó nuevamente
+                if (button.disabled) {
+                    allPassed = false;
+                    log(`❌ Botón no se habilitó después de la modificación ${i}`);
+                    break;
+                }
+
+                log(`✅ Modificación ${i} completada correctamente`);
+            }
+
+            addTestResult(
+                'Múltiples modificaciones consecutivas',
+                allPassed,
+                allPassed ? 'Todas las modificaciones se completaron correctamente' : 'Alguna modificación falló'
+            );
+
+            return allPassed;
+        }
+
+        async function runAllTests() {
+            log('🚀 Iniciando suite de tests...');
+            clearResults();
+
+            const tests = [
+                testButtonDisabledWhenEmpty,
+                testButtonEnabledWithInput,
+                testButtonDisabledWhenModifying,
+                testModificationProcess,
+                testMultipleModifications
+            ];
+
+            let passed = 0;
+            let total = tests.length;
+
+            for (const test of tests) {
+                try {
+                    const result = await test();
+                    if (result) passed++;
+                } catch (error) {
+                    log(`❌ Error en test: ${error.message}`);
+                }
+            }
+
+            log(`\n📊 Resumen: ${passed}/${total} tests pasaron`);
+            
+            if (passed === total) {
+                log('🎉 ¡Todos los tests pasaron! El botón funciona correctamente.');
+            } else {
+                log('⚠️ Algunos tests fallaron. Revisar la implementación.');
+            }
+        }
+
+        function clearResults() {
+            testResults.innerHTML = '';
+            testLog.innerHTML = '';
+        }
+
+        // Inicializar estado
+        updateButtonState();
+        log('🔧 Interfaz de test inicializada');
+    </script>
+</body>
+</html>
